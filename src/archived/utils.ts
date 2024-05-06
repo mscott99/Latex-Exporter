@@ -1,9 +1,9 @@
-import fs from 'fs';
+import * as fs from 'fs';
 import { parse } from 'yaml';
 import slugify from 'slugify';
 import { CODE_BLOCK_REGEX, BRACKET_LINK_REGEX } from './constants';
 
-export const extractFrontmatter = (markdown) => {
+export const extractFrontmatter = (markdown:string) => {
     const frontmatter = markdown.match(/^---([\s\S]+?)---/);
 
     if (!frontmatter) return {};
@@ -13,7 +13,8 @@ export const extractFrontmatter = (markdown) => {
     return parse(frontmatterString);
 };
 
-export const titleToUrl = (title, folder) => {
+export const titleToUrl = (title:string, folder?:string) => {
+    if (!folder) folder = '.';
     const path = `${folder}/${title}.md`;
 
     if (fs.existsSync(path)) {
@@ -26,9 +27,9 @@ export const titleToUrl = (title, folder) => {
     return `/${slugify(title, { lower: true })}`;
 };
 
-export const removeIgnoreParts = (tree) => {
-    const start = tree.children.findIndex(({ commentValue }) => commentValue?.trim() === 'ignore');
-    const end = tree.children.findIndex(({ commentValue }) => commentValue?.trim() === 'end ignore');
+export const removeIgnoreParts = (tree:any) => {
+    const start = tree.children.findIndex(( commentValue:string ) => commentValue?.trim() === 'ignore');
+    const end = tree.children.findIndex(( commentValue:string ) => commentValue?.trim() === 'end ignore');
 
     if (start === -1) return;
 
@@ -52,7 +53,7 @@ export const removeIgnoreParts = (tree) => {
 //     addPaywall(tree);
 // };
 
-export const fetchEmbedContent = (fileName, options) => {
+export const fetchEmbedContent = (fileName:string, options:any) => {
     const filePath = `${options.markdownFolder}/${fileName}.md`;
 
     if (!fs.existsSync(filePath)) return null;
@@ -60,7 +61,7 @@ export const fetchEmbedContent = (fileName, options) => {
     return fs.readFileSync(filePath, 'utf8');
 };
 
-export const parseBracketLink = (bracketLink, titleToUrlFn = titleToUrl) => {
+export const parseBracketLink = (bracketLink:any, titleToUrlFn = titleToUrl) => {
     const [match] = bracketLink.matchAll(BRACKET_LINK_REGEX);
 
     if (!match) return bracketLink;
@@ -75,9 +76,9 @@ export const parseBracketLink = (bracketLink, titleToUrlFn = titleToUrl) => {
     };
 };
 
-export const extractBracketLinks = (content, titleToUrlFn = titleToUrl) => {
+export const extractBracketLinks = (content:any, titleToUrlFn = titleToUrl) => {
     const links = content.replace(CODE_BLOCK_REGEX, '').match(BRACKET_LINK_REGEX) || [];
-    return links.map((link) => parseBracketLink(link, titleToUrlFn));
+    return links.map((link:any) => parseBracketLink(link, titleToUrlFn));
 };
 
 export default {

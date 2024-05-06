@@ -13,7 +13,7 @@ import slugify from 'slugify';
 import { EMBED_LINK_REGEX, BRACKET_LINK_REGEX, CALLOUT_REGEX, ICONS } from './constants';
 import { removeIgnoreParts,  titleToUrl as titleToUrlFn, fetchEmbedContent as fetchEmbedContentFn } from './utils';
 
-const plugin = (options = {}) => (tree) => {
+const plugin = (options:any) => (tree:any) => {
     const {
         markdownFolder = `${process.cwd()}/`,
         titleToUrl = titleToUrlFn,
@@ -26,13 +26,14 @@ const plugin = (options = {}) => (tree) => {
     // addPaywall(tree, paywall);
 
     visit(tree, 'paragraph', (node, index, parent) => {
-        const markdown = toMarkdown(node, { extensions: [gfmFootnoteToMarkdown(), gfmStrikethroughToMarkdown] });
+        const markdown = toMarkdown(node, { extensions: [gfmFootnoteToMarkdown(), gfmStrikethroughToMarkdown()] });
         const paragraph = String(unified().use(remarkParse).use(remarkHtml).processSync(markdown));
 
         if (paragraph.match(EMBED_LINK_REGEX)) {
-            const [, fileName] = EMBED_LINK_REGEX.exec(paragraph);
+            const match = EMBED_LINK_REGEX.exec(paragraph);
+            const fileName = match ? match[1] : (() => { throw new Error('Invalid embed link'); })();
 
-            if (node.children.some(({ type }) => type === 'inlineCode')) {
+            if (node.children.some((type:string) => type === 'inlineCode')) {
                 return node;
             }
 
@@ -55,7 +56,7 @@ const plugin = (options = {}) => (tree) => {
                 (bracketLink, link, heading, text) => {
                     const href = titleToUrl(link, markdownFolder);
 
-                    if (node.children.some(({ value, type }) => value === bracketLink && type === 'inlineCode')) {
+                    if (node.children.some(( value:any, type:string ) => value === bracketLink && type === 'inlineCode')) {
                         return bracketLink;
                     }
 
@@ -89,7 +90,8 @@ const plugin = (options = {}) => (tree) => {
         const blockquote = toString(node);
 
         if (blockquote.match(CALLOUT_REGEX)) {
-            const [, type, title] = CALLOUT_REGEX.exec(blockquote);
+            const match = CALLOUT_REGEX.exec(blockquote);
+            const [, type, title] = match ? match : [, '', ''];
             const content = blockquote.replace(CALLOUT_REGEX, '').trim().replace(/\n/g, ' ');
             const icon = ICONS[type.toLowerCase()];
 
@@ -121,11 +123,11 @@ const plugin = (options = {}) => (tree) => {
 
         if (paragraph.match(highlightRegex)) {
             const html = paragraph.replace(highlightRegex, (markdown, text) => {
-                if (node.children.some(({ value, type }) => value === markdown && type === 'inlineCode')) {
+                if (node.children.some((value:string, type:string) => value === markdown && type === 'inlineCode')) {
                     return markdown;
                 }
 
-                if (node.children.some((n) => n.type === 'strong' && text === toString(n))) {
+                if (node.children.some((n:any) => n.type === 'strong' && text === toString(n))) {
                     return `<mark><b>${text}</b></mark>`;
                 }
 

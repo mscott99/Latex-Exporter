@@ -1,7 +1,6 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
-import { unified } from 'unified';
-import remarkParse from 'remark-parse';
-import myObRemark from './src/index'
+import parseMarkdown from './parseMarkdown';
+// import myObRemark from './src/index'
 // import remarkObsidian from 'remark-obsidian'; 
 // Remember to rename these classes and interfaces!
 interface ExportPluginSettings {
@@ -11,38 +10,25 @@ interface ExportPluginSettings {
 const DEFAULT_SETTINGS: ExportPluginSettings = {
 	mySetting: 'default'
 }
-const processor = unified()
-  .use(remarkParse)
-  .use(myObRemark)
 
- async function parseMarkdown(markdown: string) {
-	const tree = processor.parse(markdown);
-	processor.run(tree, (err, ast) => {
-	  if (err) throw err;
-	  console.log(ast);
-	  // Now you can manipulate the AST
-	});
-  }
 export default class ExportPaperPlugin extends Plugin {
 	settings: ExportPluginSettings;
 
-	async parseCurrentFile(){
-		const activeFile = this.app.workspace.getActiveFile()
-		if (activeFile instanceof TFile) { // Check if there is an active file and it is a file
-            const content = await this.app.vault.read(activeFile); // Read the content of the file
-			parseMarkdown(content);
-        } else {
-            console.log('No active markdown file found.');
-        }
-	}
 	async onload() {
 		await this.loadSettings();
 
 		this.addCommand({
 			id: 'export-paper',
 			name: 'Export to paper',
-			callback: () => {
-				this.parseCurrentFile();
+			callback: async () => {
+				// console.log('Exporting to paper')
+				const activeFile = this.app.workspace.getActiveFile()
+				if (activeFile instanceof TFile) { // Check if there is an active file and it is a file
+					const content = await this.app.vault.read(activeFile); // Read the content of the file
+					console.log(parseMarkdown(content));
+				} else {
+					return new Notice('No file found.');
+				}
 			}
 		});
 
