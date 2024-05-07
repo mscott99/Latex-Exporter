@@ -11,11 +11,11 @@ module.exports = {
 	// },
 	moduleFileExtensions: ['js', 'ts'],
 	collectCoverage: true,
-  collectCoverageFrom: [
-    'src/*.ts', // Adjust pattern to include your source files
-    '!src/archived',         // Exclude TypeScript declaration files
-  ],
-  };
+	// collectCoverageFrom: [
+	// 	'src/*.ts', // Adjust pattern to include your source files
+	// 	'!src/archived', // Exclude TypeScript declaration files
+	// ],
+};
 // module.exports = {
 // 	verbose: true,
 // 	preset: 'ts-jest',

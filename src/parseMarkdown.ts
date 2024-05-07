@@ -1,90 +1,85 @@
 // import { unified } from 'unified';
 // import remarkParse from 'remark-parse';
 
+import { match } from "assert";
+
 // export const processor = unified()
 //   .use(remarkParse)
 //   .use(myObRemark)
 
-
-interface inline_elt{
-	type:string;	
-	content:any;
+export interface display_node{
+	// parent: display_node|null;	
 }
 
-export type text = {
-	type: "text";
-	content:string;
+export interface display_container{
+	children: display_node[];
 }
-
-export type paragraph = {
-	type: "paragraph";
-	content:inline_elt[]; 
-}
-
-export type heading = {
-	type: "heading";
-	content: {
-		level:number;
-		content:string;
+export class MDRoot implements display_node, display_container{
+	// parent:null;
+	children: display_node[];
+	constructor(children: display_node[]){
+		// for(const child of children){
+		// 	child.parent = this;
+		// }
+		this.children = children;
 	}
 }
 
-export type wikilink = {
-	type: "wikilink";
-	attribute:string;
-	address:string;
-	heading:string|null;
-	display:string|null;
+export class Header implements display_node, display_container{
+	// parent: MDRoot;
+	children: display_node[];
+	level:number;
+	title: Paragraph;
+	content: display_node[];
 }
 
-interface md_elt{
-	type:string;
-	content:any;
+export class DisplayMath implements display_node{
+	// parent: display_node;
+	latex: string;
 }
 
-export type md = {
-	type: "md";
-	content: md_elt[];
+export class DisplayCode implements display_node{
+	// parent: display_node;
+	language: string;
+	executable: boolean;
+	code: string;
 }
 
-export function split_by_blank_lines(markdown:md):void{
-	const new_arr:md_elt[] = [];
-	for (const elt of markdown.content) {
-		if (elt.type !== "paragraph") {
-			new_arr.push(elt);
-			continue;
-		}
-		let inline_elts:inline_elt[] = [];
-		for (const inline_element of elt.content){
-			if (inline_element.type !== "text") {
-				inline_elts.push(inline_element);
-				continue;
-			}
-			const split_texts:text[] = inline_element.content.split(/\n\s*\n/).map((p:string) => {
-				return {type:"text", content: p};
-			})
-			if(split_texts.length == 1){
-				inline_elts.push(inline_element);
-				continue;
-			}
-			// At least one split happened
-			for (const split_text of split_texts){
-				inline_elts.push(split_text);
-				new_arr.push({type:"paragraph", content:inline_elts});
-				inline_elts = [];
-			}
-		}
-		if(inline_elts.length > 0){
-			new_arr.push({type:"paragraph", content:inline_elts});
-		}
+export class Paragraph implements display_node{
+	elements: inline_node[];
+	// parent: display_node|null;
+	constructor(elements: inline_node[]){
+		this.elements = elements;
+		// this.parent = null;
 	}
-	markdown.content = new_arr;
 }
 
-// function split_by_heading(markdown:md)
+export interface inline_node{
+	content:string
+}
+
+export class Text implements inline_node{
+	content: string;
+	constructor(content: string){
+		this.content = content;
+	}
+}
+
+export class Emphasis implements inline_node{
+	content: string;
+}
+
+export class Strong implements inline_node{
+	content: string;
+}
+
+export class inline_math implements inline_node{
+	content: string;
+}
+
 
 export default function parseMarkdown(markdown: string) {
-	const baseMD:md= {type:"md", content: [{type:"paragraph", content : markdown}]};
+	const baseMD = new MDRoot([new Paragraph([new Text(markdown)])])
 	split_by_blank_lines(baseMD)
 	// split_by_heading(baseMD)
 
@@ -94,3 +89,117 @@ export default function parseMarkdown(markdown: string) {
 	//   // Now you can manipulate the AST
 	// });
 }
+
+export function split_by_blank_lines(markdown: MDRoot): void {
+	const new_display: display_node[] = [];
+
+	for (const elt of markdown.children) {
+		if (elt instanceof Paragraph) {
+			let new_inlines: inline_node[] = [];
+			for (const inline_element of elt.elements) {
+				if (inline_element instanceof Text) {
+					const split_texts = inline_element.content.split(/\n\s*\n/).map((p: string) => {
+						return new Text(p);
+					});
+
+					if (split_texts.length == 1) {
+						new_inlines.push(inline_element);
+						continue;
+					}
+					// At least one split happened
+					for (const split_text of split_texts) {
+						new_inlines.push(split_text);
+						new_display.push(new Paragraph(new_inlines));
+						new_inlines = [];
+					}
+				} else {
+					new_inlines.push(inline_element);
+				}
+			}
+			if (new_inlines.length > 0) {
+				new_display.push(new Paragraph(new_inlines));
+			}
+		}else {
+			new_display.push(elt);
+		}
+	}
+	// for(const elt of new_display){
+	// 	elt.parent = markdown;
+	// }
+	markdown.children = new_display;
+}
+
+// Uncomment the below for display equations
+// export function new_split_display_equations(markdown: MDRoot): void {
+// 	const new_display: display_node[] = [];
+
+// 	for (const elt of markdown.children) {
+// 		if (elt instanceof Paragraph) {
+// 		let new_inlines: inline_node[] = [];
+// 			for (const inline_element of elt.elements) {
+// 				if (inline_element instanceof Text) {
+// 					const displayMathRegex = /\$\$([\s\S]*?)\$\$/g;
+// 					// Not trusted, check that the stuff below actually captrues the equation.
+// 					const splitTexts = inline_element.content.split(displayMathRegex).map((p: string) => {
+// 						if (p.match(displayMathRegex)) {
+// 							// Handle display math
+// 							const displayMathContent = p.replace(displayMathRegex, "$1");
+// 							// Store the display math content in a variable or process it further
+// 							// ...
+// 						} else {
+// 							// Handle regular text
+// 							return { type: "text", content: p };
+// 						}
+// 					});
+// 					const split_texts = inline_element.content.split(/\n\s*\n/).map((p: string) => {
+// 						return { type: "text", content: p };
+// 					});
+
+// 					if (split_texts.length == 1) {
+// 						new_inlines.push(inline_element);
+// 						continue;
+// 					}
+// 					// At least one split happened
+// 					for (const split_text of split_texts) {
+// 						new_inlines.push(split_text);
+// 						new_display.push(new Paragraph(new_inlines, markdown));
+// 						new_inlines = [];
+// 					}
+// 				} else {
+// 					new_inlines.push(inline_element);
+// 				}
+// 			}
+// 		}else {
+// 			new_display.push(elt);
+// 		}
+// 	}
+// 	markdown.children = new_display;
+// }
+
+// Headings
+// function split_text_by_heading(elt:tree_elt):void{
+// 	if(elt.kind == "text"){
+// 		const headingRegex = /^\s*# (.*)\n/gm;
+// 		const new_elts:tree_elt[] = []
+// 		let nextmatch;
+// 		let prevendindex = 0;
+// 		let current_heading:tree_elt|undefined;
+// 		let has_current_heading = false;
+// 		while ((nextmatch = headingRegex.exec(elt.content)) !== null) {
+// 			const headingText = nextmatch[1];
+// 			const prev_chunk = elt.content.slice(prevendindex, nextmatch.index);
+// 			prevendindex = nextmatch.index + nextmatch[0].length;
+// 			if(prev_chunk.trim() != ""){
+// 				const textnode:tree_elt = {kind: "text", inline: true, parent: elt.parent, sibling_index: 0, children: [], content = prev_chunk}
+// 				if(current_heading != undefined){
+// 					current_heading.children.push(textnode)
+// 				}else {
+// 					current_heading = {kind: "heading", inline: false, parent: elt.parent, sibling_index: 0, children: [], content = headingText}
+// 					has_current_heading = true;
+// 					new_elts.push(textnode)
+// 				}
+// 			}	
+// 			new_elts.push(current_heading)	
+// 		}
+// 	}
+// }
