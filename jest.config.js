@@ -10,7 +10,6 @@ module.exports = {
 	//   obsidian: 'mocks/obsidian.ts',
 	// },
 	moduleFileExtensions: ['js', 'ts'],
-	collectCoverage: true,
 	// collectCoverageFrom: [
 	// 	'src/*.ts', // Adjust pattern to include your source files
 	// 	'!src/archived', // Exclude TypeScript declaration files

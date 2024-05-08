@@ -1,12 +1,3 @@
-// import { unified } from 'unified';
-// import remarkParse from 'remark-parse';
-
-import { match } from "assert";
-
-// export const processor = unified()
-//   .use(remarkParse)
-//   .use(myObRemark)
-
 export interface display_node{
 	// parent: display_node|null;	
 }
@@ -15,7 +6,6 @@ export interface display_container{
 	children: display_node[];
 }
 export class MDRoot implements display_node, display_container{
-	// parent:null;
 	children: display_node[];
 	constructor(children: display_node[]){
 		// for(const child of children){
@@ -26,16 +16,23 @@ export class MDRoot implements display_node, display_container{
 }
 
 export class Header implements display_node, display_container{
-	// parent: MDRoot;
 	children: display_node[];
 	level:number;
 	title: Paragraph;
 	content: display_node[];
+	constructor(level:number, title: Paragraph, content: display_node[]){
+		this.level = level;
+		this.title = title;
+		this.content = content;
+	}
 }
 
 export class DisplayMath implements display_node{
 	// parent: display_node;
 	latex: string;
+	constructor(latex: string){
+		this.latex = latex;
+	}
 }
 
 export class DisplayCode implements display_node{
@@ -47,10 +44,8 @@ export class DisplayCode implements display_node{
 
 export class Paragraph implements display_node{
 	elements: inline_node[];
-	// parent: display_node|null;
 	constructor(elements: inline_node[]){
 		this.elements = elements;
-		// this.parent = null;
 	}
 }
 
@@ -81,100 +76,59 @@ export class inline_math implements inline_node{
 export default function parseMarkdown(markdown: string) {
 	const baseMD = new MDRoot([new Paragraph([new Text(markdown)])])
 	split_by_blank_lines(baseMD)
-	// split_by_heading(baseMD)
-
-	// return processor.run(tree, (err, ast) => {
-	//   if (err) throw err;
-	//   console.log(ast);
-	//   // Now you can manipulate the AST
-	// });
 }
 
 export function split_by_blank_lines(markdown: MDRoot): void {
 	const new_display: display_node[] = [];
-
 	for (const elt of markdown.children) {
 		if (elt instanceof Paragraph) {
-			let new_inlines: inline_node[] = [];
-			for (const inline_element of elt.elements) {
-				if (inline_element instanceof Text) {
-					const split_texts = inline_element.content.split(/\n\s*\n/).map((p: string) => {
-						return new Text(p);
-					});
-
-					if (split_texts.length == 1) {
-						new_inlines.push(inline_element);
-						continue;
-					}
-					// At least one split happened
-					for (const split_text of split_texts) {
-						new_inlines.push(split_text);
-						new_display.push(new Paragraph(new_inlines));
-						new_inlines = [];
-					}
-				} else {
-					new_inlines.push(inline_element);
-				}
-			}
-			if (new_inlines.length > 0) {
-				new_display.push(new Paragraph(new_inlines));
+			console.assert(elt.elements.length == 1, "Paragraph should have only one element at this stage of parsing")
+			console.assert(elt.elements[0] instanceof Text, "Paragraph should have only one text element at this stage of parsing")
+			const inline_element = elt.elements[0];
+			const split_texts = inline_element.content.split(/\n\s*\n/).map((p: string) => {
+				return new Text(p);
+			});
+			for (const split_text of split_texts) {
+				new_display.push(new Paragraph([split_text]));
 			}
 		}else {
 			new_display.push(elt);
 		}
 	}
-	// for(const elt of new_display){
-	// 	elt.parent = markdown;
-	// }
 	markdown.children = new_display;
 }
 
-// Uncomment the below for display equations
-// export function new_split_display_equations(markdown: MDRoot): void {
-// 	const new_display: display_node[] = [];
-
-// 	for (const elt of markdown.children) {
-// 		if (elt instanceof Paragraph) {
-// 		let new_inlines: inline_node[] = [];
-// 			for (const inline_element of elt.elements) {
-// 				if (inline_element instanceof Text) {
-// 					const displayMathRegex = /\$\$([\s\S]*?)\$\$/g;
-// 					// Not trusted, check that the stuff below actually captrues the equation.
-// 					const splitTexts = inline_element.content.split(displayMathRegex).map((p: string) => {
-// 						if (p.match(displayMathRegex)) {
-// 							// Handle display math
-// 							const displayMathContent = p.replace(displayMathRegex, "$1");
-// 							// Store the display math content in a variable or process it further
-// 							// ...
-// 						} else {
-// 							// Handle regular text
-// 							return { type: "text", content: p };
-// 						}
-// 					});
-// 					const split_texts = inline_element.content.split(/\n\s*\n/).map((p: string) => {
-// 						return { type: "text", content: p };
-// 					});
-
-// 					if (split_texts.length == 1) {
-// 						new_inlines.push(inline_element);
-// 						continue;
-// 					}
-// 					// At least one split happened
-// 					for (const split_text of split_texts) {
-// 						new_inlines.push(split_text);
-// 						new_display.push(new Paragraph(new_inlines, markdown));
-// 						new_inlines = [];
-// 					}
-// 				} else {
-// 					new_inlines.push(inline_element);
-// 				}
-// 			}
-// 		}else {
-// 			new_display.push(elt);
-// 		}
-// 	}
-// 	markdown.children = new_display;
-// }
+export function split_display_equations(markdown: MDRoot): void {
+	const new_display: display_node[] = [];
+	for (const elt of markdown.children) {
+		if (elt instanceof Paragraph) {
+			console.assert(elt.elements.length == 1, "Paragraph should have only one element at this stage of parsing")
+			console.assert(elt.elements[0] instanceof Text, "Paragraph should have only one text element at this stage of parsing")
+			const inline_element = elt.elements[0];
+				const single_equation_match = /\$\$([\s\S]*?)\$\$/
+				let current_match:RegExpMatchArray|null = null;
+				while ((current_match = single_equation_match.exec(inline_element.content)) !== null) {
+					if (current_match.index == undefined) {
+						throw new Error("current_match.index is undefined");		
+					}
+					const prev_chunk = inline_element.content.slice(0, current_match.index);
+					if(prev_chunk.trim() != ""){
+						new_display.push(new Paragraph([new Text(prev_chunk)]));
+					}
+					const equation = current_match[1];
+					new_display.push(new DisplayMath(equation));	
+					inline_element.content = inline_element.content.slice(current_match.index + current_match[0].length);
+				}
+				// Last part of the text, or all of it if no match
+				if(inline_element.content.trim() != ""){
+					new_display.push(new Paragraph([new Text(inline_element.content)]));
+				}
+		}else {
+			new_display.push(elt);
+		}
+	}
+	markdown.children = new_display;
+}
 
 // Headings
 // function split_text_by_heading(elt:tree_elt):void{
