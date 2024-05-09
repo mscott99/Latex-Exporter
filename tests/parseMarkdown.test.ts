@@ -1,4 +1,4 @@
-import {DisplayMath, split_display_equations, MDRoot, Paragraph, Text, Header, split_by_blank_lines } from '../src/parseMarkdown';
+import {DisplayMath, split_display_equations, split_display_code, DisplayCode, MDRoot, Paragraph, Text, Header, split_by_blank_lines } from '../src/parseMarkdown';
 
 describe('split_display_blocks', () => {
     test('should split paragraphs by blank lines', () => {
@@ -39,4 +39,21 @@ describe('split_display_blocks', () => {
         expect(markdown).toEqual(expected);
     }) 
 
+    test('check display code', () => {
+        const markdown = new MDRoot([
+            new Paragraph([new Text('This is the ```hi this is\ncode``` first and ``` {python}\n more code``` all')]),
+        ]);
+
+        const expected = new MDRoot([
+            new Paragraph([new Text('This is the ')]),
+            new DisplayCode('hi this is\ncode'),
+            new Paragraph([new Text(' first and ')]),
+            new DisplayCode(' more code', "python", true),
+            new Paragraph([new Text(' all')]),
+        ]);
+
+        split_display_code(markdown);
+
+        expect(markdown).toEqual(expected);
+    }) 
 });

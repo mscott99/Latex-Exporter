@@ -36,10 +36,14 @@ export class DisplayMath implements display_node{
 }
 
 export class DisplayCode implements display_node{
-	// parent: display_node;
-	language: string;
+	language: string|undefined;
 	executable: boolean;
 	code: string;
+	constructor(code: string, language?: string, executable: boolean = false){
+		this.code = code;
+		this.language = language;
+		this.executable = executable;
+	}
 }
 
 export class Paragraph implements display_node{
@@ -112,6 +116,7 @@ export function split_display_equations(markdown: MDRoot): void {
 						throw new Error("current_match.index is undefined");		
 					}
 					const prev_chunk = inline_element.content.slice(0, current_match.index);
+
 					if(prev_chunk.trim() != ""){
 						new_display.push(new Paragraph([new Text(prev_chunk)]));
 					}
@@ -129,6 +134,50 @@ export function split_display_equations(markdown: MDRoot): void {
 	}
 	markdown.children = new_display;
 }
+
+
+export function split_display_code(markdown: MDRoot): void {
+	const new_display: display_node[] = [];
+	for (const elt of markdown.children) {
+		if (elt instanceof Paragraph) {
+			console.assert(elt.elements.length == 1, "Paragraph should have only one element at this stage of parsing")
+			console.assert(elt.elements[0] instanceof Text, "Paragraph should have only one text element at this stage of parsing")
+			const inline_element = elt.elements[0];
+			const single_code_match = /```(?:\s*({?)([a-zA-Z]+)(}?)\s*\n([\s\S]*?)|([\s\S]*?))```/
+
+			let current_match:RegExpMatchArray|null = null;
+			while ((current_match = single_code_match.exec(inline_element.content)) !== null) {
+				if (current_match.index == undefined) {
+					throw new Error("current_match.index is undefined");		
+				}
+				const prev_chunk = inline_element.content.slice(0, current_match.index);
+
+				if(prev_chunk.trim() != ""){
+					new_display.push(new Paragraph([new Text(prev_chunk)]));
+				}
+				
+				if(current_match[4]!== undefined){
+					const code = current_match[4]
+					const executable = current_match[1] == "{" && current_match[3] == "}";
+					const language = current_match[2] !== "" ? current_match[2] : undefined
+					new_display.push(new DisplayCode(code, language, executable));	
+				}else{
+					const code = current_match[5]
+					new_display.push(new DisplayCode(code));	
+				}
+				inline_element.content = inline_element.content.slice(current_match.index + current_match[0].length);
+			}
+			// Last part of the text, or all of it if no match
+			if(inline_element.content.trim() != ""){
+				new_display.push(new Paragraph([new Text(inline_element.content)]));
+			}
+	}else {
+			new_display.push(elt);
+		}
+	}
+	markdown.children = new_display;
+}
+
 
 // Headings
 // function split_text_by_heading(elt:tree_elt):void{
