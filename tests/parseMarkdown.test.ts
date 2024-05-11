@@ -1,4 +1,4 @@
-import {DisplayMath, split_display_equations, split_display_code, DisplayCode, MDRoot, Paragraph, Text, Header, split_by_blank_lines } from '../src/parseMarkdown';
+import {DisplayMath, split_display, DisplayCode, MDRoot, Paragraph, Text, Header, BlankLine} from '../src/parseMarkdown';
 
 describe('split_display_blocks', () => {
     test('should split paragraphs by blank lines', () => {
@@ -14,27 +14,28 @@ describe('split_display_blocks', () => {
             new Paragraph([new Text('This is the first paragraph.')]),
             new Paragraph([new Text('This is the second\n paragraph.')]),
             new Paragraph([new Text('This is the third')]),
+			new BlankLine(),
             new Paragraph([new Text(' paragraph.')]),
         ]);
 
-        split_by_blank_lines(markdown);
+        split_display<BlankLine>(markdown, BlankLine.build_from_match, BlankLine.regexp);
 
         expect(markdown).toEqual(expected);
     });
     test('check equation splitting', () => {
         const markdown = new MDRoot([
-            new Paragraph([new Text('This is the\$\$hi\n\$\$ first and \n\$\$ \$ all \\sum_{} \$\$ paragraph.\$\$')]),
+            new Paragraph([new Text('This is the\$\$hi\n\$\${eq-label} first and \n\$\$ \$ all \\sum_{} \$\$ paragraph.\$\$')]),
         ]);
 
         const expected = new MDRoot([
             new Paragraph([new Text('This is the')]),
-            new DisplayMath('hi\n'),
+            new DisplayMath(['hi\n', "eq-label"]),
             new Paragraph([new Text(' first and \n')]),
-            new DisplayMath(' \$ all \\sum_{} '),
+            new DisplayMath([' \$ all \\sum_{} ']),
             new Paragraph([new Text(' paragraph.\$\$')]),
         ]);
 
-        split_display_equations(markdown);
+        split_display<DisplayMath>(markdown, DisplayMath.build_from_match, DisplayMath.regexp);
 
         expect(markdown).toEqual(expected);
     }) 
@@ -52,7 +53,7 @@ describe('split_display_blocks', () => {
             new Paragraph([new Text(' all')]),
         ]);
 
-        split_display_code(markdown);
+        split_display<DisplayCode>(markdown, DisplayCode.build_from_match, DisplayCode.regexp);
 
         expect(markdown).toEqual(expected);
     }) 

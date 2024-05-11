@@ -1,44 +1,42 @@
-export interface display_node{
-	// parent: display_node|null;	
-}
-
-export interface display_container{
-	children: display_node[];
-}
-export class MDRoot implements display_node, display_container{
+export class MDRoot implements display_node{
 	children: display_node[];
 	constructor(children: display_node[]){
-		// for(const child of children){
-		// 	child.parent = this;
-		// }
 		this.children = children;
 	}
 }
 
-export class Header implements display_node, display_container{
+export class Header implements display_node{
 	children: display_node[];
 	level:number;
 	title: Paragraph;
 	content: display_node[];
 	constructor(level:number, title: Paragraph, content: display_node[]){
-		this.level = level;
+		this.level = level; 
 		this.title = title;
 		this.content = content;
 	}
 }
 
-export class DisplayMath implements display_node{
-	// parent: display_node;
-	latex: string;
-	constructor(latex: string){
-		this.latex = latex;
-	}
+export interface display_node{
 }
+
 
 export class DisplayCode implements display_node{
 	language: string|undefined;
 	executable: boolean;
 	code: string;
+	static regexp = /```(?:\s*({?)([a-zA-Z]+)(}?)\s*\n([\s\S]*?)|([\s\S]*?))```/
+	static build_from_match(match: RegExpMatchArray): DisplayCode{
+		if(match[4]!== undefined){
+			const code = match[4]
+			const executable = match[1] == "{" && match[3] == "}";
+			const language = match[2] !== "" ? match[2] : undefined
+			return new DisplayCode(code, language, executable);
+		}else{
+			const code = match[5]
+			return new DisplayCode(code);
+		}
+	}
 	constructor(code: string, language?: string, executable: boolean = false){
 		this.code = code;
 		this.language = language;
@@ -64,6 +62,13 @@ export class Text implements inline_node{
 	}
 }
 
+export class BlankLine implements display_node{
+	static regexp = /\n\s*\n/
+	static build_from_match(args:RegExpMatchArray): BlankLine{
+		return new BlankLine();
+	}
+}
+
 export class Emphasis implements inline_node{
 	content: string;
 }
@@ -76,52 +81,43 @@ export class inline_math implements inline_node{
 	content: string;
 }
 
+export class DisplayMath implements display_node{
+	// parent: display_node;
+	latex: string;
+	label: string|undefined;
+	static regexp = /\$\$([\s\S]*?)\$\$(?:\s*?{([\s\S]*?)})?/;
+	static build_from_match(args:RegExpMatchArray): DisplayMath{
+		return new DisplayMath([args[1], args[2]]);
+	}
+	constructor(args: [string, string?]){
+			this.latex = args[0]
+			this.label = args[1]
+	}
+}
 
 export default function parseMarkdown(markdown: string) {
-	const baseMD = new MDRoot([new Paragraph([new Text(markdown)])])
-	split_by_blank_lines(baseMD)
+	// const baseMD = new MDRoot([new Paragraph([new Text(markdown)])])
 }
 
-export function split_by_blank_lines(markdown: MDRoot): void {
+// The custom part is a regex and a constructor. So a regex, and function to get the object from the regex
+
+export function split_display<ClassObj>(markdown: MDRoot, make_obj:(args:RegExpMatchArray) => ClassObj, class_regexp:RegExp): void {
 	const new_display: display_node[] = [];
 	for (const elt of markdown.children) {
 		if (elt instanceof Paragraph) {
 			console.assert(elt.elements.length == 1, "Paragraph should have only one element at this stage of parsing")
 			console.assert(elt.elements[0] instanceof Text, "Paragraph should have only one text element at this stage of parsing")
 			const inline_element = elt.elements[0];
-			const split_texts = inline_element.content.split(/\n\s*\n/).map((p: string) => {
-				return new Text(p);
-			});
-			for (const split_text of split_texts) {
-				new_display.push(new Paragraph([split_text]));
-			}
-		}else {
-			new_display.push(elt);
-		}
-	}
-	markdown.children = new_display;
-}
-
-export function split_display_equations(markdown: MDRoot): void {
-	const new_display: display_node[] = [];
-	for (const elt of markdown.children) {
-		if (elt instanceof Paragraph) {
-			console.assert(elt.elements.length == 1, "Paragraph should have only one element at this stage of parsing")
-			console.assert(elt.elements[0] instanceof Text, "Paragraph should have only one text element at this stage of parsing")
-			const inline_element = elt.elements[0];
-				const single_equation_match = /\$\$([\s\S]*?)\$\$/
 				let current_match:RegExpMatchArray|null = null;
-				while ((current_match = single_equation_match.exec(inline_element.content)) !== null) {
+				while ((current_match = class_regexp.exec(inline_element.content)) !== null) {
 					if (current_match.index == undefined) {
 						throw new Error("current_match.index is undefined");		
 					}
 					const prev_chunk = inline_element.content.slice(0, current_match.index);
-
 					if(prev_chunk.trim() != ""){
 						new_display.push(new Paragraph([new Text(prev_chunk)]));
 					}
-					const equation = current_match[1];
-					new_display.push(new DisplayMath(equation));	
+					new_display.push(make_obj(current_match));
 					inline_element.content = inline_element.content.slice(current_match.index + current_match[0].length);
 				}
 				// Last part of the text, or all of it if no match
@@ -134,50 +130,6 @@ export function split_display_equations(markdown: MDRoot): void {
 	}
 	markdown.children = new_display;
 }
-
-
-export function split_display_code(markdown: MDRoot): void {
-	const new_display: display_node[] = [];
-	for (const elt of markdown.children) {
-		if (elt instanceof Paragraph) {
-			console.assert(elt.elements.length == 1, "Paragraph should have only one element at this stage of parsing")
-			console.assert(elt.elements[0] instanceof Text, "Paragraph should have only one text element at this stage of parsing")
-			const inline_element = elt.elements[0];
-			const single_code_match = /```(?:\s*({?)([a-zA-Z]+)(}?)\s*\n([\s\S]*?)|([\s\S]*?))```/
-
-			let current_match:RegExpMatchArray|null = null;
-			while ((current_match = single_code_match.exec(inline_element.content)) !== null) {
-				if (current_match.index == undefined) {
-					throw new Error("current_match.index is undefined");		
-				}
-				const prev_chunk = inline_element.content.slice(0, current_match.index);
-
-				if(prev_chunk.trim() != ""){
-					new_display.push(new Paragraph([new Text(prev_chunk)]));
-				}
-				
-				if(current_match[4]!== undefined){
-					const code = current_match[4]
-					const executable = current_match[1] == "{" && current_match[3] == "}";
-					const language = current_match[2] !== "" ? current_match[2] : undefined
-					new_display.push(new DisplayCode(code, language, executable));	
-				}else{
-					const code = current_match[5]
-					new_display.push(new DisplayCode(code));	
-				}
-				inline_element.content = inline_element.content.slice(current_match.index + current_match[0].length);
-			}
-			// Last part of the text, or all of it if no match
-			if(inline_element.content.trim() != ""){
-				new_display.push(new Paragraph([new Text(inline_element.content)]));
-			}
-	}else {
-			new_display.push(elt);
-		}
-	}
-	markdown.children = new_display;
-}
-
 
 // Headings
 // function split_text_by_heading(elt:tree_elt):void{
