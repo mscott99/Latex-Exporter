@@ -39,7 +39,7 @@ export class Text implements inline_node{
 }
 
 export class BlankLine implements display_node{
-	static regexp = /\n\s*\n/
+	static regexp = /\n\s*\n/g
 	static build_from_match(args:RegExpMatchArray): BlankLine{
 		return new BlankLine();
 	}
@@ -61,7 +61,7 @@ export class DisplayCode implements display_node{
 	language: string|undefined;
 	executable: boolean;
 	code: string;
-	static regexp = /```(?:\s*({?)([a-zA-Z]+)(}?)\s*\n([\s\S]*?)|([\s\S]*?))```/
+	static regexp = /```(?:\s*({?)([a-zA-Z]+)(}?)\s*\n([\s\S]*?)|([\s\S]*?))```/g
 	static build_from_match(match: RegExpMatchArray): DisplayCode{
 		if(match[4]!== undefined){
 			const code = match[4]
@@ -85,7 +85,7 @@ export class EmbedWikilink implements display_node{
 	address: string;
 	header: string|undefined;
 	displayed: string|undefined;
-	static regexp = /(?:::(\S*?))?!\[\[([\s\S]*?)(?:\#([\s\S]*?))?(?:\|([\s\S]*?))?\]\]/;
+	static regexp = /(?:::(\S*?))?!\[\[([\s\S]*?)(?:\#([\s\S]*?))?(?:\|([\s\S]*?))?\]\]/g;
 	static build_from_match(args:RegExpMatchArray): EmbedWikilink{
 		return new EmbedWikilink(args[1], args[2], args[3], args[4]);
 	}
@@ -101,7 +101,7 @@ export class DisplayMath implements display_node{
 	// parent: display_node;
 	latex: string;
 	label: string|undefined;
-	static regexp = /\$\$([\s\S]*?)\$\$(?:\s*?{([\s\S]*?)})?/;
+	static regexp = /\$\$([\s\S]*?)\$\$(?:\s*?{([\s\S]*?)})?/g;
 	static build_from_match(args:RegExpMatchArray): DisplayMath{
 		return new DisplayMath(args[1], args[2]);
 	}
@@ -124,22 +124,25 @@ export function split_display<ClassObj>(markdown: MDRoot, make_obj:(args:RegExpM
 			console.assert(elt.elements.length == 1, "Paragraph should have only one element at this stage of parsing")
 			console.assert(elt.elements[0] instanceof Text, "Paragraph should have only one text element at this stage of parsing")
 			const inline_element = elt.elements[0];
-				let current_match:RegExpMatchArray|null = null;
-				while ((current_match = class_regexp.exec(inline_element.content)) !== null) {
-					if (current_match.index == undefined) {
-						throw new Error("current_match.index is undefined");		
-					}
-					const prev_chunk = inline_element.content.slice(0, current_match.index);
-					if(prev_chunk.trim() != ""){
-						new_display.push(new Paragraph([new Text(prev_chunk)]));
-					}
-					new_display.push(make_obj(current_match));
-					inline_element.content = inline_element.content.slice(current_match.index + current_match[0].length);
+			let current_match:RegExpMatchArray|null = null;
+			let start_index = 0;
+			const string_to_parse = inline_element.content;
+			while ((current_match = class_regexp.exec(string_to_parse)) !== null) {
+				if (current_match.index == undefined) {
+					throw new Error("current_match.index is undefined");		
 				}
-				// Last part of the text, or all of it if no match
-				if(inline_element.content.trim() != ""){
-					new_display.push(new Paragraph([new Text(inline_element.content)]));
+				const prev_chunk = inline_element.content.slice(start_index, current_match.index);
+				if(prev_chunk.trim() != ""){
+					new_display.push(new Paragraph([new Text(strip_newlines(prev_chunk))]));
 				}
+				new_display.push(make_obj(current_match));
+				start_index = current_match.index + current_match[0].length;
+			}
+			// Last part of the text, or all of it if no match
+			const return_string = strip_newlines(inline_element.content.slice(start_index))
+			if(return_string.trim() != ""){
+				new_display.push(new Paragraph([new Text(return_string)]));
+			}
 		}else {
 			new_display.push(elt);
 		}
@@ -147,10 +150,10 @@ export function split_display<ClassObj>(markdown: MDRoot, make_obj:(args:RegExpM
 	return new_md
 }
 
-function strip_newlines(thestring:string):string|null{
-	const result = /^([\s\n]*)(.*?)([\s\n]*)$/.exec(thestring)
-	if(result == null){
-		return null
+function strip_newlines(thestring:string):string{
+	const result = /^(\n*)(.*?)(\n*)$/s.exec(thestring)
+	if(result === null){
+		throw new Error("result is null")
 	}
 	return result[2]
 }
@@ -175,21 +178,13 @@ export function make_heading_tree(markdown:MDRoot):MDRoot{
 				}
 				const prev_chunk = inline_element.content.slice(start_index, current_match.index);
 				if(prev_chunk.trim() != ""){
-					const return_string = strip_newlines(prev_chunk)
-					if(return_string == null){
-						throw new Error("return_string is null")
-					}else{
-						new_display.push(new Paragraph([new Text(return_string)]));
-					}
+					new_display.push(new Paragraph([new Text(strip_newlines(prev_chunk))]));
 				}
-				
 				// new_display.push(make_obj(current_match));
 				for(let i = header_stack.length - 1; i >= 0; i--){
 					const new_header = new Header(current_match[1].length, [new Text(current_match[2])], []);
 					const level = new_header.level;
 					if(level > header_stack[i].level){
-						// We are at the index of the new parent.
-						// header_stack = header_stack.slice(0, i + 1)
 						header_stack.splice(i+1, header_stack.length - (i+1))
 						header_stack[i].children.push(new_header);
 						header_stack.push(new_header);
@@ -198,16 +193,11 @@ export function make_heading_tree(markdown:MDRoot):MDRoot{
 					}
 				}
 				start_index = current_match.index + current_match[0].length;
-				// inline_element.content = inline_element.content.slice(current_match.index + current_match[0].length);
 			}
 			// possibility of a final piece of text after matches
-			if(inline_element.content.slice(start_index).trim() != ""){
-				const return_string = strip_newlines(inline_element.content.slice(start_index))
-					if(return_string == null){
-						throw new Error("return_string is null")
-					}else{
-						new_display.push(new Paragraph([new Text(return_string)]));
-					}
+			const return_string = inline_element.content.slice(start_index)
+			if(return_string .trim() != ""){
+				new_display.push(new Paragraph([new Text(strip_newlines(return_string))]));
 			}
 		}else {
 			new_display.push(elt);

@@ -28,7 +28,7 @@ describe('split_display_blocks', () => {
         const expected = new MDRoot([
             new Paragraph([new Text('This is the')]),
             new DisplayMath('hi\n', "eq-label"),
-            new Paragraph([new Text(' first and \n')]),
+            new Paragraph([new Text(' first and ')]),
             new DisplayMath(' \$ all \\sum_{} ', undefined),
             new Paragraph([new Text(' paragraph.\$\$')]),
         ]);
