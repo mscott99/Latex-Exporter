@@ -28,7 +28,7 @@ export class Paragraph implements display_node{
 }
 
 export interface inline_node{
-	content:string
+	content:string;
 }
 
 export class Text implements inline_node{
@@ -46,15 +46,56 @@ export class BlankLine implements display_node{
 }
 
 export class Emphasis implements inline_node{
+	static regexp = /(?:\*(\S.*?)\*)|(?:_(\S.*?)_)/gs;
 	content: string;
+	label: string|undefined;
+	static build_from_match(regexmatch:RegExpMatchArray):Emphasis{
+		if(regexmatch[1] !== undefined) {
+			return new Emphasis(regexmatch[1])
+		}
+		else if(regexmatch[2] !== undefined){
+			return new Emphasis(regexmatch[2])
+		}else{
+			throw new Error("Unexpected regex match")
+		}
+	}
+	constructor(content:string){
+		this.content = content;
+	}
 }
 
 export class Strong implements inline_node{
+	// similar to emphasis but with double asterisks
+	static regexp = /(?:\*\*(\S.*?)\*\*)|(?:__(\S.*?)__)/gs;
 	content: string;
+	label: string|undefined;
+	static build_from_match(regexmatch:RegExpMatchArray):Strong{
+		if(regexmatch[1] !== undefined) {
+			return new Strong(regexmatch[1])
+		}
+		else if(regexmatch[2] !== undefined){
+			return new Strong(regexmatch[2])
+		}else{
+			throw new Error("Unexpected regex match")
+		}
+	}
+	constructor(content:string){
+		this.content = content;
+	}
 }
 
-export class inline_math implements inline_node{
+export class InlineMath implements inline_node{
+	static regexp = /\$([^\$]+)\$(?:{(.*?)})?/g;
 	content: string;
+	label: string|undefined;
+	static build_from_match(regexmatch:RegExpMatchArray):InlineMath{
+		return new InlineMath(regexmatch[1], regexmatch[2]);
+	}
+
+	constructor(content:string, label?:string){
+		this.content = content;
+		this.label = label;
+	}
 }
 
 export class DisplayCode implements display_node{
@@ -82,7 +123,7 @@ export class DisplayCode implements display_node{
 
 export class EmbedWikilink implements display_node{
 	attribute: string|undefined;
-	address: string;
+	content: string;
 	header: string|undefined;
 	displayed: string|undefined;
 	static regexp = /(?:::(\S*?))?!\[\[([\s\S]*?)(?:\#([\s\S]*?))?(?:\|([\s\S]*?))?\]\]/g;
@@ -91,7 +132,24 @@ export class EmbedWikilink implements display_node{
 	}
 	constructor(attribute:string|undefined, address: string, header: string|undefined, displayed: string|undefined){
 		this.attribute = attribute;
-		this.address = address;
+		this.content = address;
+		this.header = header;
+		this.displayed = displayed;
+	}
+}
+
+export class Wikilink implements inline_node{
+	attribute: string|undefined;
+	content: string;
+	header: string|undefined;
+	displayed: string|undefined;
+	static regexp = /(?:::(\S*?))?\[\[([\s\S]*?)(?:\#([\s\S]*?))?(?:\|([\s\S]*?))?\]\]/g;
+	static build_from_match(args:RegExpMatchArray): Wikilink{
+		return new Wikilink(args[1], args[2], args[3], args[4]);
+	}
+	constructor(attribute:string|undefined, address: string, header: string|undefined, displayed: string|undefined){
+		this.attribute = attribute;
+		this.content = address;
 		this.header = header;
 		this.displayed = displayed;
 	}
@@ -105,7 +163,7 @@ export class DisplayMath implements display_node{
 	static build_from_match(args:RegExpMatchArray): DisplayMath{
 		return new DisplayMath(args[1], args[2]);
 	}
-	constructor(latex:string, label:string|undefined){
+	constructor(latex:string, label?:string){
 			this.latex = latex
 			this.label = label
 	}
@@ -158,6 +216,108 @@ function strip_newlines(thestring:string):string{
 	return result[2]
 }
 
+
+export function parse_inline<ClassObj extends inline_node>(text: Text, make_obj:(args:RegExpMatchArray) => ClassObj, class_regexp:RegExp):inline_node[]{
+	const new_inline:inline_node[] = [];
+	let current_match:RegExpMatchArray|null = null;
+	let start_index = 0;
+	while ((current_match = class_regexp.exec(text.content)) !== null) {
+		if (current_match.index == undefined) {
+			throw new Error("current_match.index is undefined");
+		}
+		const prev_chunk = text.content.slice(start_index, current_match.index);
+		if(prev_chunk.trim() != ""){
+			new_inline.push(new Text(prev_chunk));
+		}
+		new_inline.push(make_obj(current_match));
+		start_index = current_match.index + current_match[0].length;
+	}
+	const last_string = text.content.slice(start_index)
+	if(last_string.trim() != ""){
+		new_inline.push(new Text(last_string));
+	}
+	return new_inline
+}
+
+export function parse_all_inline(inline_arr:inline_node[]):inline_node[]{
+	let current_array:inline_node[] = inline_arr;
+
+	let new_inline:inline_node[] = [];
+	for(const current_inline of current_array){
+		if(current_inline instanceof Text){
+			new_inline.push(...parse_inline<InlineMath>(current_inline, InlineMath.build_from_match, InlineMath.regexp))
+		}else{
+			new_inline.push(current_inline)
+		}
+	}
+	current_array = new_inline;
+
+
+	new_inline = [];
+	for(const current_inline of current_array){
+		if(current_inline instanceof Text){
+			new_inline.push(...parse_inline<Strong>(current_inline, Strong.build_from_match, Strong.regexp))
+		}else{
+			new_inline.push(current_inline)
+		}
+	}
+	current_array = new_inline;
+
+	new_inline = [];
+	for(const current_inline of current_array){
+		if(current_inline instanceof Text){
+			new_inline.push(...parse_inline<Emphasis>(current_inline, Emphasis.build_from_match, Emphasis.regexp))
+		}else{
+			new_inline.push(current_inline)
+		}
+	}
+	current_array = new_inline;
+
+	new_inline = [];
+	for(const current_inline of current_array){
+		if(current_inline instanceof Text){
+			new_inline.push(...parse_inline<Wikilink>(current_inline, Wikilink.build_from_match, Wikilink.regexp))
+		}else{
+			new_inline.push(current_inline)
+		}
+	}
+	current_array = new_inline;
+
+	return current_array;
+}
+
+function traverse_and_parse_from_header(head:Header):void{
+	for(const elt of head.children){
+		if(elt instanceof Header){
+			traverse_and_parse_from_header(elt)
+		}
+		if(elt instanceof Paragraph){
+			elt.elements = parse_all_inline(elt.elements)
+		}
+	}
+}
+
+export function traverse_tree_and_parse_inline(md:MDRoot):void{
+	for(const elt of md.children){
+		if(elt instanceof Header){
+			traverse_and_parse_from_header(elt)
+		}
+		if(elt instanceof Paragraph){
+			elt.elements = parse_all_inline(elt.elements)
+		}
+	}
+}
+
+export function parse_file(input:string):MDRoot{
+	let new_md = new MDRoot([new Paragraph([new Text(input)])])
+	new_md = split_display<DisplayMath>(new_md, DisplayMath.build_from_match, DisplayMath.regexp)
+	new_md = split_display<DisplayCode>(new_md, DisplayCode.build_from_match, DisplayCode.regexp)
+	new_md = split_display<EmbedWikilink>(new_md, EmbedWikilink.build_from_match, EmbedWikilink.regexp)
+	new_md = split_display<BlankLine>(new_md, BlankLine.build_from_match, BlankLine.regexp)
+	new_md = make_heading_tree(new_md)
+	traverse_tree_and_parse_inline(new_md)
+	return new_md
+}
 
 export function make_heading_tree(markdown:MDRoot):MDRoot{
 	let headingRegex = /^(#+) (.*)$/gm;

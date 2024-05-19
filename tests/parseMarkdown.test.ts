@@ -1,4 +1,4 @@
-import {DisplayMath, split_display, make_heading_tree, EmbedWikilink, DisplayCode, MDRoot, Paragraph, Text, Header, BlankLine} from '../src/parseMarkdown';
+import {DisplayMath, Emphasis, parse_file, traverse_tree_and_parse_inline, Strong, Wikilink, inline_node, parse_inline, InlineMath, split_display, make_heading_tree, EmbedWikilink, DisplayCode, MDRoot, Paragraph, Text, Header, BlankLine, parse_all_inline} from '../src/parseMarkdown';
 
 describe('split_display_blocks', () => {
     test('should split paragraphs by blank lines', () => {
@@ -81,6 +81,76 @@ describe('split_display_blocks', () => {
 			new Header(1, [new Text("Other H1")], []),
 		])
 		expect(make_heading_tree(markdown)).toEqual(expected);
+	})
+	test('test inline math', () => {
+		const text_to_parse = new Text("This is a text with $\\sum${label}")
+		const expected:inline_node[] = [new Text("This is a text with "), new InlineMath("\\sum", "label")]
+		expect(parse_inline<InlineMath>(text_to_parse, InlineMath.build_from_match, InlineMath.regexp)).toEqual(expected)
+	})
+	test('test emphasis', () => {
+		const text_to_parse = new Text("This is a text with *emphasis* and _emphasis again_ for the $\\sum$")
+		const expected:inline_node[] = [new Text("This is a text with "),
+			new Emphasis("emphasis"),
+			new Text(" and "),
+			new Emphasis("emphasis again"),
+			new Text(" for the \$\\sum\$"),]
+		expect(parse_inline<Emphasis>(text_to_parse, Emphasis.build_from_match, Emphasis.regexp)).toEqual(expected)
+	})
+	test('test strong', () => {
+		const text_to_parse = new Text("This is a text with **strong** and __strong again__ for the $\\sum$")
+		const expected:inline_node[] = [new Text("This is a text with "),
+			new Strong("strong"),
+			new Text(" and "),
+			new Strong("strong again"),
+			new Text(" for the \$\\sum\$")]
+		expect(parse_inline<Strong>(text_to_parse, Strong.build_from_match, Strong.regexp)).toEqual(expected)
+			})
+	// test wikilink
+	test('test wikilink', () => {
+		const text_to_parse = new Text("This is a text with [[wikilink#header|display text]]")
+		const expected:inline_node[] = [new Text("This is a text with "), new Wikilink(undefined, "wikilink", "header", "display text")]
+		expect(parse_inline<Wikilink>(text_to_parse, Wikilink.build_from_match, Wikilink.regexp)).toEqual(expected)
+	})
+	test('test parse_all_inline', () => {
+		const text_to_parse = new Text("This is a text with **strong** and _emphasis again_ for the $\\sum$")
+		const expected:inline_node[] = [new Text("This is a text with "),
+			new Strong("strong"),
+			new Text(" and "),
+			new Emphasis("emphasis again"),
+			new Text(" for the "),
+			new InlineMath("\\sum")]
+		expect(parse_all_inline([text_to_parse])).toEqual(expected)
+	})
+	test('general test', () => {
+		// Make a full test with many elements, headers, inline and display.
+		const markdown = `This is a text with **strong** and _emphasis_ for the $\\sum$
+# Header 1
+$$\\epsilon$$
+## Header 2
+### Header 3
+content _emphasis_
+## Header 2 again
+$$\\sum$$ hi there.`;
+		const expected = new MDRoot([
+			new Paragraph([new Text(`This is a text with `),
+			new Strong("strong"),
+			new Text(` and `),
+			new Emphasis("emphasis"),
+			new Text(` for the `),
+			new InlineMath("\\sum"),]),
+			new Header(1, [new Text("Header 1")], [
+				new DisplayMath("\\epsilon"),
+				new Header(2, [new Text("Header 2")], [
+					new Header(3, [new Text("Header 3")], [
+						new Paragraph([new Text("content "), new Emphasis("emphasis")]),
+							]), ]),
+				new Header(2, [new Text("Header 2 again")], [
+					new DisplayMath("\\sum"),
+					new Paragraph([new Text(" hi there.")]),
+				]),
+			]),
+		])
+		expect(parse_file(markdown)).toEqual(expected)
 	})
 	// test('test parsing lists', () => {
 		// To make tests we need to generalize the logic, because we need a loop to match lists.
