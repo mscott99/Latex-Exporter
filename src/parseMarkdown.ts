@@ -20,6 +20,10 @@ export class Header implements display_node{
 export interface display_node{
 }
 
+export interface node{
+	unroll(): node[];
+}
+
 export class Paragraph implements display_node{
 	elements: inline_node[];
 	constructor(elements: inline_node[]){
