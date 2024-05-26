@@ -6,7 +6,7 @@ describe('split_display_blocks', () => {
             new Paragraph([new Text('This is the first paragraph.')]),
             new Paragraph([new Text('This is the second\n paragraph.')]),
             new Paragraph([new Text('This is the third\n    \n paragraph.')]),
-        ]);
+        ], "address");
 
         const expected = new MDRoot([
             new Paragraph([new Text('This is the first paragraph.')]),
@@ -14,7 +14,7 @@ describe('split_display_blocks', () => {
             new Paragraph([new Text('This is the third')]),
 			new BlankLine(),
             new Paragraph([new Text(' paragraph.')]),
-        ]);
+        ], "address");
 
         const new_markdown = split_display<BlankLine>(markdown, BlankLine.build_from_match, BlankLine.regexp);
 
@@ -23,7 +23,7 @@ describe('split_display_blocks', () => {
     test('check equation splitting', () => {
         const markdown = new MDRoot([
             new Paragraph([new Text('This is the\$\$hi\n\$\${eq-label} first and \n\$\$ \$ all \\sum_{} \$\$ paragraph.\$\$')]),
-        ]);
+        ], "address");
 
         const expected = new MDRoot([
             new Paragraph([new Text('This is the')]),
@@ -31,7 +31,7 @@ describe('split_display_blocks', () => {
             new Paragraph([new Text(' first and ')]),
             new DisplayMath(' \$ all \\sum_{} ', undefined),
             new Paragraph([new Text(' paragraph.\$\$')]),
-        ]);
+        ], "address");
 
         const new_markdown = split_display<DisplayMath>(markdown, DisplayMath.build_from_match, DisplayMath.regexp);
 
@@ -41,7 +41,7 @@ describe('split_display_blocks', () => {
     test('check display code', () => {
         const markdown = new MDRoot([
             new Paragraph([new Text('This is the ```hi this is\ncode``` first and ``` {python}\n more code``` all')]),
-        ]);
+        ], "address");
 
         const expected = new MDRoot([
             new Paragraph([new Text('This is the ')]),
@@ -49,7 +49,7 @@ describe('split_display_blocks', () => {
             new Paragraph([new Text(' first and ')]),
             new DisplayCode(' more code', "python", true),
             new Paragraph([new Text(' all')]),
-        ]);
+        ], "address");
 
         const new_markdown = split_display<DisplayCode>(markdown, DisplayCode.build_from_match, DisplayCode.regexp);
 
@@ -57,19 +57,19 @@ describe('split_display_blocks', () => {
     }) 
 	test('test embed wikilink', () => {
 		const markdown = new MDRoot([
-			new Paragraph([new Text('This is a ![[wikilink]]')]),
-		]);
+			new Paragraph([new Text('This is a \nlemma::![[wikilink#header|display]]')]),
+		], "address");
 		const expected = new MDRoot([
 			new Paragraph([new Text('This is a ')]),
-			new EmbedWikilink(undefined, 'wikilink', undefined, undefined),
-		]);
+			new EmbedWikilink("lemma", 'wikilink', "header", "display"),
+		], "address");
 		const new_markdown = split_display<EmbedWikilink>(markdown, EmbedWikilink.build_from_match, EmbedWikilink.regexp);
 		expect(new_markdown).toEqual(expected);
 	})
 	test('test header tree', () => {
 		const markdown = new MDRoot([
 			new Paragraph([new Text('This is a\n# H1 header\nh1 content\n## H2 header\nh2 content\n# Other H1')]),
-		]);
+		], "address");
 		const expected = new MDRoot([
 			new Paragraph([new Text('This is a')]),
 			new Header(1, [new Text("H1 header")], 
@@ -79,7 +79,7 @@ describe('split_display_blocks', () => {
 						new Paragraph([new Text("h2 content")])]),
 			]),
 			new Header(1, [new Text("Other H1")], []),
-		])
+		], "address")
 		expect(make_heading_tree(markdown)).toEqual(expected);
 	})
 	test('test inline math', () => {

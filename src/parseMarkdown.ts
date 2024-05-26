@@ -1,33 +1,71 @@
-export class MDRoot implements display_node{
+type unroll_data = {
+	depth:number,
+	env_hash_list:Environment[],
+	file_bundle:MDRoot[],
+}
+
+export class MDRoot implements node{
 	level = 0;
-	children: display_node[];
-	constructor(children: display_node[]){
+	file_address:string|undefined;
+	children: node[];
+	constructor(children: node[], address?:string){
 		this.children = children;
+		this.file_address = address;
+	}
+	unroll(data?:unroll_data):node[]{
+		const new_children:node[] = []
+		if(data === undefined){
+			data = {depth:0, env_hash_list:[], file_bundle:[]}
+		}
+		for(const elt of this.children){
+			new_children.push(...elt.unroll(data))
+		}
+		return new_children
 	}
 }
 
-export class Header implements display_node{
-	children: display_node[];
+export class Header implements node{
+	children: node[];
 	level:number;
 	title: inline_node[];
-	constructor(level:number, title: inline_node[], children: display_node[]){
+	constructor(level:number, title: inline_node[], children: node[]){
 		this.level = level;
 		this.title = title;
 		this.children = children;
 	}
-}
-
-export interface display_node{
+	unroll(data?:unroll_data):node[]{
+		const new_children:node[] = []
+		for(const elt of this.children){
+			new_children.push(...elt.unroll(data))
+		}
+		return new_children
+	}
 }
 
 export interface node{
-	unroll(): node[];
+	unroll(data?:unroll_data):node[];
 }
 
-export class Paragraph implements display_node{
+export class Environment implements node{
+	children: node[];
+	label: string|undefined;
+	address_of_origin: string;
+	constructor(children: node[], address_of_origin: string){
+		this.children = children;
+		this.address_of_origin = address_of_origin;
+	}
+	unroll(data?:unroll_data):node[]{
+		return [this]
+	}
+}
+
+export class Paragraph implements node{
 	elements: inline_node[];
 	constructor(elements: inline_node[]){
 		this.elements = elements;
+	}
+	unroll(data?:unroll_data):node[]{
+		return [this]
 	}
 }
 
@@ -42,10 +80,13 @@ export class Text implements inline_node{
 	}
 }
 
-export class BlankLine implements display_node{
+export class BlankLine implements node{
 	static regexp = /\n\s*\n/g
 	static build_from_match(args:RegExpMatchArray): BlankLine{
 		return new BlankLine();
+	}
+	unroll(data?:unroll_data):node[]{
+		return [this]
 	}
 }
 
@@ -102,7 +143,7 @@ export class InlineMath implements inline_node{
 	}
 }
 
-export class DisplayCode implements display_node{
+export class DisplayCode implements node{
 	language: string|undefined;
 	executable: boolean;
 	code: string;
@@ -123,14 +164,17 @@ export class DisplayCode implements display_node{
 		this.language = language;
 		this.executable = executable;
 	}
+	unroll(data?:unroll_data):node[]{
+		return [this]
+	}
 }
 
-export class EmbedWikilink implements display_node{
+export class EmbedWikilink implements node{
 	attribute: string|undefined;
 	content: string;
 	header: string|undefined;
 	displayed: string|undefined;
-	static regexp = /(?:::(\S*?))?!\[\[([\s\S]*?)(?:\#([\s\S]*?))?(?:\|([\s\S]*?))?\]\]/g;
+	static regexp = /(?:(\S*?)::)?!\[\[([\s\S]*?)(?:\#([\s\S]*?))?(?:\|([\s\S]*?))?\]\]/g;
 	static build_from_match(args:RegExpMatchArray): EmbedWikilink{
 		return new EmbedWikilink(args[1], args[2], args[3], args[4]);
 	}
@@ -139,6 +183,12 @@ export class EmbedWikilink implements display_node{
 		this.content = address;
 		this.header = header;
 		this.displayed = displayed;
+	}
+	unroll(data?:unroll_data):node[]{
+		// if(this.attribute === undefined){
+		// 	return [this]
+		// }
+		return [this]
 	}
 }
 
@@ -159,8 +209,8 @@ export class Wikilink implements inline_node{
 	}
 }
 
-export class DisplayMath implements display_node{
-	// parent: display_node;
+export class DisplayMath implements node{
+	// parent: node;
 	latex: string;
 	label: string|undefined;
 	static regexp = /\$\$([\s\S]*?)\$\$(?:\s*?{([\s\S]*?)})?/g;
@@ -171,6 +221,9 @@ export class DisplayMath implements display_node{
 			this.latex = latex
 			this.label = label
 	}
+	unroll(data?:unroll_data):node[]{
+		return [this]
+	}
 }
 
 export default function parseMarkdown(markdown: string) {
@@ -178,9 +231,9 @@ export default function parseMarkdown(markdown: string) {
 }
 
 // The custom part is a regex and a constructor. So a regex, and function to get the object from the regex
-export function split_display<ClassObj>(markdown: MDRoot, make_obj:(args:RegExpMatchArray) => ClassObj, class_regexp:RegExp): MDRoot {
-	const new_md = new MDRoot([]);
-	const new_display:display_node[] = new_md.children;
+export function split_display<T extends node>(markdown: MDRoot, make_obj:(args:RegExpMatchArray) => T, class_regexp:RegExp): MDRoot {
+	const new_md = new MDRoot([], markdown.file_address)
+	const new_display:node[] = new_md.children;
 	for (const elt of markdown.children) {
 		if (elt instanceof Paragraph) {
 			console.assert(elt.elements.length == 1, "Paragraph should have only one element at this stage of parsing")
@@ -325,10 +378,10 @@ export function parse_file(input:string):MDRoot{
 
 export function make_heading_tree(markdown:MDRoot):MDRoot{
 	let headingRegex = /^(#+) (.*)$/gm;
-	const new_md = new MDRoot([]);
-	let header_stack:Header|MDRoot[] = [];
+	const new_md = new MDRoot([], markdown.file_address);
+	let header_stack:(Header|MDRoot)[] = [];
 	header_stack.push(new_md)
-	let new_display:display_node[] = new_md.children;
+	let new_display:node[] = new_md.children;
 	let current_match:RegExpMatchArray|null;
 	for (const elt of markdown.children) {
 		if (elt instanceof Paragraph) {
