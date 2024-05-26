@@ -1,21 +1,25 @@
 type unroll_data = {
 	depth: number;
 	env_hash_list: Environment[];
-	file_bundle: MDRoot[];
+	parsed_file_bundle: MDRoot[];
+	longform_address: string;
+	current_address: string;
 };
 
 export class MDRoot implements node {
 	level = 0;
-	file_address: string | undefined;
+	file_address: string;
 	children: node[];
-	constructor(children: node[], address?: string) {
+	constructor(children: node[], address: string) {
 		this.children = children;
 		this.file_address = address;
 	}
 	unroll(data?: unroll_data): node[] {
 		const new_children: node[] = [];
 		if (data === undefined) {
-			data = { depth: 0, env_hash_list: [], file_bundle: [] };
+			data = { depth: 0, env_hash_list: [] as Environment[], parsed_file_bundle : [] as MDRoot[], longform_address : this.file_address, current_address : this.file_address} as unroll_data
+		}else{
+			data.current_address = this.file_address
 		}
 		for (const elt of this.children) {
 			new_children.push(...elt.unroll(data));
@@ -190,9 +194,10 @@ export class EmbedWikilink implements node {
 		this.displayed = displayed;
 	}
 	unroll(data?: unroll_data): node[] {
-		// if(this.attribute === undefined){
-		// 	return [this]
-		// }
+		if(this.attribute === undefined){
+			return [this]
+		}
+		
 		return [this];
 	}
 }
@@ -237,9 +242,9 @@ export class DisplayMath implements node {
 	}
 }
 
-export default function parseMarkdown(markdown: string) {
+// export default function parseMarkdown(markdown: string, address: string) {
 	// const baseMD = new MDRoot([new Paragraph([new Text(markdown)])])
-}
+// }
 
 // The custom part is a regex and a constructor. So a regex, and function to get the object from the regex
 export function split_display<T extends node>(
@@ -421,8 +426,8 @@ export function traverse_tree_and_parse_inline(md: MDRoot): void {
 	}
 }
 
-export function parse_file(input: string): MDRoot {
-	let new_md = new MDRoot([new Paragraph([new Text(input)])]);
+export function parse_file(input: string, address:string): MDRoot {
+	let new_md = new MDRoot([new Paragraph([new Text(input)])], address);
 	new_md = split_display<DisplayMath>(
 		new_md,
 		DisplayMath.build_from_match,

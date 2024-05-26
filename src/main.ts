@@ -9,7 +9,7 @@ import {
 	Setting,
 	TFile,
 } from "obsidian";
-import parseMarkdown from "./parseMarkdown";
+// import parseMarkdown from "./parseMarkdown";
 // import myObRemark from './src/index'
 // import remarkObsidian from 'remark-obsidian';
 // Remember to rename these classes and interfaces!

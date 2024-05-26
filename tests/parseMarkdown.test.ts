@@ -2,7 +2,6 @@ import {
 	DisplayMath,
 	Emphasis,
 	parse_file,
-	traverse_tree_and_parse_inline,
 	Strong,
 	Wikilink,
 	inline_node,
@@ -303,8 +302,8 @@ $$\\sum$$ hi there.`;
 					),
 				],
 			),
-		]);
-		expect(parse_file(markdown)).toEqual(expected);
+		], "address");
+		expect(parse_file(markdown, "address")).toEqual(expected);
 	});
 	// test('test parsing lists', () => {
 	// To make tests we need to generalize the logic, because we need a loop to match lists.
