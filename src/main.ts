@@ -35,8 +35,8 @@ export default class ExportPaperPlugin extends Plugin {
 				const activeFile = this.app.workspace.getActiveFile();
 				if (activeFile instanceof TFile) {
 					// Check if there is an active file and it is a file
-					const content = await this.app.vault.read(activeFile); // Read the content of the file
-					console.log(parseMarkdown(content));
+					// const content = await this.app.vault.read(activeFile); // Read the content of the file
+					// console.log(parseMarkdown(content));
 				} else {
 					return new Notice("No file found.");
 				}

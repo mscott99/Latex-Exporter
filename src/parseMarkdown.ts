@@ -1,9 +1,14 @@
+import * as fs from "fs";
+import { find_file } from "./utils";
+
 type unroll_data = {
 	depth: number;
 	env_hash_list: Environment[];
-	parsed_file_bundle: MDRoot[];
+	parsed_file_bundle: { [key: string]: MDRoot };
 	longform_address: string;
 	current_address: string;
+	notes_dir: string;
+	header_stack: Header[];
 };
 
 export class MDRoot implements node {
@@ -14,12 +19,12 @@ export class MDRoot implements node {
 		this.children = children;
 		this.file_address = address;
 	}
-	unroll(data?: unroll_data): node[] {
+	unroll(data: unroll_data): node[] {
 		const new_children: node[] = [];
 		if (data === undefined) {
-			data = { depth: 0, env_hash_list: [] as Environment[], parsed_file_bundle : [] as MDRoot[], longform_address : this.file_address, current_address : this.file_address} as unroll_data
-		}else{
-			data.current_address = this.file_address
+			// data = { depth: 0, env_hash_list: [] as Environment[], parsed_file_bundle: {} as {[key:string]:MDRoot}, longform_address : this.file_address, notes_dir:"", string, current_address : this.file_address} as unroll_data
+		} else {
+			data.current_address = this.file_address;
 		}
 		for (const elt of this.children) {
 			new_children.push(...elt.unroll(data));
@@ -37,7 +42,8 @@ export class Header implements node {
 		this.title = title;
 		this.children = children;
 	}
-	unroll(data?: unroll_data): node[] {
+	unroll(data: unroll_data): node[] {
+		data.header_stack.push(this);
 		const new_children: node[] = [];
 		for (const elt of this.children) {
 			new_children.push(...elt.unroll(data));
@@ -52,13 +58,20 @@ export interface node {
 
 export class Environment implements node {
 	children: node[];
-	label: string | undefined;
-	address_of_origin: string;
-	constructor(children: node[], address_of_origin: string) {
+	static regexp = /^(\w+?)::(.*?)::\1/gms;
+	label: string;
+	address_of_origin: string|undefined;
+	constructor(children: node[], label:string, address_of_origin?:string) {
 		this.children = children;
+		this.label = label;
 		this.address_of_origin = address_of_origin;
 	}
-	unroll(data?: unroll_data): node[] {
+	static build_from_match(match: RegExpMatchArray): Environment {
+		const content_of_lemma = strip_newlines(match[2])
+		return new Environment([new Paragraph([new Text(content_of_lemma)])], match[1]);
+	}
+	unroll(): node[] {
+		// not usually unrolled
 		return [this];
 	}
 }
@@ -68,7 +81,7 @@ export class Paragraph implements node {
 	constructor(elements: inline_node[]) {
 		this.elements = elements;
 	}
-	unroll(data?: unroll_data): node[] {
+	unroll(): node[] {
 		return [this];
 	}
 }
@@ -86,10 +99,10 @@ export class Text implements inline_node {
 
 export class BlankLine implements node {
 	static regexp = /\n\s*\n/g;
-	static build_from_match(args: RegExpMatchArray): BlankLine {
+	static build_from_match(): BlankLine {
 		return new BlankLine();
 	}
-	unroll(data?: unroll_data): node[] {
+	unroll(): node[] {
 		return [this];
 	}
 }
@@ -167,7 +180,7 @@ export class DisplayCode implements node {
 		this.language = language;
 		this.executable = executable;
 	}
-	unroll(data?: unroll_data): node[] {
+	unroll(): node[] {
 		return [this];
 	}
 }
@@ -176,7 +189,7 @@ export class EmbedWikilink implements node {
 	attribute: string | undefined;
 	content: string;
 	header: string | undefined;
-	displayed: string | undefined;
+	display: string | undefined;
 	static regexp =
 		/(?:(\S*?)::)?!\[\[([\s\S]*?)(?:\#([\s\S]*?))?(?:\|([\s\S]*?))?\]\]/g;
 	static build_from_match(args: RegExpMatchArray): EmbedWikilink {
@@ -191,14 +204,28 @@ export class EmbedWikilink implements node {
 		this.attribute = attribute;
 		this.content = address;
 		this.header = header;
-		this.displayed = displayed;
+		this.display = displayed;
 	}
-	unroll(data?: unroll_data): node[] {
-		if(this.attribute === undefined){
-			return [this]
+	unroll(data: unroll_data): node[] {
+		if (this.attribute === undefined) {
+			return [this];
 		}
-		
-		return [this];
+		let parsed_contents: MDRoot;
+		if (!(this.content in Object.keys(data.parsed_file_bundle))) {
+			const file_path = find_file(data.notes_dir, this.content);
+			if (file_path === null) {
+				console.warn("File not found: ", this.content);
+				return [this];
+			}
+			// parse the file into a string
+			// parse
+			const file_contents = fs.readFileSync(file_path, "utf-8");
+			parsed_contents = parse_file(file_contents, this.content);
+			data.parsed_file_bundle[this.content] = parsed_contents;
+		} else {
+			parsed_contents = data.parsed_file_bundle[this.content];
+		}
+		return [new Environment(parsed_contents.children, this.attribute, this.content)];
 	}
 }
 
@@ -237,13 +264,13 @@ export class DisplayMath implements node {
 		this.latex = latex;
 		this.label = label;
 	}
-	unroll(data?: unroll_data): node[] {
+	unroll(): node[] {
 		return [this];
 	}
 }
 
 // export default function parseMarkdown(markdown: string, address: string) {
-	// const baseMD = new MDRoot([new Paragraph([new Text(markdown)])])
+// const baseMD = new MDRoot([new Paragraph([new Text(markdown)])])
 // }
 
 // The custom part is a regex and a constructor. So a regex, and function to get the object from the regex
@@ -301,11 +328,11 @@ export function split_display<T extends node>(
 }
 
 function strip_newlines(thestring: string): string {
-	const result = /^(\n*)(.*?)(\n*)$/s.exec(thestring);
+	const result = /^(?:(?:\s*?)\n)*(.*?)(?:\n(?:\s*?))?$/s.exec(thestring);
 	if (result === null) {
 		throw new Error("result is null");
 	}
-	return result[2];
+	return result[1];
 }
 
 export function parse_inline<ClassObj extends inline_node>(
@@ -426,7 +453,7 @@ export function traverse_tree_and_parse_inline(md: MDRoot): void {
 	}
 }
 
-export function parse_file(input: string, address:string): MDRoot {
+export function parse_file(input: string, address: string): MDRoot {
 	let new_md = new MDRoot([new Paragraph([new Text(input)])], address);
 	new_md = split_display<DisplayMath>(
 		new_md,

@@ -1,4 +1,5 @@
 import {
+	Environment,
 	DisplayMath,
 	Emphasis,
 	parse_file,
@@ -252,6 +253,34 @@ describe("split_display_blocks", () => {
 		];
 		expect(parse_all_inline([text_to_parse])).toEqual(expected);
 	});
+	test("test explicit environment", () => {
+		const markdown = new MDRoot(
+			[
+				new Paragraph([
+					new Text(
+						"This is the\nlemma::\nI say things\n::lemma",
+					),
+				]),
+			],
+			"address",
+		);
+
+		const expected = new MDRoot(
+			[
+				new Paragraph([new Text("This is the")]),
+				new Environment([new Paragraph([new Text("I say things")])], "lemma"),
+			],
+			"address",
+		);
+
+		const new_markdown = split_display<Environment>(
+			markdown,
+			Environment.build_from_match,
+			Environment.regexp,
+		);
+
+		expect(new_markdown).toEqual(expected);
+	});
 	test("general test", () => {
 		// Make a full test with many elements, headers, inline and display.
 		const markdown = `This is a text with **strong** and _emphasis_ for the $\\sum$
@@ -262,47 +291,50 @@ $$\\epsilon$$
 content _emphasis_
 ## Header 2 again
 $$\\sum$$ hi there.`;
-		const expected = new MDRoot([
-			new Paragraph([
-				new Text(`This is a text with `),
-				new Strong("strong"),
-				new Text(` and `),
-				new Emphasis("emphasis"),
-				new Text(` for the `),
-				new InlineMath("\\sum"),
-			]),
-			new Header(
-				1,
-				[new Text("Header 1")],
-				[
-					new DisplayMath("\\epsilon"),
-					new Header(
-						2,
-						[new Text("Header 2")],
-						[
-							new Header(
-								3,
-								[new Text("Header 3")],
-								[
-									new Paragraph([
-										new Text("content "),
-										new Emphasis("emphasis"),
-									]),
-								],
-							),
-						],
-					),
-					new Header(
-						2,
-						[new Text("Header 2 again")],
-						[
-							new DisplayMath("\\sum"),
-							new Paragraph([new Text(" hi there.")]),
-						],
-					),
-				],
-			),
-		], "address");
+		const expected = new MDRoot(
+			[
+				new Paragraph([
+					new Text(`This is a text with `),
+					new Strong("strong"),
+					new Text(` and `),
+					new Emphasis("emphasis"),
+					new Text(` for the `),
+					new InlineMath("\\sum"),
+				]),
+				new Header(
+					1,
+					[new Text("Header 1")],
+					[
+						new DisplayMath("\\epsilon"),
+						new Header(
+							2,
+							[new Text("Header 2")],
+							[
+								new Header(
+									3,
+									[new Text("Header 3")],
+									[
+										new Paragraph([
+											new Text("content "),
+											new Emphasis("emphasis"),
+										]),
+									],
+								),
+							],
+						),
+						new Header(
+							2,
+							[new Text("Header 2 again")],
+							[
+								new DisplayMath("\\sum"),
+								new Paragraph([new Text(" hi there.")]),
+							],
+						),
+					],
+				),
+			],
+			"address",
+		);
 		expect(parse_file(markdown, "address")).toEqual(expected);
 	});
 	// test('test parsing lists', () => {
