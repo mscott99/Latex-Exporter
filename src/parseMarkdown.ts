@@ -5,11 +5,17 @@ type unroll_data = {
 	depth: number;
 	env_hash_list: Environment[];
 	parsed_file_bundle: { [key: string]: MDRoot };
+	headers_level_offset: number; // To know by how much to increment headers by nestedness. Set to 10 to convert Headers to emphasized words.
+	explicit_env_index: number;
 	longform_address: string;
 	current_address: string;
 	notes_dir: string;
 	header_stack: Header[];
 };
+
+// Describe label system
+// If embedwikilink env, the label is an address to the embedded header, defaults to "statement" if no header is provided.
+// If explicit env, parse for a label, otherwise it has no label.
 
 export class MDRoot implements node {
 	level = 0;
@@ -31,11 +37,20 @@ export class MDRoot implements node {
 		}
 		return new_children;
 	}
+	latex() {
+		let offset = 0;
+		const buffer = Buffer.alloc(100000);
+		for (const elt of this.children) {
+			offset = elt.latex(buffer, offset);
+		}
+		return offset;
+	}
 }
 
 export class Header implements node {
 	children: node[];
 	level: number;
+	label: string |undefined;
 	title: inline_node[];
 	constructor(level: number, title: inline_node[], children: node[]) {
 		this.level = level;
@@ -43,36 +58,75 @@ export class Header implements node {
 		this.children = children;
 	}
 	unroll(data: unroll_data): node[] {
+		this.level += data.headers_level_offset;
 		data.header_stack.push(this);
+		this.label = data.header_stack.join(".")
 		const new_children: node[] = [];
 		for (const elt of this.children) {
 			new_children.push(...elt.unroll(data));
 		}
 		return new_children;
 	}
+	latex(buffer: Buffer, buffer_offset: number): number {
+		const header_title = this.title.map((x) => x.latex(buffer, buffer_offset)).join("");
+		let header_string = "";
+		if(this.level > 6){
+			header_string = "\\textbf{" + header_title + "}\n"
+		}else{
+			header_string = "#".repeat(this.level) + " " + header_title + "\n"
+		}
+		buffer_offset += buffer.write(header_string, buffer_offset);
+		if(this.label !== undefined){
+			buffer_offset += buffer.write(
+			"\\label{sec:" + this.label + "}"
+				, buffer_offset);
+		}
+		for(const e of this.children){
+			buffer_offset = e.latex(buffer, buffer_offset);
+		}
+		return buffer_offset;
+	}
 }
 
 export interface node {
 	unroll(data?: unroll_data): node[];
+	latex(buffer: Buffer, buffer_offset: number): number;
 }
 
 export class Environment implements node {
 	children: node[];
-	static regexp = /^(\w+?)::(.*?)::\1/gms;
-	label: string;
-	address_of_origin: string|undefined;
-	constructor(children: node[], label:string, address_of_origin?:string) {
+	// Can parse a label as well
+	static regexp = /^(\w+?)::(\s*?){#([\S ]*?)}(.*?)::\1/gms;
+	label: string|undefined;
+	type: string;
+	// address_of_origin: string | undefined;
+	constructor(children: node[], type:string, label?: string) {
 		this.children = children;
+		this.type = type;
 		this.label = label;
-		this.address_of_origin = address_of_origin;
+		// this.address_of_origin = address_of_origin;
 	}
 	static build_from_match(match: RegExpMatchArray): Environment {
-		const content_of_lemma = strip_newlines(match[2])
-		return new Environment([new Paragraph([new Text(content_of_lemma)])], match[1]);
+		const content_of_lemma = strip_newlines(match[3]);
+		return new Environment(
+			[new Paragraph([new Text(content_of_lemma)])],
+			match[1],
+			match[2]
+		);
 	}
-	unroll(): node[] {
-		// not usually unrolled
+	unroll(data:unroll_data): node[] {
+		// If it is unrolled, it is likely an explicit env.
 		return [this];
+	}
+	latex(buffer: Buffer, buffer_offset: number):number {
+		buffer_offset += buffer.write(
+			"\\begin{" + this.type + "}\n"
+				+ "\\label{" + this.label + "}\n", buffer_offset)
+		for (const e of this.children) {
+			buffer_offset = e.latex(buffer, buffer_offset);
+		}
+		buffer_offset += buffer.write( "\\end{" + this.type + "}\n", buffer_offset)
+		return buffer_offset;
 	}
 }
 
@@ -84,16 +138,49 @@ export class Paragraph implements node {
 	unroll(): node[] {
 		return [this];
 	}
+	latex(buffer: Buffer, buffer_offset: number) {
+		let new_offset = buffer_offset;
+		for (const elt of this.elements) {
+			new_offset = elt.latex(buffer, new_offset);
+		}
+		new_offset += buffer.write("\n", new_offset);
+		return new_offset;
+	}
 }
 
 export interface inline_node {
 	content: string;
+	latex(buffer: Buffer, buffer_offset: number): number;
+}
+
+export class ExplicitRef implements node {
+	content: string;
+	constructor(content: string) {
+		this.content = content;
+	}
+	unroll(): node[] {
+		return [this];
+	}
+	latex(buffer: Buffer, buffer_offset: number) {
+		let output = "";
+		const eq_pattern = /eq-(\w+)/;
+		const match = eq_pattern.exec(this.content);
+		if (match) {
+			output = "eq:" + match[1];
+		} else {
+			output = this.content;
+		}
+		return buffer_offset + buffer.write("\\autoref{" + output + "}", buffer_offset);
+	}
 }
 
 export class Text implements inline_node {
 	content: string;
 	constructor(content: string) {
 		this.content = content;
+	}
+	latex(buffer: Buffer, buffer_offset: number) {
+		return buffer_offset + buffer.write(this.content, buffer_offset);
 	}
 }
 
@@ -104,6 +191,10 @@ export class BlankLine implements node {
 	}
 	unroll(): node[] {
 		return [this];
+	}
+	latex(buffer: Buffer, buffer_offset: number) {
+		return buffer_offset + buffer.write("\n", buffer_offset);
+		// the other \n should be done at the end of the previous display object.
 	}
 }
 
@@ -122,6 +213,12 @@ export class Emphasis implements inline_node {
 	}
 	constructor(content: string) {
 		this.content = content;
+	}
+	unroll(): node[] {
+		return [this];
+	}
+	latex(buffer: Buffer, buffer_offset: number) {
+		return buffer_offset + buffer.write("\\emph{" + this.content + "}", buffer_offset);
 	}
 }
 
@@ -142,6 +239,12 @@ export class Strong implements inline_node {
 	constructor(content: string) {
 		this.content = content;
 	}
+	unroll(): node[] {
+		return [this];
+	}
+	latex(buffer: Buffer, buffer_offset: number) {
+		return buffer_offset + buffer.write("\\textbf{" + this.content + "}", buffer_offset);
+	}
 }
 
 export class InlineMath implements inline_node {
@@ -151,10 +254,15 @@ export class InlineMath implements inline_node {
 	static build_from_match(regexmatch: RegExpMatchArray): InlineMath {
 		return new InlineMath(regexmatch[1], regexmatch[2]);
 	}
-
 	constructor(content: string, label?: string) {
 		this.content = content;
 		this.label = label;
+	}
+	unroll(): node[] {
+		return [this];
+	}
+	latex(buffer: Buffer, buffer_offset: number) {
+		return buffer_offset + buffer.write("$" + this.content + "$", buffer_offset);
 	}
 }
 
@@ -182,6 +290,10 @@ export class DisplayCode implements node {
 	}
 	unroll(): node[] {
 		return [this];
+	}
+	latex(buffer: Buffer, buffer_offset: number) {
+		console.warn("Code to latex not implemented");
+		return buffer_offset;
 	}
 }
 
@@ -225,8 +337,49 @@ export class EmbedWikilink implements node {
 		} else {
 			parsed_contents = data.parsed_file_bundle[this.content];
 		}
-		return [new Environment(parsed_contents.children, this.attribute, this.content)];
+
+		const ambient_header_offset = data.headers_level_offset;
+		data.headers_level_offset ++;
+		const unrolled_contents = parsed_contents.unroll(data)[0];
+		if(!(unrolled_contents instanceof MDRoot)){
+			throw new Error("Expected unrolled_contents to be an MDRoot")
+		}
+		data.headers_level_offset = ambient_header_offset;
+		// Make a label.
+		return [
+			new Environment(
+				unrolled_contents.children,
+				this.attribute,
+				label_from_location(this.content, this.header),
+			),
+		];
 	}
+	latex(buffer: Buffer, buffer_offset: number): number {
+		console.warn(
+			"Writing embed wikilink into latex, it should likely have been unrolled",
+		);
+		const headerstring = this.header === undefined ? "" : this.header;
+		return buffer_offset +
+			buffer.write(
+				"\\autoref{" +
+					label_from_location(this.content, headerstring) +
+					"}\n",
+			buffer_offset)
+	}
+}
+
+/**
+ * Get a label (a hash) for the location.
+ *
+ * @param {string} address - The first number to add.
+ * @param {string} header_address - A hash string of the header. Should have information about sub-headers
+ * @returns {string} The sum of the two numbers.
+ */
+function label_from_location(address: string, header_address: string|undefined): string {
+	if(header_address === "" || header_address === undefined){
+		header_address = "statement";
+	}
+	return "res:" + address + "." + header_address;
 }
 
 export class Wikilink implements inline_node {
@@ -250,22 +403,37 @@ export class Wikilink implements inline_node {
 		this.header = header;
 		this.displayed = displayed;
 	}
+	unroll(): node[] {
+		return [this];
+	}
+	latex(buffer: Buffer, buffer_offset: number) {
+		if (this.header === undefined) {
+			this.header = "";
+		}
+		return buffer_offset + buffer.write(
+				"\\autoref{" +
+					label_from_location(this.content, this.header) +
+					"}", buffer_offset)
+	}
 }
 
 export class DisplayMath implements node {
 	// parent: node;
-	latex: string;
+	content: string;
 	label: string | undefined;
-	static regexp = /\$\$([\s\S]*?)\$\$(?:\s*?{([\s\S]*?)})?/g;
+	static regexp = /\$\$([\s\S]*?)\$\$(?:\s*?{#eq-(.*?)})?/g;
 	static build_from_match(args: RegExpMatchArray): DisplayMath {
 		return new DisplayMath(args[1], args[2]);
 	}
 	constructor(latex: string, label?: string) {
-		this.latex = latex;
+		this.content = latex;
 		this.label = label;
 	}
 	unroll(): node[] {
 		return [this];
+	}
+	latex(buffer: Buffer, buffer_offset: number) {
+		return buffer_offset + buffer.write("\\begin{equation}\n\\label{eq:"+ this.label + "}\n" + this.content + "\n\\end{equation}\n", buffer_offset);
 	}
 }
 
