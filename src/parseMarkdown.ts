@@ -13,25 +13,44 @@ type unroll_data = {
 	header_stack: Header[];
 };
 
+export function init_data(
+	longform_address: string,
+	notes_dir: string,
+): unroll_data {
+	return {
+		depth: 0,
+		env_hash_list: [] as Environment[],
+		parsed_file_bundle: {} as { [key: string]: MDRoot },
+		headers_level_offset: 0,
+		explicit_env_index: 1,
+		longform_address: longform_address,
+		current_address: longform_address,
+		notes_dir: notes_dir,
+		header_stack: [] as Header[],
+	} as unroll_data;
+}
+
 // Describe label system
 // If embedwikilink env, the label is an address to the embedded header, defaults to "statement" if no header is provided.
 // If explicit env, parse for a label, otherwise it has no label.
 
+/**
+ * Plays the role of the zero'th header. Use this data structure when representing the markdown content of a file, or of some markdown with header structures.
+ */
 export class MDRoot implements node {
 	level = 0;
-	file_address: string;
+	file_address: string|undefined;
 	children: node[];
-	constructor(children: node[], address: string) {
+	constructor(children: node[], address?: string) {
 		this.children = children;
 		this.file_address = address;
 	}
 	unroll(data: unroll_data): node[] {
 		const new_children: node[] = [];
-		if (data === undefined) {
-			// data = { depth: 0, env_hash_list: [] as Environment[], parsed_file_bundle: {} as {[key:string]:MDRoot}, longform_address : this.file_address, notes_dir:"", string, current_address : this.file_address} as unroll_data
-		} else {
-			data.current_address = this.file_address;
+		if(this.file_address=== undefined){
+			this.file_address = "";
 		}
+		data.current_address = this.file_address;
 		for (const elt of this.children) {
 			new_children.push(...elt.unroll(data));
 		}
@@ -50,7 +69,7 @@ export class MDRoot implements node {
 export class Header implements node {
 	children: node[];
 	level: number;
-	label: string |undefined;
+	label: string | undefined;
 	title: inline_node[];
 	constructor(level: number, title: inline_node[], children: node[]) {
 		this.level = level;
@@ -60,7 +79,7 @@ export class Header implements node {
 	unroll(data: unroll_data): node[] {
 		this.level += data.headers_level_offset;
 		data.header_stack.push(this);
-		this.label = data.header_stack.join(".")
+		this.label = data.header_stack.join(".");
 		const new_children: node[] = [];
 		for (const elt of this.children) {
 			new_children.push(...elt.unroll(data));
@@ -68,20 +87,23 @@ export class Header implements node {
 		return new_children;
 	}
 	latex(buffer: Buffer, buffer_offset: number): number {
-		const header_title = this.title.map((x) => x.latex(buffer, buffer_offset)).join("");
+		const header_title = this.title
+			.map((x) => x.latex(buffer, buffer_offset))
+			.join("");
 		let header_string = "";
-		if(this.level > 6){
-			header_string = "\\textbf{" + header_title + "}\n"
-		}else{
-			header_string = "#".repeat(this.level) + " " + header_title + "\n"
+		if (this.level > 6) {
+			header_string = "\\textbf{" + header_title + "}\n";
+		} else {
+			header_string = "#".repeat(this.level) + " " + header_title + "\n";
 		}
 		buffer_offset += buffer.write(header_string, buffer_offset);
-		if(this.label !== undefined){
+		if (this.label !== undefined) {
 			buffer_offset += buffer.write(
-			"\\label{sec:" + this.label + "}"
-				, buffer_offset);
+				"\\label{sec:" + this.label + "}",
+				buffer_offset,
+			);
 		}
-		for(const e of this.children){
+		for (const e of this.children) {
 			buffer_offset = e.latex(buffer, buffer_offset);
 		}
 		return buffer_offset;
@@ -92,40 +114,86 @@ export interface node {
 	unroll(data?: unroll_data): node[];
 	latex(buffer: Buffer, buffer_offset: number): number;
 }
+export function address_to_label(address: string): string {
+	//substitute
+	return address.toLowerCase().replace(" ", "_");
+}
+
+function label_from_location(
+	address: string,
+	header_address?: string,
+): string {
+	if (header_address === "" || header_address === undefined) {
+		header_address = "statement";
+	}
+	return "res:" + address_to_label(address) + "." + header_address;
+}
+
+function explicit_label_with_address(label: string, address: string) {
+	const match = /^([a-z]+)-(.*)$/.exec(label);
+	if (match !== null) {
+		return match[1] + ":" + address_to_label(address) + "." + match[2];
+	} else {
+		return address_to_label(address) + "." + label;
+	}
+}
+
+export function explicit_label(
+	longform_address: string,
+	current_address: string,
+	label: string,
+) {
+	if (current_address !== longform_address) {
+		return explicit_label_with_address(label, current_address);
+	} else {
+		return label.replace("-", ":");
+	}
+}
 
 export class Environment implements node {
 	children: node[];
 	// Can parse a label as well
-	static regexp = /^(\w+?)::(\s*?){#([\S ]*?)}(.*?)::\1/gms;
-	label: string|undefined;
+	static regexp = /^(\w+?)::(?:\s*?{#([\S ]*?)})?(.*?)::\1/gms;
+	label: string | undefined;
 	type: string;
 	// address_of_origin: string | undefined;
-	constructor(children: node[], type:string, label?: string) {
+	constructor(children: node[], type: string, label?: string) {
 		this.children = children;
 		this.type = type;
 		this.label = label;
 		// this.address_of_origin = address_of_origin;
 	}
 	static build_from_match(match: RegExpMatchArray): Environment {
-		const content_of_lemma = strip_newlines(match[3]);
 		return new Environment(
-			[new Paragraph([new Text(content_of_lemma)])],
+			// Here we must run a full parsing on the contents instead of inserting a string.
+			parse_inside_env(strip_newlines(match[3])),
 			match[1],
-			match[2]
+			match[2],
 		);
 	}
-	unroll(data:unroll_data): node[] {
+	unroll(data: unroll_data): node[] {
 		// If it is unrolled, it is likely an explicit env.
+		if (this.label !== undefined) {
+			this.label = explicit_label(
+				data.longform_address,
+				data.current_address,
+				this.label,
+			);
+		}
 		return [this];
 	}
-	latex(buffer: Buffer, buffer_offset: number):number {
+	latex(buffer: Buffer, buffer_offset: number): number {
 		buffer_offset += buffer.write(
-			"\\begin{" + this.type + "}\n"
-				+ "\\label{" + this.label + "}\n", buffer_offset)
+			"\\begin{" + this.type + "}\n" + "\\label{" + this.label + "}\n",
+			buffer_offset,
+		);
 		for (const e of this.children) {
 			buffer_offset = e.latex(buffer, buffer_offset);
 		}
-		buffer_offset += buffer.write( "\\end{" + this.type + "}\n", buffer_offset)
+		buffer_offset += buffer.write(
+			"\\end{" + this.type + "}\n",
+			buffer_offset,
+		);
 		return buffer_offset;
 	}
 }
@@ -154,23 +222,35 @@ export interface inline_node {
 }
 
 export class ExplicitRef implements node {
-	content: string;
+	label: string;
 	constructor(content: string) {
-		this.content = content;
+		this.label = content;
 	}
-	unroll(): node[] {
+	static regexp = /@(\w+?)/; // parse only after parsing for citations.
+	static build_from_match(regexmatch: RegExpMatchArray): ExplicitRef {
+		return new ExplicitRef(regexmatch[1]);
+	}
+	unroll(data: unroll_data): node[] {
+		this.label = explicit_label(
+			data.longform_address,
+			data.current_address,
+			this.label,
+		);
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
 		let output = "";
 		const eq_pattern = /eq-(\w+)/;
-		const match = eq_pattern.exec(this.content);
+		const match = eq_pattern.exec(this.label);
 		if (match) {
 			output = "eq:" + match[1];
 		} else {
-			output = this.content;
+			output = this.label;
 		}
-		return buffer_offset + buffer.write("\\autoref{" + output + "}", buffer_offset);
+		return (
+			buffer_offset +
+			buffer.write("\\autoref{" + output + "}", buffer_offset)
+		);
 	}
 }
 
@@ -218,7 +298,10 @@ export class Emphasis implements inline_node {
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
-		return buffer_offset + buffer.write("\\emph{" + this.content + "}", buffer_offset);
+		return (
+			buffer_offset +
+			buffer.write("\\emph{" + this.content + "}", buffer_offset)
+		);
 	}
 }
 
@@ -243,7 +326,10 @@ export class Strong implements inline_node {
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
-		return buffer_offset + buffer.write("\\textbf{" + this.content + "}", buffer_offset);
+		return (
+			buffer_offset +
+			buffer.write("\\textbf{" + this.content + "}", buffer_offset)
+		);
 	}
 }
 
@@ -262,7 +348,10 @@ export class InlineMath implements inline_node {
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
-		return buffer_offset + buffer.write("$" + this.content + "$", buffer_offset);
+		return (
+			buffer_offset +
+			buffer.write("$" + this.content + "$", buffer_offset)
+		);
 	}
 }
 
@@ -329,26 +418,21 @@ export class EmbedWikilink implements node {
 				console.warn("File not found: ", this.content);
 				return [this];
 			}
-			// parse the file into a string
-			// parse
 			const file_contents = fs.readFileSync(file_path, "utf-8");
-			parsed_contents = parse_file(file_contents, this.content);
+			parsed_contents = parse_markdown(file_contents, this.content);
 			data.parsed_file_bundle[this.content] = parsed_contents;
 		} else {
 			parsed_contents = data.parsed_file_bundle[this.content];
 		}
 
 		const ambient_header_offset = data.headers_level_offset;
-		data.headers_level_offset ++;
-		const unrolled_contents = parsed_contents.unroll(data)[0];
-		if(!(unrolled_contents instanceof MDRoot)){
-			throw new Error("Expected unrolled_contents to be an MDRoot")
-		}
+		data.headers_level_offset++;
+		const unrolled_contents = parsed_contents.unroll(data);
 		data.headers_level_offset = ambient_header_offset;
 		// Make a label.
 		return [
 			new Environment(
-				unrolled_contents.children,
+				unrolled_contents,
 				this.attribute,
 				label_from_location(this.content, this.header),
 			),
@@ -359,12 +443,15 @@ export class EmbedWikilink implements node {
 			"Writing embed wikilink into latex, it should likely have been unrolled",
 		);
 		const headerstring = this.header === undefined ? "" : this.header;
-		return buffer_offset +
+		return (
+			buffer_offset +
 			buffer.write(
 				"\\autoref{" +
 					label_from_location(this.content, headerstring) +
 					"}\n",
-			buffer_offset)
+				buffer_offset,
+			)
+		);
 	}
 }
 
@@ -375,12 +462,6 @@ export class EmbedWikilink implements node {
  * @param {string} header_address - A hash string of the header. Should have information about sub-headers
  * @returns {string} The sum of the two numbers.
  */
-function label_from_location(address: string, header_address: string|undefined): string {
-	if(header_address === "" || header_address === undefined){
-		header_address = "statement";
-	}
-	return "res:" + address + "." + header_address;
-}
 
 export class Wikilink implements inline_node {
 	attribute: string | undefined;
@@ -404,16 +485,71 @@ export class Wikilink implements inline_node {
 		this.displayed = displayed;
 	}
 	unroll(): node[] {
-		return [this];
+		const match = /^@(.*)$/.exec(this.content);
+		if (match !== null) {
+			return [new Citation(match[1])];
+		} else {
+			return [new Reference(label_from_location(this.content))];
+		}
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
 		if (this.header === undefined) {
 			this.header = "";
 		}
-		return buffer_offset + buffer.write(
+		return (
+			buffer_offset +
+			buffer.write(
 				"\\autoref{" +
 					label_from_location(this.content, this.header) +
-					"}", buffer_offset)
+					"}",
+				buffer_offset,
+			)
+		);
+	}
+}
+
+export class Reference implements node {
+	label: string;
+	latex(buffer: Buffer, buffer_offset: number): number {
+		return (
+			buffer_offset +
+			buffer.write("\\autoref{" + this.label + "}", buffer_offset)
+		);
+	}
+	unroll(): node[] {
+		return [this];
+	}
+	constructor(label: string) {
+		this.label = label;
+	}
+}
+
+export class Citation implements node {
+	// TODO: Implement multi-citations
+	id: string;
+	result: string | undefined;
+	constructor(id: string, result?: string) {
+		this.id = id;
+		this.result = result;
+	}
+	unroll(): node[] {
+		return [this];
+	}
+	latex(buffer: Buffer, buffer_offset: number): number {
+		if (this.result !== undefined) {
+			return (
+				buffer_offset +
+				buffer.write(
+					"\\cite[" + this.result + "]{" + this.id + "}",
+					buffer_offset,
+				)
+			);
+		} else {
+			return (
+				buffer_offset +
+				buffer.write("\\cite{" + this.id + "}", buffer_offset)
+			);
+		}
 	}
 }
 
@@ -433,7 +569,17 @@ export class DisplayMath implements node {
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
-		return buffer_offset + buffer.write("\\begin{equation}\n\\label{eq:"+ this.label + "}\n" + this.content + "\n\\end{equation}\n", buffer_offset);
+		return (
+			buffer_offset +
+			buffer.write(
+				"\\begin{equation}\n\\label{eq:" +
+					this.label +
+					"}\n" +
+					this.content +
+					"\n\\end{equation}\n",
+				buffer_offset,
+			)
+		);
 	}
 }
 
@@ -443,13 +589,12 @@ export class DisplayMath implements node {
 
 // The custom part is a regex and a constructor. So a regex, and function to get the object from the regex
 export function split_display<T extends node>(
-	markdown: MDRoot,
+	display_elts: node[],
 	make_obj: (args: RegExpMatchArray) => T,
 	class_regexp: RegExp,
-): MDRoot {
-	const new_md = new MDRoot([], markdown.file_address);
-	const new_display: node[] = new_md.children;
-	for (const elt of markdown.children) {
+): node[] {
+	const new_display = [] as node[];
+	for (const elt of display_elts) {
 		if (elt instanceof Paragraph) {
 			console.assert(
 				elt.elements.length == 1,
@@ -492,7 +637,7 @@ export function split_display<T extends node>(
 			new_display.push(elt);
 		}
 	}
-	return new_md;
+	return new_display;
 }
 
 function strip_newlines(thestring: string): string {
@@ -621,41 +766,92 @@ export function traverse_tree_and_parse_inline(md: MDRoot): void {
 	}
 }
 
-export function parse_file(input: string, address: string): MDRoot {
-	let new_md = new MDRoot([new Paragraph([new Text(input)])], address);
-	new_md = split_display<DisplayMath>(
-		new_md,
-		DisplayMath.build_from_match,
-		DisplayMath.regexp,
-	);
-	new_md = split_display<DisplayCode>(
-		new_md,
-		DisplayCode.build_from_match,
-		DisplayCode.regexp,
-	);
-	new_md = split_display<EmbedWikilink>(
-		new_md,
+function parse_inside_env(input:string): node[] {
+	let new_display = [new Paragraph([new Text(input)])] as node[];
+	new_display = split_display<EmbedWikilink>(
+		new_display,
 		EmbedWikilink.build_from_match,
 		EmbedWikilink.regexp,
 	);
-	new_md = split_display<BlankLine>(
-		new_md,
+	new_display = split_display<Wikilink>( // must be after Wikilink
+		new_display,
+		Wikilink.build_from_match,
+		Wikilink.regexp,
+	);
+	new_display = split_display<ExplicitRef>( // must be after Wikilink
+		new_display,
+		ExplicitRef.build_from_match,
+		ExplicitRef.regexp,
+	);
+	new_display = split_display<DisplayMath>(
+		new_display,
+		DisplayMath.build_from_match,
+		DisplayMath.regexp,
+	);
+	new_display = split_display<DisplayCode>(
+		new_display,
+		DisplayCode.build_from_match,
+		DisplayCode.regexp,
+	);
+	new_display = split_display<BlankLine>(
+		new_display,
 		BlankLine.build_from_match,
 		BlankLine.regexp,
 	);
-	new_md = make_heading_tree(new_md);
+	return new_display;
+}
+
+export function parse_markdown(input: string, address?:string): MDRoot {
+	let new_display = [new Paragraph([new Text(input)])] as node[];
+	new_display = split_display<Environment>(
+		new_display,
+		Environment.build_from_match,
+		Environment.regexp,
+	);
+	new_display = split_display<EmbedWikilink>(
+		new_display,
+		EmbedWikilink.build_from_match,
+		EmbedWikilink.regexp,
+	);
+	new_display = split_display<Wikilink>( // must be after Wikilink
+		new_display,
+		Wikilink.build_from_match,
+		Wikilink.regexp,
+	);
+	new_display = split_display<ExplicitRef>( // must be after Wikilink
+		new_display,
+		ExplicitRef.build_from_match,
+		ExplicitRef.regexp,
+	);
+	new_display = split_display<DisplayMath>(
+		new_display,
+		DisplayMath.build_from_match,
+		DisplayMath.regexp,
+	);
+	new_display = split_display<DisplayCode>(
+		new_display,
+		DisplayCode.build_from_match,
+		DisplayCode.regexp,
+	);
+	new_display = split_display<BlankLine>(
+		new_display,
+		BlankLine.build_from_match,
+		BlankLine.regexp,
+	);
+	const new_md = make_heading_tree(new_display);
 	traverse_tree_and_parse_inline(new_md);
+	new_md.file_address = address
 	return new_md;
 }
 
-export function make_heading_tree(markdown: MDRoot): MDRoot {
+export function make_heading_tree(markdown: node[]): MDRoot {
 	let headingRegex = /^(#+) (.*)$/gm;
-	const new_md = new MDRoot([], markdown.file_address);
+	const new_md = new MDRoot([]);
 	let header_stack: (Header | MDRoot)[] = [];
 	header_stack.push(new_md);
 	let new_display: node[] = new_md.children;
 	let current_match: RegExpMatchArray | null;
-	for (const elt of markdown.children) {
+	for (const elt of markdown) {
 		if (elt instanceof Paragraph) {
 			console.assert(
 				elt.elements.length == 1,

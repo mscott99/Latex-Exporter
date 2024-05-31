@@ -1,8 +1,10 @@
 import {
+	Citation,
+	Reference,
 	Environment,
 	DisplayMath,
 	Emphasis,
-	parse_file,
+	parse_markdown,
 	Strong,
 	Wikilink,
 	inline_node,
@@ -22,27 +24,19 @@ import {
 
 describe("split_display_blocks", () => {
 	test("should split paragraphs by blank lines", () => {
-		const markdown = new MDRoot(
-			[
-				new Paragraph([new Text("This is the first paragraph.")]),
-				new Paragraph([new Text("This is the second\n paragraph.")]),
-				new Paragraph([
-					new Text("This is the third\n    \n paragraph."),
-				]),
-			],
-			"address",
-		);
+		const markdown = [
+			new Paragraph([new Text("This is the first paragraph.")]),
+			new Paragraph([new Text("This is the second\n paragraph.")]),
+			new Paragraph([new Text("This is the third\n    \n paragraph.")]),
+		];
 
-		const expected = new MDRoot(
-			[
-				new Paragraph([new Text("This is the first paragraph.")]),
-				new Paragraph([new Text("This is the second\n paragraph.")]),
-				new Paragraph([new Text("This is the third")]),
-				new BlankLine(),
-				new Paragraph([new Text(" paragraph.")]),
-			],
-			"address",
-		);
+		const expected = [
+			new Paragraph([new Text("This is the first paragraph.")]),
+			new Paragraph([new Text("This is the second\n paragraph.")]),
+			new Paragraph([new Text("This is the third")]),
+			new BlankLine(),
+			new Paragraph([new Text(" paragraph.")]),
+		];
 
 		const new_markdown = split_display<BlankLine>(
 			markdown,
@@ -53,27 +47,21 @@ describe("split_display_blocks", () => {
 		expect(new_markdown).toEqual(expected);
 	});
 	test("check equation splitting", () => {
-		const markdown = new MDRoot(
-			[
-				new Paragraph([
-					new Text(
-						"This is the$$hi\n$${eq-label} first and \n$$ $ all \\sum_{} $$ paragraph.$$",
-					),
-				]),
-			],
-			"address",
-		);
+		const markdown = [
+			new Paragraph([
+				new Text(
+					"This is the$$hi\n$${#eq-label} first and \n$$ $ all \\sum_{} $$ paragraph.$$",
+				),
+			]),
+		];
 
-		const expected = new MDRoot(
-			[
-				new Paragraph([new Text("This is the")]),
-				new DisplayMath("hi\n", "eq-label"),
-				new Paragraph([new Text(" first and ")]),
-				new DisplayMath(" $ all \\sum_{} ", undefined),
-				new Paragraph([new Text(" paragraph.$$")]),
-			],
-			"address",
-		);
+		const expected = [
+			new Paragraph([new Text("This is the")]),
+			new DisplayMath("hi\n", "label"),
+			new Paragraph([new Text(" first and ")]),
+			new DisplayMath(" $ all \\sum_{} ", undefined),
+			new Paragraph([new Text(" paragraph.$$")]),
+		];
 
 		const new_markdown = split_display<DisplayMath>(
 			markdown,
@@ -85,27 +73,21 @@ describe("split_display_blocks", () => {
 	});
 
 	test("check display code", () => {
-		const markdown = new MDRoot(
-			[
-				new Paragraph([
-					new Text(
-						"This is the ```hi this is\ncode``` first and ``` {python}\n more code``` all",
-					),
-				]),
-			],
-			"address",
-		);
+		const markdown = [
+			new Paragraph([
+				new Text(
+					"This is the ```hi this is\ncode``` first and ``` {python}\n more code``` all",
+				),
+			]),
+		];
 
-		const expected = new MDRoot(
-			[
-				new Paragraph([new Text("This is the ")]),
-				new DisplayCode("hi this is\ncode"),
-				new Paragraph([new Text(" first and ")]),
-				new DisplayCode(" more code", "python", true),
-				new Paragraph([new Text(" all")]),
-			],
-			"address",
-		);
+		const expected = [
+			new Paragraph([new Text("This is the ")]),
+			new DisplayCode("hi this is\ncode"),
+			new Paragraph([new Text(" first and ")]),
+			new DisplayCode(" more code", "python", true),
+			new Paragraph([new Text(" all")]),
+		];
 
 		const new_markdown = split_display<DisplayCode>(
 			markdown,
@@ -116,21 +98,15 @@ describe("split_display_blocks", () => {
 		expect(new_markdown).toEqual(expected);
 	});
 	test("test embed wikilink", () => {
-		const markdown = new MDRoot(
-			[
-				new Paragraph([
-					new Text("This is a \nlemma::![[wikilink#header|display]]"),
-				]),
-			],
-			"address",
-		);
-		const expected = new MDRoot(
-			[
-				new Paragraph([new Text("This is a ")]),
-				new EmbedWikilink("lemma", "wikilink", "header", "display"),
-			],
-			"address",
-		);
+		const markdown = [
+			new Paragraph([
+				new Text("This is a \nlemma::![[wikilink#header|display]]"),
+			]),
+		];
+		const expected = [
+			new Paragraph([new Text("This is a ")]),
+			new EmbedWikilink("lemma", "wikilink", "header", "display"),
+		];
 		const new_markdown = split_display<EmbedWikilink>(
 			markdown,
 			EmbedWikilink.build_from_match,
@@ -139,35 +115,29 @@ describe("split_display_blocks", () => {
 		expect(new_markdown).toEqual(expected);
 	});
 	test("test header tree", () => {
-		const markdown = new MDRoot(
-			[
-				new Paragraph([
-					new Text(
-						"This is a\n# H1 header\nh1 content\n## H2 header\nh2 content\n# Other H1",
-					),
-				]),
-			],
-			"address",
-		);
-		const expected = new MDRoot(
-			[
-				new Paragraph([new Text("This is a")]),
-				new Header(
-					1,
-					[new Text("H1 header")],
-					[
-						new Paragraph([new Text("h1 content")]),
-						new Header(
-							2,
-							[new Text("H2 header")],
-							[new Paragraph([new Text("h2 content")])],
-						),
-					],
+		const markdown = [
+			new Paragraph([
+				new Text(
+					"This is a\n# H1 header\nh1 content\n## H2 header\nh2 content\n# Other H1",
 				),
-				new Header(1, [new Text("Other H1")], []),
-			],
-			"address",
-		);
+			]),
+		];
+		const expected = new MDRoot([
+			new Paragraph([new Text("This is a")]),
+			new Header(
+				1,
+				[new Text("H1 header")],
+				[
+					new Paragraph([new Text("h1 content")]),
+					new Header(
+						2,
+						[new Text("H2 header")],
+						[new Paragraph([new Text("h2 content")])],
+					),
+				],
+			),
+			new Header(1, [new Text("Other H1")], []),
+		]);
 		expect(make_heading_tree(markdown)).toEqual(expected);
 	});
 	test("test inline math", () => {
@@ -254,24 +224,20 @@ describe("split_display_blocks", () => {
 		expect(parse_all_inline([text_to_parse])).toEqual(expected);
 	});
 	test("test explicit environment", () => {
-		const markdown = new MDRoot(
-			[
-				new Paragraph([
-					new Text(
-						"This is the\nlemma::\nI say things\n::lemma",
-					),
-				]),
-			],
-			"address",
-		);
+		const markdown = [
+			new Paragraph([
+				new Text("This is the\nlemma::\nI say things\n::lemma"),
+			]),
+		];
 
-		const expected = new MDRoot(
+		const expected = 
 			[
 				new Paragraph([new Text("This is the")]),
-				new Environment([new Paragraph([new Text("I say things")])], "lemma"),
-			],
-			"address",
-		);
+				new Environment(
+					[new Paragraph([new Text("I say things")])],
+					"lemma",
+				),
+			];
 
 		const new_markdown = split_display<Environment>(
 			markdown,
@@ -335,7 +301,7 @@ $$\\sum$$ hi there.`;
 			],
 			"address",
 		);
-		expect(parse_file(markdown, "address")).toEqual(expected);
+		expect(parse_markdown(markdown, "address")).toEqual(expected);
 	});
 	// test('test parsing lists', () => {
 	// To make tests we need to generalize the logic, because we need a loop to match lists.
