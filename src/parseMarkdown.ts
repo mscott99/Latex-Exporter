@@ -39,7 +39,7 @@ export function init_data(
  */
 export class MDRoot implements node {
 	level = 0;
-	file_address: string|undefined;
+	file_address: string | undefined;
 	children: node[];
 	constructor(children: node[], address?: string) {
 		this.children = children;
@@ -47,7 +47,7 @@ export class MDRoot implements node {
 	}
 	unroll(data: unroll_data): node[] {
 		const new_children: node[] = [];
-		if(this.file_address=== undefined){
+		if (this.file_address === undefined) {
 			this.file_address = "";
 		}
 		data.current_address = this.file_address;
@@ -56,9 +56,7 @@ export class MDRoot implements node {
 		}
 		return new_children;
 	}
-	latex() {
-		let offset = 0;
-		const buffer = Buffer.alloc(100000);
+	latex(buffer: Buffer, offset: number) {
 		for (const elt of this.children) {
 			offset = elt.latex(buffer, offset);
 		}
@@ -71,25 +69,49 @@ export class Header implements node {
 	level: number;
 	label: string | undefined;
 	title: inline_node[];
-	constructor(level: number, title: inline_node[], children: node[]) {
+	constructor(
+		level: number,
+		title: inline_node[],
+		children: node[],
+		label?: string,
+	) {
 		this.level = level;
 		this.title = title;
 		this.children = children;
+		this.label = label;
 	}
 	unroll(data: unroll_data): node[] {
 		this.level += data.headers_level_offset;
+		for (let i = 0; i < data.header_stack.length; i++) {
+			if (data.header_stack[i].level >= this.level) {
+				data.header_stack = data.header_stack.slice(0, i);
+				break;
+			}
+		}
 		data.header_stack.push(this);
-		this.label = data.header_stack.join(".");
+		// this.label = data.header_stack.map(e => e.latex_title()).join(".");
+		this.label = this.latex_title();
 		const new_children: node[] = [];
 		for (const elt of this.children) {
 			new_children.push(...elt.unroll(data));
 		}
-		return new_children;
+		this.children = new_children;
+		return [this];
 	}
+
+	latex_title(): string {
+		const buffer = Buffer.alloc(1000);
+		let buffer_offset = 0;
+		for (const e of this.title) {
+			buffer_offset = e.latex(buffer, buffer_offset);
+		}
+		return buffer.toString("utf8", 0, buffer_offset);
+	}
+
 	latex(buffer: Buffer, buffer_offset: number): number {
-		const header_title = this.title
-			.map((x) => x.latex(buffer, buffer_offset))
-			.join("");
+		const header_title = this.title.forEach((x) =>
+			x.latex(buffer, buffer_offset),
+		);
 		let header_string = "";
 		if (this.level > 6) {
 			header_string = "\\textbf{" + header_title + "}\n";
@@ -119,10 +141,7 @@ export function address_to_label(address: string): string {
 	return address.toLowerCase().replace(" ", "_");
 }
 
-function label_from_location(
-	address: string,
-	header_address?: string,
-): string {
+function label_from_location(address: string, header_address?: string): string {
 	if (header_address === "" || header_address === undefined) {
 		header_address = "statement";
 	}
@@ -386,13 +405,78 @@ export class DisplayCode implements node {
 	}
 }
 
+function parse_file_with_cache(
+	address: string,
+	notes_dir: string,
+	parsed_cache: { [key: string]: MDRoot },
+	header: string | undefined,
+): [node[], number] | undefined {
+	if (!(address in Object.keys(parsed_cache))) {
+		const file_path = find_file(notes_dir, address);
+		if (file_path === null) {
+			console.warn("File not found: ", address);
+			return undefined;
+		}
+		const file_contents = fs.readFileSync(file_path, "utf-8");
+		parsed_cache[address] = parse_markdown(file_contents, address);
+	}
+	const parsed_contents = parsed_cache[address];
+	if (header === undefined) {
+		return [parsed_contents.children, 0];
+	}
+	const header_elt = check_level(header.split("#").reverse(), [
+		parsed_contents.children,
+	]);
+	if (header_elt === undefined) {
+		console.warn("Header not found: ", header, " in file ", address);
+		return undefined;
+	}
+	return [header_elt.children, header_elt.level];
+}
+
+function check_level(
+	header_address_stack: string[],
+	current_content: node[][],
+): Header | undefined {
+	const next_checks = [];
+	for (const node of current_content) {
+		for (const elt of node) {
+			if (elt instanceof Header) {
+				console.log(header_address_stack);
+				const current_check =
+					header_address_stack[header_address_stack.length - 1];
+				if (current_check === undefined) {
+					throw new Error(
+						"current_check is undefined, should not be possible.",
+					);
+				}
+				if (
+					header_address_stack.length > 0 &&
+					elt.title[0].content.toLowerCase() ==
+						current_check.toLowerCase()
+				) {
+					if (header_address_stack.length == 1) {
+						return elt;
+					}
+					header_address_stack.pop();
+				}
+				next_checks.push(elt.children);
+			}
+		}
+	}
+	if (next_checks.length == 0) {
+		return undefined;
+	}
+	return check_level(header_address_stack, next_checks);
+}
+
 export class EmbedWikilink implements node {
 	attribute: string | undefined;
 	content: string;
 	header: string | undefined;
 	display: string | undefined;
 	static regexp =
-		/(?:(\S*?)::)?!\[\[([\s\S]*?)(?:\#([\s\S]*?))?(?:\|([\s\S]*?))?\]\]/g;
+		/(?:(\S*?)::)?!\[\[([\s\S]*?)(?:#([\s\S]+?))?(?:\|([\s\S]*?))?\]\]/g;
 	static build_from_match(args: RegExpMatchArray): EmbedWikilink {
 		return new EmbedWikilink(args[1], args[2], args[3], args[4]);
 	}
@@ -408,35 +492,36 @@ export class EmbedWikilink implements node {
 		this.display = displayed;
 	}
 	unroll(data: unroll_data): node[] {
-		if (this.attribute === undefined) {
+		const return_data = parse_file_with_cache(
+			this.content,
+			data.notes_dir,
+			data.parsed_file_bundle,
+			this.header,
+		);
+		if (return_data === undefined) {
+			console.warn("File or header not found: " + this.content);
 			return [this];
 		}
-		let parsed_contents: MDRoot;
-		if (!(this.content in Object.keys(data.parsed_file_bundle))) {
-			const file_path = find_file(data.notes_dir, this.content);
-			if (file_path === null) {
-				console.warn("File not found: ", this.content);
-				return [this];
-			}
-			const file_contents = fs.readFileSync(file_path, "utf-8");
-			parsed_contents = parse_markdown(file_contents, this.content);
-			data.parsed_file_bundle[this.content] = parsed_contents;
-		} else {
-			parsed_contents = data.parsed_file_bundle[this.content];
-		}
-
+		const [parsed_contents, header_level] = return_data;
 		const ambient_header_offset = data.headers_level_offset;
-		data.headers_level_offset++;
-		const unrolled_contents = parsed_contents.unroll(data);
+		data.headers_level_offset -= header_level - 1; //disregard nesting level of the embedded header.
+		const unrolled_contents = [] as node[];
+		for (const elt of parsed_contents) {
+			unrolled_contents.push(...elt.unroll(data));
+		}
 		data.headers_level_offset = ambient_header_offset;
 		// Make a label.
-		return [
-			new Environment(
-				unrolled_contents,
-				this.attribute,
-				label_from_location(this.content, this.header),
-			),
-		];
+
+		if (this.attribute !== undefined) {
+			return [
+				new Environment(
+					unrolled_contents,
+					this.attribute,
+					label_from_location(this.content, this.header),
+				),
+			];
+		}
+		return unrolled_contents;
 	}
 	latex(buffer: Buffer, buffer_offset: number): number {
 		console.warn(
@@ -569,18 +654,41 @@ export class DisplayMath implements node {
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
-		return (
-			buffer_offset +
-			buffer.write(
-				"\\begin{equation}\n\\label{eq:" +
-					this.label +
-					"}\n" +
-					this.content +
-					"\n\\end{equation}\n",
+		buffer_offset += buffer.write("\\begin{equation}\n", buffer_offset);
+		if (this.label !== undefined) {
+			buffer_offset += buffer.write(
+				"\\label{eq:" + this.label + "}\n",
 				buffer_offset,
-			)
-		);
+			);
+		}
+		buffer_offset += buffer.write(this.content + "\n", buffer_offset);
+		buffer_offset += buffer.write("\\end{equation}\n", buffer_offset);
+		return buffer_offset;
 	}
+}
+
+export function export_longform(notes_dir: string, address: string): string {
+	const longform_path = find_file(notes_dir, address);
+	if (longform_path === null) {
+		throw new Error(`File not found: ${address} in ${notes_dir}`);
+	}
+	const file_contents = fs.readFileSync(longform_path, "utf-8");
+	const parsed_contents = parse_markdown(file_contents, address);
+	const data = init_data(address, notes_dir);
+	const unrolled_content = new MDRoot(parsed_contents.unroll(data));
+	const buffer = Buffer.alloc(100000);
+	const offset = unrolled_content.latex(buffer, 0);
+	return buffer.toString("utf8", 0, offset);
+}
+
+export function export_longform_with_template(notes_dir:string, address:string, template_path:string, output_path:string){
+	const parsed_contents = export_longform(notes_dir, address)
+	const template_content = fs.readFileSync(template_path,"utf-8")
+	if(template_content === null){
+		throw new Error(`Could not find the template: ${template_path}`)
+	}
+	const out_str = template_content.replace(/\$body\$/, parsed_contents)
+	fs.writeFileSync(output_path, out_str)
 }
 
 // export default function parseMarkdown(markdown: string, address: string) {
@@ -766,7 +874,7 @@ export function traverse_tree_and_parse_inline(md: MDRoot): void {
 	}
 }
 
-function parse_inside_env(input:string): node[] {
+function parse_inside_env(input: string): node[] {
 	let new_display = [new Paragraph([new Text(input)])] as node[];
 	new_display = split_display<EmbedWikilink>(
 		new_display,
@@ -801,7 +909,7 @@ function parse_inside_env(input:string): node[] {
 	return new_display;
 }
 
-export function parse_markdown(input: string, address?:string): MDRoot {
+export function parse_markdown(input: string, address?: string): MDRoot {
 	let new_display = [new Paragraph([new Text(input)])] as node[];
 	new_display = split_display<Environment>(
 		new_display,
@@ -840,7 +948,7 @@ export function parse_markdown(input: string, address?:string): MDRoot {
 	);
 	const new_md = make_heading_tree(new_display);
 	traverse_tree_and_parse_inline(new_md);
-	new_md.file_address = address
+	new_md.file_address = address;
 	return new_md;
 }
 

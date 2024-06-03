@@ -1,3 +1,4 @@
+import { mkdir } from "fs";
 import {
 	App,
 	Editor,
@@ -13,6 +14,9 @@ import {
 // import myObRemark from './src/index'
 // import remarkObsidian from 'remark-obsidian';
 // Remember to rename these classes and interfaces!
+
+import {export_longform_with_template} from './parseMarkdown'
+
 interface ExportPluginSettings {
 	mySetting: string;
 }
@@ -33,8 +37,18 @@ export default class ExportPaperPlugin extends Plugin {
 			callback: async () => {
 				// console.log('Exporting to paper')
 				const activeFile = this.app.workspace.getActiveFile();
+				const vault_path = this.app.vault.getRoot()
+				const template_path = this.app.
+				const base_output_folder = this.settings.base_output_folder as TFolder
+				
 				if (activeFile instanceof TFile) {
 					// Check if there is an active file and it is a file
+					const export_folder = base_output_folder + activeFile
+					const output_path = export_folder + "output.tex"
+					address = //remove .md from file
+					mkdir(export_folder)
+					export_longform_with_template(vault_path, address, template_path, output_path)
+
 					// const content = await this.app.vault.read(activeFile); // Read the content of the file
 					// console.log(parseMarkdown(content));
 				} else {
