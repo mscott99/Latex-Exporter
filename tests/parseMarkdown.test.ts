@@ -1,3 +1,4 @@
+import {App} from "obsidian"
 import {
 	Citation,
 	Reference,
@@ -122,7 +123,7 @@ describe("split_display_blocks", () => {
 				),
 			]),
 		];
-		const expected = new MDRoot([
+		const expected = [
 			new Paragraph([new Text("This is a")]),
 			new Header(
 				1,
@@ -137,7 +138,7 @@ describe("split_display_blocks", () => {
 				],
 			),
 			new Header(1, [new Text("Other H1")], []),
-		]);
+		];
 		expect(make_heading_tree(markdown)).toEqual(expected);
 	});
 	test("test inline math", () => {
@@ -257,7 +258,7 @@ $$\\epsilon$$
 content _emphasis_
 ## Header 2 again
 $$\\sum$$ hi there.`;
-		const expected = new MDRoot(
+		const expected = 
 			[
 				new Paragraph([
 					new Text(`This is a text with `),
@@ -298,10 +299,8 @@ $$\\sum$$ hi there.`;
 						),
 					],
 				),
-			],
-			"address",
-		);
-		expect(parse_markdown(markdown, "address")).toEqual(expected);
+			]
+		expect(parse_markdown(markdown)).toEqual(expected);
 	});
 	// test('test parsing lists', () => {
 	// To make tests we need to generalize the logic, because we need a loop to match lists.

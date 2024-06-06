@@ -1,4 +1,5 @@
-import { mkdir } from "fs";
+import { mkdir, existsSync } from "fs";
+import * as path from "path";
 import {
 	App,
 	Editor,
@@ -15,14 +16,18 @@ import {
 // import remarkObsidian from 'remark-obsidian';
 // Remember to rename these classes and interfaces!
 
-import {export_longform_with_template} from './parseMarkdown'
+import { export_longform_with_template } from "./parseMarkdown";
 
 interface ExportPluginSettings {
 	mySetting: string;
+	template_path: string;
+	base_output_folder: string;
 }
 
 const DEFAULT_SETTINGS: ExportPluginSettings = {
 	mySetting: "default",
+	template_path: "",
+	base_output_folder: "",
 };
 
 export default class ExportPaperPlugin extends Plugin {
@@ -37,17 +42,33 @@ export default class ExportPaperPlugin extends Plugin {
 			callback: async () => {
 				// console.log('Exporting to paper')
 				const activeFile = this.app.workspace.getActiveFile();
-				const vault_path = this.app.vault.getRoot()
-				const template_path = this.app.
-				const base_output_folder = this.settings.base_output_folder as TFolder
-				
+				const template_path = this.settings.template_path;
+				const base_output_folder = this.settings.base_output_folder;
+
 				if (activeFile instanceof TFile) {
 					// Check if there is an active file and it is a file
-					const export_folder = base_output_folder + activeFile
-					const output_path = export_folder + "output.tex"
-					address = //remove .md from file
-					mkdir(export_folder)
-					export_longform_with_template(vault_path, address, template_path, output_path)
+					if (!base_output_folder) {
+						return new Notice(
+							"First set your output folder in the settings.",
+						);
+					}
+					const export_folder = path.join(
+						base_output_folder,
+						activeFile.basename,
+					);
+					const output_path = path.join(export_folder, "output.tex");
+					// if (!existsSync(export_folder)) {
+					// 	mkdir(export_folder, (e) => {
+					// 		throw e;
+					// 	});
+					// }
+
+					await export_longform_with_template(
+						this.app.vault,
+						activeFile,
+						output_path,
+						template_path,
+					);
 
 					// const content = await this.app.vault.read(activeFile); // Read the content of the file
 					// console.log(parseMarkdown(content));
@@ -183,5 +204,44 @@ class SampleSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					}),
 			);
+		// new Setting(containerEl).setName("test").addSearch((component)=>{
+		// component.setPlaceholder(this.plugin.settings.template_path).setValue(this.plugin.settings.template_path).onChange(async (value) => {
+		// 			// let val: string|null;
+		// 			// val = value
+		// 			// 		if(value == ""){
+		// 			// 		val = null
+		// 			// 	}
+		// 			this.plugin.settings.template_path = value;
+		// 			await this.plugin.saveSettings();
+		// 			console.log(this.plugin.settings.template_path);
+		// 		})});
+		new Setting(containerEl).setName("Template file").addText((text) =>
+			text
+				.setPlaceholder("path/to/template_file.tex")
+				.onChange(async (value) => {
+					// let val: string|null;
+					// val = value
+					// 		if(value == ""){
+					// 		val = null
+					// 	}
+					this.plugin.settings.template_path = value;
+					await this.plugin.saveSettings();
+					console.log(this.plugin.settings.template_path);
+				}),
+		);
+		new Setting(containerEl).setName("Output folder").addText((text) =>
+			text
+				.setPlaceholder("path/to/output_folder/")
+				.onChange(async (value) => {
+					// let val: string|null;
+					// val = value
+					// 		if(value == ""){
+					// 		val = null
+					// 	}
+					this.plugin.settings.base_output_folder = value;
+					await this.plugin.saveSettings();
+					console.log(this.plugin.settings.base_output_folder);
+				}),
+		);
 	}
 }

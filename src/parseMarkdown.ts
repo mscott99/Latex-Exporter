@@ -1,30 +1,28 @@
+import { find_file, make_file_path, DEFAULT_TEMPLATE } from "./utils";
 import * as fs from "fs";
-import { find_file } from "./utils";
+import { TFile, Notice, Vault } from "obsidian";
 
 type unroll_data = {
 	depth: number;
 	env_hash_list: Environment[];
-	parsed_file_bundle: { [key: string]: MDRoot };
+	parsed_file_bundle: { [key: string]: MDRoot }; // use the path of the files as keys.
 	headers_level_offset: number; // To know by how much to increment headers by nestedness. Set to 10 to convert Headers to emphasized words.
 	explicit_env_index: number;
-	longform_address: string;
-	current_address: string;
-	notes_dir: string;
+	longform_file: TFile;
+	current_file: TFile;
+	notes_dir: Vault;
 	header_stack: Header[];
 };
 
-export function init_data(
-	longform_address: string,
-	notes_dir: string,
-): unroll_data {
+export function init_data(longform_file: TFile, notes_dir: Vault): unroll_data {
 	return {
 		depth: 0,
 		env_hash_list: [] as Environment[],
 		parsed_file_bundle: {} as { [key: string]: MDRoot },
 		headers_level_offset: 0,
 		explicit_env_index: 1,
-		longform_address: longform_address,
-		current_address: longform_address,
+		longform_file: longform_file,
+		current_file: longform_file,
 		notes_dir: notes_dir,
 		header_stack: [] as Header[],
 	} as unroll_data;
@@ -39,20 +37,17 @@ export function init_data(
  */
 export class MDRoot implements node {
 	level = 0;
-	file_address: string | undefined;
+	file: TFile;
 	children: node[];
-	constructor(children: node[], address?: string) {
+	constructor(children: node[], address: TFile) {
 		this.children = children;
-		this.file_address = address;
+		this.file = address;
 	}
-	unroll(data: unroll_data): node[] {
+	async unroll(data: unroll_data): Promise<node[]> {
 		const new_children: node[] = [];
-		if (this.file_address === undefined) {
-			this.file_address = "";
-		}
-		data.current_address = this.file_address;
+		data.current_file = this.file;
 		for (const elt of this.children) {
-			new_children.push(...elt.unroll(data));
+			new_children.push(...(await elt.unroll(data)));
 		}
 		return new_children;
 	}
@@ -78,9 +73,9 @@ export class Header implements node {
 		this.level = level;
 		this.title = title;
 		this.children = children;
-		this.label = label;
+		this.label = label === undefined ? undefined : label;
 	}
-	unroll(data: unroll_data): node[] {
+	async unroll(data: unroll_data): Promise<node[]> {
 		this.level += data.headers_level_offset;
 		for (let i = 0; i < data.header_stack.length; i++) {
 			if (data.header_stack[i].level >= this.level) {
@@ -93,7 +88,7 @@ export class Header implements node {
 		this.label = this.latex_title();
 		const new_children: node[] = [];
 		for (const elt of this.children) {
-			new_children.push(...elt.unroll(data));
+			new_children.push(...(await elt.unroll(data)));
 		}
 		this.children = new_children;
 		return [this];
@@ -133,12 +128,12 @@ export class Header implements node {
 }
 
 export interface node {
-	unroll(data?: unroll_data): node[];
+	unroll(data?: unroll_data): Promise<node[]>;
 	latex(buffer: Buffer, buffer_offset: number): number;
 }
 export function address_to_label(address: string): string {
 	//substitute
-	return address.toLowerCase().replace(" ", "_");
+	return address.toLowerCase().trim().replace(" ", "_");
 }
 
 function label_from_location(address: string, header_address?: string): string {
@@ -150,7 +145,7 @@ function label_from_location(address: string, header_address?: string): string {
 
 function explicit_label_with_address(label: string, address: string) {
 	const match = /^([a-z]+)-(.*)$/.exec(label);
-	if (match !== null) {
+	if (match) {
 		return match[1] + ":" + address_to_label(address) + "." + match[2];
 	} else {
 		return address_to_label(address) + "." + label;
@@ -158,12 +153,12 @@ function explicit_label_with_address(label: string, address: string) {
 }
 
 export function explicit_label(
-	longform_address: string,
-	current_address: string,
+	longform_file: TFile,
+	current_file: TFile,
 	label: string,
 ) {
-	if (current_address !== longform_address) {
-		return explicit_label_with_address(label, current_address);
+	if (current_file !== longform_file) {
+		return explicit_label_with_address(label, current_file.basename);
 	} else {
 		return label.replace("-", ":");
 	}
@@ -179,7 +174,7 @@ export class Environment implements node {
 	constructor(children: node[], type: string, label?: string) {
 		this.children = children;
 		this.type = type;
-		this.label = label;
+		this.label = label === undefined ? undefined : label;
 		// this.address_of_origin = address_of_origin;
 	}
 	static build_from_match(match: RegExpMatchArray): Environment {
@@ -190,12 +185,12 @@ export class Environment implements node {
 			match[2],
 		);
 	}
-	unroll(data: unroll_data): node[] {
+	async unroll(data: unroll_data): Promise<node[]> {
 		// If it is unrolled, it is likely an explicit env.
-		if (this.label !== undefined) {
+		if (this.label) {
 			this.label = explicit_label(
-				data.longform_address,
-				data.current_address,
+				data.longform_file,
+				data.current_file,
 				this.label,
 			);
 		}
@@ -222,7 +217,7 @@ export class Paragraph implements node {
 	constructor(elements: inline_node[]) {
 		this.elements = elements;
 	}
-	unroll(): node[] {
+	async unroll(): Promise<node[]> {
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
@@ -249,10 +244,10 @@ export class ExplicitRef implements node {
 	static build_from_match(regexmatch: RegExpMatchArray): ExplicitRef {
 		return new ExplicitRef(regexmatch[1]);
 	}
-	unroll(data: unroll_data): node[] {
+	async unroll(data: unroll_data): Promise<node[]> {
 		this.label = explicit_label(
-			data.longform_address,
-			data.current_address,
+			data.longform_file,
+			data.current_file,
 			this.label,
 		);
 		return [this];
@@ -288,7 +283,7 @@ export class BlankLine implements node {
 	static build_from_match(): BlankLine {
 		return new BlankLine();
 	}
-	unroll(): node[] {
+	async unroll(): Promise<node[]> {
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
@@ -313,7 +308,7 @@ export class Emphasis implements inline_node {
 	constructor(content: string) {
 		this.content = content;
 	}
-	unroll(): node[] {
+	async unroll(): Promise<node[]> {
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
@@ -341,7 +336,7 @@ export class Strong implements inline_node {
 	constructor(content: string) {
 		this.content = content;
 	}
-	unroll(): node[] {
+	async unroll(): Promise<node[]> {
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
@@ -363,7 +358,7 @@ export class InlineMath implements inline_node {
 		this.content = content;
 		this.label = label;
 	}
-	unroll(): node[] {
+	async unroll(): Promise<node[]> {
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
@@ -396,7 +391,7 @@ export class DisplayCode implements node {
 		this.language = language;
 		this.executable = executable;
 	}
-	unroll(): node[] {
+	async unroll(): Promise<node[]> {
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
@@ -405,22 +400,26 @@ export class DisplayCode implements node {
 	}
 }
 
-function parse_file_with_cache(
+async function parse_file_with_cache(
 	address: string,
-	notes_dir: string,
+	notes_dir: Vault,
 	parsed_cache: { [key: string]: MDRoot },
 	header: string | undefined,
-): [node[], number] | undefined {
-	if (!(address in Object.keys(parsed_cache))) {
-		const file_path = find_file(notes_dir, address);
-		if (file_path === null) {
-			console.warn("File not found: ", address);
-			return undefined;
-		}
-		const file_contents = fs.readFileSync(file_path, "utf-8");
-		parsed_cache[address] = parse_markdown(file_contents, address);
+): Promise<[node[], number] | undefined> {
+	const file_found = find_file(notes_dir, address);
+	if (file_found === undefined) {
+		// no warning necessary, already warned in find_file
+		return undefined;
 	}
-	const parsed_contents = parsed_cache[address];
+	if (!(file_found.path in Object.keys(parsed_cache))) {
+		const file_contents = await notes_dir.read(file_found);
+		// const file_contents = fs.readFileSync(make_file_path(notes_dir, file_found), "utf-8");
+		parsed_cache[file_found.path] = parse_markdown_file(
+			file_contents,
+			file_found,
+		);
+	}
+	const parsed_contents = parsed_cache[file_found.path];
 	if (header === undefined) {
 		return [parsed_contents.children, 0];
 	}
@@ -428,7 +427,12 @@ function parse_file_with_cache(
 		parsed_contents.children,
 	]);
 	if (header_elt === undefined) {
-		console.warn("Header not found: ", header, " in file ", address);
+		console.warn(
+			"Header not found: ",
+			header,
+			" in file with address ",
+			address,
+		);
 		return undefined;
 	}
 	return [header_elt.children, header_elt.level];
@@ -442,7 +446,6 @@ function check_level(
 	for (const node of current_content) {
 		for (const elt of node) {
 			if (elt instanceof Header) {
-				console.log(header_address_stack);
 				const current_check =
 					header_address_stack[header_address_stack.length - 1];
 				if (current_check === undefined) {
@@ -452,8 +455,8 @@ function check_level(
 				}
 				if (
 					header_address_stack.length > 0 &&
-					elt.title[0].content.toLowerCase() ==
-						current_check.toLowerCase()
+					elt.title[0].content.toLowerCase().trim() ==
+						current_check.toLowerCase().trim()
 				) {
 					if (header_address_stack.length == 1) {
 						return elt;
@@ -491,15 +494,16 @@ export class EmbedWikilink implements node {
 		this.header = header;
 		this.display = displayed;
 	}
-	unroll(data: unroll_data): node[] {
-		const return_data = parse_file_with_cache(
+
+	async unroll(data: unroll_data): Promise<node[]> {
+		const header_val = this.header ? this.header : undefined;
+		const return_data = await parse_file_with_cache(
 			this.content,
 			data.notes_dir,
 			data.parsed_file_bundle,
-			this.header,
+			header_val,
 		);
 		if (return_data === undefined) {
-			console.warn("File or header not found: " + this.content);
 			return [this];
 		}
 		const [parsed_contents, header_level] = return_data;
@@ -507,7 +511,7 @@ export class EmbedWikilink implements node {
 		data.headers_level_offset -= header_level - 1; //disregard nesting level of the embedded header.
 		const unrolled_contents = [] as node[];
 		for (const elt of parsed_contents) {
-			unrolled_contents.push(...elt.unroll(data));
+			unrolled_contents.push(...(await elt.unroll(data)));
 		}
 		data.headers_level_offset = ambient_header_offset;
 		// Make a label.
@@ -524,9 +528,6 @@ export class EmbedWikilink implements node {
 		return unrolled_contents;
 	}
 	latex(buffer: Buffer, buffer_offset: number): number {
-		console.warn(
-			"Writing embed wikilink into latex, it should likely have been unrolled",
-		);
 		const headerstring = this.header === undefined ? "" : this.header;
 		return (
 			buffer_offset +
@@ -569,7 +570,7 @@ export class Wikilink implements inline_node {
 		this.header = header;
 		this.displayed = displayed;
 	}
-	unroll(): node[] {
+	async unroll(): Promise<node[]> {
 		const match = /^@(.*)$/.exec(this.content);
 		if (match !== null) {
 			return [new Citation(match[1])];
@@ -601,7 +602,7 @@ export class Reference implements node {
 			buffer.write("\\autoref{" + this.label + "}", buffer_offset)
 		);
 	}
-	unroll(): node[] {
+	async unroll(): Promise<node[]> {
 		return [this];
 	}
 	constructor(label: string) {
@@ -617,7 +618,7 @@ export class Citation implements node {
 		this.id = id;
 		this.result = result;
 	}
-	unroll(): node[] {
+	async unroll(): Promise<node[]> {
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number): number {
@@ -642,19 +643,23 @@ export class DisplayMath implements node {
 	// parent: node;
 	content: string;
 	label: string | undefined;
-	static regexp = /\$\$([\s\S]*?)\$\$(?:\s*?{#eq-(.*?)})?/g;
-	static build_from_match(args: RegExpMatchArray): DisplayMath {
-		return new DisplayMath(args[1], args[2]);
+	explicit_env_name: string | undefined;
+	static regexp = /\$\$\s*?(?:\\begin\{(\S*?)\}\s*([\s\S]*?)\s*\\end\{\1\}\s*?|\s*([\s\S]*?)\s*?)\$\$(?:\s*?\{#eq-(.*?)\})?/g;
+	static build_from_match(match: RegExpMatchArray): DisplayMath {
+		const latex = match[2] === undefined? match[3]: match[2]
+		return new DisplayMath(latex, match[4], match[1]);
 	}
-	constructor(latex: string, label?: string) {
+	constructor(latex: string, label?: string, explicit_env?:string) {
 		this.content = latex;
 		this.label = label;
+		this.explicit_env_name = explicit_env;
 	}
-	unroll(): node[] {
+	async unroll(): Promise<node[]> {
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
-		buffer_offset += buffer.write("\\begin{equation}\n", buffer_offset);
+		const env_name = this.explicit_env_name === undefined? "equation": this.explicit_env_name;
+		buffer_offset += buffer.write("\\begin{" + env_name + "}\n", buffer_offset);
 		if (this.label !== undefined) {
 			buffer_offset += buffer.write(
 				"\\label{eq:" + this.label + "}\n",
@@ -662,33 +667,56 @@ export class DisplayMath implements node {
 			);
 		}
 		buffer_offset += buffer.write(this.content + "\n", buffer_offset);
-		buffer_offset += buffer.write("\\end{equation}\n", buffer_offset);
+		buffer_offset += buffer.write("\\end{"+ env_name + "}\n", buffer_offset);
 		return buffer_offset;
 	}
 }
 
-export function export_longform(notes_dir: string, address: string): string {
-	const longform_path = find_file(notes_dir, address);
-	if (longform_path === null) {
-		throw new Error(`File not found: ${address} in ${notes_dir}`);
+export async function export_longform(
+	notes_dir: Vault,
+	longform_file: TFile,
+): Promise<string> {
+	if (longform_file === undefined) {
+		throw new Error(`File not found: ${longform_file} in ${notes_dir}`);
 	}
-	const file_contents = fs.readFileSync(longform_path, "utf-8");
-	const parsed_contents = parse_markdown(file_contents, address);
-	const data = init_data(address, notes_dir);
-	const unrolled_content = new MDRoot(parsed_contents.unroll(data));
+	const file_contents = await notes_dir.read(longform_file)
+	const parsed_contents = parse_markdown_file(file_contents, longform_file);
+	const data = init_data(longform_file, notes_dir);
+	const unrolled_content = new MDRoot(
+		await parsed_contents.unroll(data),
+		longform_file,
+	);
 	const buffer = Buffer.alloc(100000);
 	const offset = unrolled_content.latex(buffer, 0);
 	return buffer.toString("utf8", 0, offset);
 }
 
-export function export_longform_with_template(notes_dir:string, address:string, template_path:string, output_path:string){
-	const parsed_contents = export_longform(notes_dir, address)
-	const template_content = fs.readFileSync(template_path,"utf-8")
-	if(template_content === null){
-		throw new Error(`Could not find the template: ${template_path}`)
+export async function export_longform_with_template(
+	notes_dir: Vault,
+	longform_file: TFile,
+	output_path: string,
+	template_path: string | undefined,
+) {
+	const parsed_contents = await export_longform(notes_dir, longform_file);
+	let template_content: string | undefined;
+	// if (false || template_path !== undefined) {
+	// 	template_content = fs.readFileSync(template_path, "utf-8");
+	// 	if (template_content === undefined) {
+	// 		throw new Error(`Could not find the template: ${template_path}`);
+	// 	}
+	//jj } else {
+	template_content = DEFAULT_TEMPLATE;
+	// }
+	const out_str = template_content.replace(/\$body\$/, parsed_contents);
+	const out_file_name = "output/" + longform_file.basename + "_output.tex";
+	let out_file = notes_dir.getFileByPath(out_file_name);
+	if (out_file !== null) {
+		console.log("File exists, overwriting.");
+		await notes_dir.modify(out_file, out_str);
+	} else {
+		out_file = await notes_dir.create(out_file_name, out_str);
 	}
-	const out_str = template_content.replace(/\$body\$/, parsed_contents)
-	fs.writeFileSync(output_path, out_str)
+	return new Notice("Exported to: " + out_file.path);
 }
 
 // export default function parseMarkdown(markdown: string, address: string) {
@@ -751,7 +779,7 @@ export function split_display<T extends node>(
 function strip_newlines(thestring: string): string {
 	const result = /^(?:(?:\s*?)\n)*(.*?)(?:\n(?:\s*?))?$/s.exec(thestring);
 	if (result === null) {
-		throw new Error("result is null");
+		throw new Error("result is undefined");
 	}
 	return result[1];
 }
@@ -765,7 +793,7 @@ export function parse_inline<ClassObj extends inline_node>(
 	let current_match: RegExpMatchArray | null = null;
 	let start_index = 0;
 	while ((current_match = class_regexp.exec(text.content)) !== null) {
-		if (current_match.index == undefined) {
+		if (current_match.index == null) {
 			throw new Error("current_match.index is undefined");
 		}
 		const prev_chunk = text.content.slice(start_index, current_match.index);
@@ -863,8 +891,8 @@ function traverse_and_parse_from_header(head: Header): void {
 	}
 }
 
-export function traverse_tree_and_parse_inline(md: MDRoot): void {
-	for (const elt of md.children) {
+export function traverse_tree_and_parse_inline(md: node[]): void {
+	for (const elt of md) {
 		if (elt instanceof Header) {
 			traverse_and_parse_from_header(elt);
 		}
@@ -909,7 +937,12 @@ function parse_inside_env(input: string): node[] {
 	return new_display;
 }
 
-export function parse_markdown(input: string, address?: string): MDRoot {
+export function parse_markdown_file(input: string, address: TFile): MDRoot {
+	const content = parse_markdown(input);
+	return new MDRoot(content, address);
+}
+
+export function parse_markdown(input: string): node[] {
 	let new_display = [new Paragraph([new Text(input)])] as node[];
 	new_display = split_display<Environment>(
 		new_display,
@@ -946,16 +979,23 @@ export function parse_markdown(input: string, address?: string): MDRoot {
 		BlankLine.build_from_match,
 		BlankLine.regexp,
 	);
-	const new_md = make_heading_tree(new_display);
-	traverse_tree_and_parse_inline(new_md);
-	new_md.file_address = address;
-	return new_md;
+	const new_content = make_heading_tree(new_display);
+	traverse_tree_and_parse_inline(new_content);
+	return new_content;
 }
 
-export function make_heading_tree(markdown: node[]): MDRoot {
+class ZeroHeader {
+	children: node[];
+	level = 0;
+	constructor(content: node[]) {
+		this.children = content;
+	}
+}
+
+export function make_heading_tree(markdown: node[]): node[] {
 	let headingRegex = /^(#+) (.*)$/gm;
-	const new_md = new MDRoot([]);
-	let header_stack: (Header | MDRoot)[] = [];
+	const new_md = new ZeroHeader([]);
+	let header_stack: (Header | ZeroHeader)[] = [];
 	header_stack.push(new_md);
 	let new_display: node[] = new_md.children;
 	let current_match: RegExpMatchArray | null;
@@ -1019,5 +1059,5 @@ export function make_heading_tree(markdown: node[]): MDRoot {
 			new_display.push(elt);
 		}
 	}
-	return new_md;
+	return new_md.children;
 }

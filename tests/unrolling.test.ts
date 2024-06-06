@@ -77,11 +77,11 @@ describe("split_display_blocks", () => {
 					new DisplayMath("	\\varepsilon", undefined),
 				],
 				"lemma",
-				"lem:label_1"
+				"lem:label_1",
 			),
 			new Environment(
 				[new Paragraph([new Text("Content of the other lemma.")])],
-				"theorem",	
+				"theorem",
 				"res:other_lem.statement",
 			),
 			new Paragraph([new Text("reference:")]),
@@ -103,10 +103,19 @@ describe("split_display_blocks", () => {
 		const unrolled_content = parsed_contents.unroll(data);
 
 		const expected_content = [
-			new Header(1, [new Text("Statement")], [
-				new Header(2, [new Text("h6 title")],
-				[new Paragraph([new Text("content in h6")])], "h6 title")
-			], "Statement")
+			new Header(
+				1,
+				[new Text("Statement")],
+				[
+					new Header(
+						2,
+						[new Text("h6 title")],
+						[new Paragraph([new Text("content in h6")])],
+						"h6 title",
+					),
+				],
+				"Statement",
+			),
 		];
 
 		expect(unrolled_content).toEqual(expected_content);
@@ -114,8 +123,8 @@ describe("split_display_blocks", () => {
 	test("test env labels", () => {
 		const address = "longform_labels";
 		const notes_dir = "./tests/files/";
-		const parsed_content = export_longform(notes_dir, address)
-		const expected_content = `\\begin{lemma}\n\\label{lem:label_1}\nsome stuff\n\\begin{equation}\n	\\varepsilon\n\\end{equation}\n\\end{lemma}\n\\begin{theorem}\n\\label{res:other_lem.statement}\nContent of the other lemma.\n\\end{theorem}\nreference:\n\\autoref{res:other_lem.statement}`
+		const parsed_content = export_longform(notes_dir, address);
+		const expected_content = `\\begin{lemma}\n\\label{lem:label_1}\nsome stuff\n\\begin{equation}\n	\\varepsilon\n\\end{equation}\n\\end{lemma}\n\\begin{theorem}\n\\label{res:other_lem.statement}\nContent of the other lemma.\n\\end{theorem}\nreference:\n\\autoref{res:other_lem.statement}`;
 		expect(parsed_content).toEqual(expected_content);
 	});
 });
