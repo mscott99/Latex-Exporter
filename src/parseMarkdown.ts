@@ -100,7 +100,7 @@ export class Header implements node {
 		}
 		data.header_stack.push(this);
 		// this.label = data.header_stack.map(e => e.latex_title()).join(".");
-		this.label = this.latex_title();
+		this.label = format_label(this.latex_title());
 		const new_children: node[] = [];
 		for (const elt of this.children) {
 			new_children.push(...(await elt.unroll(data)));
@@ -152,24 +152,31 @@ export interface node {
 	latex(buffer: Buffer, buffer_offset: number): number;
 }
 
-export function address_to_label(address: string): string {
+export function format_label(address: string): string {
 	//substitute
-	return address.toLowerCase().trim().replace(/ /g, "_");
+	return address.toLowerCase().trim().replace(/ /g, "_").replace(/,/g, "");
 }
 
-function label_from_location(address: string, header_address?: string): string {
+function label_from_location(
+	data: unroll_data,
+	address: string,
+	header_address?: string,
+): string {
 	if (header_address === "" || header_address === undefined) {
 		header_address = "statement";
 	}
-	return "res:" + address_to_label(address) + "." + header_address;
+	if (data.current_file === data.longform_file && address === "") {
+		return format_label("sec:" + header_address);
+	}
+	return format_label("res:" + address + "." + header_address);
 }
 
 function explicit_label_with_address(label: string, address: string) {
 	const match = /^([a-z]+)-(.*)$/.exec(label);
 	if (match) {
-		return match[1] + ":" + address_to_label(address) + "." + match[2];
+		return format_label(match[1] + ":" + address + "." + match[2]);
 	} else {
-		return address_to_label(address) + "." + label;
+		return format_label(address + "." + label);
 	}
 }
 
@@ -181,7 +188,7 @@ export function explicit_label(
 	if (current_file !== longform_file) {
 		return explicit_label_with_address(label, current_file.basename);
 	} else {
-		return label.replace("-", ":");
+		return format_label(label.replace("-", ":"));
 	}
 }
 
@@ -195,7 +202,7 @@ export class Environment implements node {
 	constructor(children: node[], type: string, label?: string) {
 		this.children = children;
 		this.type = type;
-		this.label = label === undefined ? undefined : label;
+		this.label = label;
 		// this.address_of_origin = address_of_origin;
 	}
 	static build_from_match(match: RegExpMatchArray): Environment {
@@ -219,9 +226,26 @@ export class Environment implements node {
 	}
 	latex(buffer: Buffer, buffer_offset: number): number {
 		buffer_offset += buffer.write(
-			"\\begin{" + this.type + "}\n" + "\\label{" + this.label + "}\n",
+			"\\begin{" + this.type + "}\n",
 			buffer_offset,
 		);
+		if (this.label !== undefined) {
+			if (this.type === "proof") {
+				buffer_offset += buffer.write(
+					"\\hypertarget{" +
+						this.label +
+						"}Proof of \\autoref{" +
+						this.label.replace("proof", "statement") +
+						"}",
+					buffer_offset,
+				);
+			} else {
+				buffer_offset += buffer.write(
+					"\\label{" + this.label + "}\n",
+					buffer_offset,
+				);
+			}
+		}
 		for (const e of this.children) {
 			buffer_offset = e.latex(buffer, buffer_offset);
 		}
@@ -521,6 +545,7 @@ export class EmbedWikilink implements node {
 	content: string;
 	header: string | undefined;
 	display: string | undefined;
+	label: string | undefined;
 	static regexp =
 		/(?:(\S*?)::)?!\[\[([\s\S]*?)(?:#([\s\S]+?))?(?:\|([\s\S]*?))?\]\]/g;
 	static build_from_match(args: RegExpMatchArray): EmbedWikilink {
@@ -539,7 +564,10 @@ export class EmbedWikilink implements node {
 	}
 
 	async unroll(data: unroll_data): Promise<node[]> {
-		const header_val = this.header ? this.header : undefined;
+		if (this.display !== undefined) {
+			return [new Text(this.display)];
+		}
+		const header_val = this.header;
 		const return_data = await parse_file_with_cache(
 			this.content,
 			data.notes_dir,
@@ -575,22 +603,17 @@ export class EmbedWikilink implements node {
 				new Environment(
 					unrolled_contents,
 					this.attribute,
-					label_from_location(this.content, this.header),
+					label_from_location(data, this.content, this.header),
 				),
 			];
 		}
+		this.label = label_from_location(data, this.content, this.header);
 		return unrolled_contents;
 	}
 	latex(buffer: Buffer, buffer_offset: number): number {
-		const headerstring = this.header === undefined ? "" : this.header;
 		return (
 			buffer_offset +
-			buffer.write(
-				"\\autoref{" +
-					label_from_location(this.content, headerstring) +
-					"}\n",
-				buffer_offset,
-			)
+			buffer.write("\\autoref{" + this.label + "}\n", buffer_offset)
 		);
 	}
 }
@@ -624,13 +647,23 @@ export class Wikilink implements node {
 		this.header = header;
 		this.displayed = displayed;
 	}
-	async unroll(): Promise<node[]> {
+	async unroll(data: unroll_data): Promise<node[]> {
+		if (this.displayed !== undefined) {
+			return [new Text(this.displayed)];
+		}
 		const match = /^@(.*)$/.exec(this.content);
 		if (match !== null) {
 			return [new Citation(match[1])];
+		} else if(this.header !== "proof") {
+			return [
+				new Reference(
+					label_from_location(data, this.content, this.header),
+				),
+			];
 		} else {
 			return [
-				new Reference(label_from_location(this.content, this.header)),
+				new Hyperlink( "the proof", 
+					label_from_location(data, this.content, this.header)),
 			];
 		}
 	}
@@ -645,6 +678,24 @@ export class Wikilink implements node {
 				buffer_offset,
 			)
 		);
+	}
+}
+
+export class Hyperlink implements node {
+	address:string
+	label: string;
+	latex(buffer: Buffer, buffer_offset: number): number {
+		return (
+			buffer_offset +
+			buffer.write("\\hyperlink{" + this.address + "}{" + this.label+ "}", buffer_offset)
+		);
+	}
+	async unroll(): Promise<node[]> {
+		return [this];
+	}
+	constructor(label: string, address:string) {
+		this.label = label;
+		this.address = address;
 	}
 }
 
@@ -995,15 +1046,15 @@ export function parse_inline<ClassObj extends node>(
 }
 
 export function parse_all_inline(inline_arr: node[]): node[] {
-	inline_arr = parse_inline<InlineMath>(
-		inline_arr,
-		InlineMath.regexp,
-		InlineMath.build_from_match,
-	);
 	inline_arr = parse_inline<Wikilink>(
 		inline_arr,
 		Wikilink.regexp,
 		Wikilink.build_from_match,
+	); // must be before inline math so as to include math in displayed text.
+	inline_arr = parse_inline<InlineMath>(
+		inline_arr,
+		InlineMath.regexp,
+		InlineMath.build_from_match,
 	);
 	inline_arr = parse_inline<ExplicitRef>(
 		inline_arr,
@@ -1106,15 +1157,15 @@ export function parse_display(
 ): [{ [key: string]: string }, node[]] {
 	const parsed_yaml = parse_yaml_header(input);
 	let new_display = [new Paragraph([new Text(parsed_yaml[1])])] as node[];
-	new_display = split_display<Environment>(
-		new_display,
-		Environment.build_from_match,
-		Environment.regexp,
-	);
 	new_display = split_display<EmbedWikilink>(
 		new_display,
 		EmbedWikilink.build_from_match,
 		EmbedWikilink.regexp,
+	); //must come before explicit environment
+	new_display = split_display<Environment>(
+		new_display,
+		Environment.build_from_match,
+		Environment.regexp,
 	);
 	new_display = split_display<DisplayMath>(
 		new_display,

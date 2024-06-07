@@ -79,8 +79,8 @@ export default class ExportPaperPlugin extends Plugin {
 						this.settings.template_path,
 					);
 					if (!template_file) {
-						console.warn(
-							"Template file not found, will use default template.",
+						console.log(
+							"Template file not found, exporting with default template.",
 						);
 					}
 					try {
