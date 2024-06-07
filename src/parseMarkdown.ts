@@ -1,4 +1,9 @@
-import { find_file, make_file_path, DEFAULT_TEMPLATE } from "./utils";
+import {
+	find_file,
+	escape_latex,
+	make_file_path,
+	DEFAULT_TEMPLATE,
+} from "./utils";
 import * as fs from "fs";
 import { TFile, Notice, Vault } from "obsidian";
 
@@ -40,18 +45,18 @@ export class MDRoot implements node {
 	yaml: { [key: string]: string };
 	file: TFile;
 	children: node[];
-	constructor(yaml:{ [key: string]: string }, children: node[], address: TFile) {
+	constructor(
+		yaml: { [key: string]: string },
+		children: node[],
+		address: TFile,
+	) {
 		this.yaml = yaml;
 		this.children = children;
 		this.file = address;
 	}
 	async unroll(data: unroll_data): Promise<node[]> {
-		const new_children: node[] = [];
 		data.current_file = this.file;
-		for (const elt of this.children) {
-			new_children.push(...(await elt.unroll(data)));
-		}
-		return new_children;
+		return await unroll_array(data, this.children);
 	}
 	latex(buffer: Buffer, offset: number) {
 		for (const elt of this.children) {
@@ -59,6 +64,14 @@ export class MDRoot implements node {
 		}
 		return offset;
 	}
+}
+
+async function unroll_array(data: unroll_data, content_array: node[]) {
+	const new_children: node[] = [];
+	for (const elt of content_array) {
+		new_children.push(...(await elt.unroll(data)));
+	}
+	return new_children;
 }
 
 export class Header implements node {
@@ -141,7 +154,7 @@ export interface node {
 
 export function address_to_label(address: string): string {
 	//substitute
-	return address.toLowerCase().trim().replace(" ", "_");
+	return address.toLowerCase().trim().replace(/ /g, "_");
 }
 
 function label_from_location(address: string, header_address?: string): string {
@@ -225,7 +238,12 @@ export class Paragraph implements node {
 	constructor(elements: node[]) {
 		this.elements = elements;
 	}
-	async unroll(): Promise<node[]> {
+	async unroll(data: unroll_data): Promise<node[]> {
+		const new_elements: node[] = [];
+		for (const elt of this.elements) {
+			new_elements.push(...(await elt.unroll(data)));
+		}
+		this.elements = new_elements;
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
@@ -245,11 +263,9 @@ export class ExplicitRef implements node {
 	}
 	static regexp = /@(\S+)/g; // parse only after parsing for citations.
 	static build_from_match(regexmatch: RegExpMatchArray): ExplicitRef {
-		console.log("build from match");
 		return new ExplicitRef(regexmatch[1]);
 	}
 	async unroll(data: unroll_data): Promise<node[]> {
-		console.log("unrolling");
 		this.label = explicit_label(
 			data.longform_file,
 			data.current_file,
@@ -258,9 +274,8 @@ export class ExplicitRef implements node {
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
-		console.log("write out");
 		let output = "";
-		const eq_pattern = /eq-(\S+?)/;
+		const eq_pattern = /eq-(\S+)/;
 		const match = eq_pattern.exec(this.label);
 		if (match) {
 			output = "eq:" + match[1];
@@ -532,7 +547,18 @@ export class EmbedWikilink implements node {
 			header_val,
 		);
 		if (return_data === undefined) {
-			return [this];
+			return [
+				new BlankLine(),
+				new Paragraph([
+					new Text(
+						"Content not found: Could not find the content of \\emph{" +
+							escape_latex(this.content) +
+							"} with header \\emph{" +
+							this.header +
+							"}",
+					),
+				]),
+			];
 		}
 		const [parsed_contents, header_level] = return_data;
 		const ambient_header_offset = data.headers_level_offset;
@@ -615,9 +641,7 @@ export class Wikilink implements node {
 		return (
 			buffer_offset +
 			buffer.write(
-				"\\autoref{" +
-					label_from_location(this.content, this.header) +
-					"}",
+				"[[" + this.content + "#" + this.header + "]]",
 				buffer_offset,
 			)
 		);
@@ -675,7 +699,7 @@ export class DisplayMath implements node {
 	label: string | undefined;
 	explicit_env_name: string | undefined;
 	static regexp =
-		/\$\$\s*?(?:\\begin\{(\S*?)\}\s*([\s\S]*?)\s*\\end\{\1\}\s*?|\s*([\s\S]*?)\s*?)\$\$(?:\s*?\{#eq-(.*?)\})?/g;
+		/\$\$\s*(?:\\begin{(\S*?)}\s*([\S\s]*?)\s*\\end{\1}|([\S\s]*?))\s*?\$\$(?:\s*?{#(\S*?)})?/gs;
 	static build_from_match(match: RegExpMatchArray): DisplayMath {
 		const latex = match[2] === undefined ? match[3] : match[2];
 		return new DisplayMath(latex, match[4], match[1]);
@@ -715,21 +739,84 @@ export class DisplayMath implements node {
 export async function export_longform(
 	notes_dir: Vault,
 	longform_file: TFile,
-): Promise<[{ [key: string]: string }, string]> {
+): Promise<{
+	yaml: { [key: string]: string };
+	abstract: string | undefined;
+	body: string;
+	appendix: string | undefined;
+}> {
 	if (longform_file === undefined) {
 		throw new Error(`File not found: ${longform_file} in ${notes_dir}`);
 	}
 	const file_contents = await notes_dir.read(longform_file);
 	const parsed_contents = parse_markdown_file(file_contents, longform_file);
+	console.log("parsed contents before unroll: ", parsed_contents);
+	let abstract_content: node[] | undefined;
+	for (const e of parsed_contents.children) {
+		if (
+			e instanceof Header &&
+			e.latex_title().toLowerCase().trim() === "abstract"
+		) {
+			abstract_content = e.children;
+			parsed_contents.children = parsed_contents.children.filter(
+				(x) => x !== e,
+			);
+		}
+	}
+
+	let appendix_content: node[] | undefined;
+	for (const e of parsed_contents.children) {
+		if (
+			e instanceof Header &&
+			e.latex_title().toLowerCase().trim() === "appendix"
+		) {
+			appendix_content = e.children;
+			parsed_contents.children = parsed_contents.children.filter(
+				(x) => x !== e,
+			);
+		}
+	}
+
+	let body_header_content = parsed_contents.children;
+	for (const e of parsed_contents.children) {
+		if (
+			e instanceof Header &&
+			e.latex_title().toLowerCase().trim() === "body"
+		) {
+			body_header_content = e.children;
+			lower_headers(body_header_content);
+		}
+	}
+
 	const data = init_data(longform_file, notes_dir);
-	const unrolled_content = new MDRoot(parsed_contents.yaml,
-		await parsed_contents.unroll(data),
-		longform_file,
-	);
-	console.log(unrolled_content);
+	const abstract_string =
+		abstract_content === undefined
+			? undefined
+			: await render_content(data, abstract_content);
+	const body_string = await render_content(data, body_header_content);
+	const appendix_string =
+		appendix_content === undefined
+			? undefined
+			: await render_content(data, appendix_content);
+	return {
+		yaml: parsed_contents.yaml,
+		abstract: abstract_string,
+		body: body_string,
+		appendix: appendix_string,
+	};
+}
+
+async function render_content(
+	data: unroll_data,
+	content: node[],
+): Promise<string> {
+	const unrolled_content = await unroll_array(data, content);
 	const buffer = Buffer.alloc(100000);
-	const offset = unrolled_content.latex(buffer, 0);
-	return [unrolled_content.yaml, buffer.toString("utf8", 0, offset)];
+	let offset = 0;
+	for (const elt of unrolled_content) {
+		offset = elt.latex(buffer, offset);
+	}
+	return buffer.toString("utf8", 0, offset);
 }
 
 export async function export_longform_with_template(
@@ -739,15 +826,75 @@ export async function export_longform_with_template(
 	template_file: TFile | null,
 ) {
 	const parsed_contents = await export_longform(notes_dir, longform_file);
-	let template_content = DEFAULT_TEMPLATE;
-	if(template_file){
-		template_content = await notes_dir.read(template_file)
+	let template_content: string;
+	if (template_file) {
+		template_content = await notes_dir.read(template_file);
+		for (const key of Object.keys(parsed_contents["yaml"])) {
+			template_content = template_content.replace(
+				RegExp(`\\\$${key}\\\$`, "i"),
+				parsed_contents["yaml"][key],
+			);
+		}
+		template_content = template_content.replace(
+			/\$body\$/i,
+			parsed_contents["body"],
+		);
+
+		if (parsed_contents["abstract"] !== undefined) {
+			if (template_file) {
+				template_content = template_content.replace(
+					/\$abstract\$/i,
+					parsed_contents["abstract"],
+				);
+			} else {
+				template_content;
+			}
+		}
+
+		if (parsed_contents["appendix"] !== undefined) {
+			template_content = template_content.replace(
+				/\$appendix\$/i,
+				parsed_contents["appendix"],
+			);
+		}
+	} else {
+		template_content = `\\documentclass{article}
+\\input{header}
+\\addbibresource{bibliography.bib}\n`;
+		if (parsed_contents["yaml"]["title"] !== undefined) {
+			template_content +=
+				`\\title{` + parsed_contents["yaml"]["title"] + `}\n`;
+		}
+
+		if (parsed_contents["yaml"]["author"] !== undefined) {
+			template_content +=
+				`\\author{` + parsed_contents["yaml"]["author"] + `}\n`;
+		}
+		template_content += `\\begin{document}
+\\maketitle
+`;
+		for (const key of Object.keys(parsed_contents["yaml"])) {
+			template_content = template_content.replace(
+				RegExp(`\\\$${key}\\\$`, "i"),
+				parsed_contents["yaml"][key],
+			);
+		}
+		if (parsed_contents["abstract"] !== undefined) {
+			template_content =
+				template_content +
+				`\\begin{abstract}\n` +
+				parsed_contents["abstract"] +
+				`\\end{abstract}\n`;
+		}
+		template_content += parsed_contents["body"] + `\\printbibliography\n`;
+
+		if (parsed_contents["appendix"] !== undefined) {
+			template_content +=
+				`\\section{Appendix}\n` + parsed_contents["appendix"];
+		}
+		template_content += "\\end{document}";
 	}
-	for(const key of Object.keys(parsed_contents[0])){
-		template_content = template_content.replace(RegExp(`\\\$${key}\\\$`, 'i'), parsed_contents[0][key]);
-	}
-	const out_str = template_content.replace(/\$body\$/i, parsed_contents[1]);
-	await notes_dir.modify(output_file, out_str);
+	await notes_dir.modify(output_file, template_content);
 	return new Notice("Exported to: " + output_file.path);
 }
 
@@ -858,7 +1005,11 @@ export function parse_all_inline(inline_arr: node[]): node[] {
 		Wikilink.regexp,
 		Wikilink.build_from_match,
 	);
-	inline_arr = parse_inline<ExplicitRef>(inline_arr, ExplicitRef.regexp, ExplicitRef.build_from_match)
+	inline_arr = parse_inline<ExplicitRef>(
+		inline_arr,
+		ExplicitRef.regexp,
+		ExplicitRef.build_from_match,
+	);
 	inline_arr = parse_inline<Strong>(
 		inline_arr,
 		Strong.regexp,
@@ -879,6 +1030,15 @@ function traverse_and_parse_from_header(head: Header): void {
 		}
 		if (elt instanceof Paragraph) {
 			elt.elements = parse_all_inline(elt.elements);
+		}
+	}
+}
+
+function lower_headers(content: node[]): void {
+	for (const e of content) {
+		if (e instanceof Header) {
+			e.level -= 1;
+			lower_headers(e.children);
 		}
 	}
 }
@@ -921,29 +1081,30 @@ function parse_inside_env(input: string): node[] {
 
 export function parse_markdown_file(input: string, address: TFile): MDRoot {
 	const [yaml, content] = parse_display(input);
-	console.log(content);
 	return new MDRoot(yaml, content, address);
 }
 
-function parse_yaml_header(input:string): [{ [key: string]: string }, string]{
-	const match = /^---\n(.*?)---\n(.*)$/s.exec(input)
-	if(!match){
-		return [{}, input]
+function parse_yaml_header(input: string): [{ [key: string]: string }, string] {
+	const match = /^---\n(.*?)---\n(.*)$/s.exec(input);
+	if (!match) {
+		return [{}, input];
 	}
-	const yaml_content = match[1]
-	const remainder = match[2]
-	const field_regex = /^(['"]?)(\S+?)\1\s*?:\s+(['"]?)(.+?)\3$/mg
+	const yaml_content = match[1];
+	const remainder = match[2];
+	const field_regex = /^(['"]?)(\S+?)\1\s*?:\s+(['"]?)(.+?)\3$/gm;
 	let field_match: RegExpMatchArray | null;
 	const field_dict: { [key: string]: string } = {};
-	while((field_match = field_regex.exec(yaml_content))!== null){
-		field_dict[field_match[2]] = field_match[4]
+	while ((field_match = field_regex.exec(yaml_content)) !== null) {
+		field_dict[field_match[2]] = field_match[4];
 	}
-	return [field_dict, remainder]
+	return [field_dict, remainder];
 }
 
 // There seems to be too many elements here, some should be inline.
-export function parse_display(input: string): [{ [key: string]: string }, node[]] {
-	const parsed_yaml = parse_yaml_header(input)
+export function parse_display(
+	input: string,
+): [{ [key: string]: string }, node[]] {
+	const parsed_yaml = parse_yaml_header(input);
 	let new_display = [new Paragraph([new Text(parsed_yaml[1])])] as node[];
 	new_display = split_display<Environment>(
 		new_display,
@@ -954,6 +1115,11 @@ export function parse_display(input: string): [{ [key: string]: string }, node[]
 		new_display,
 		EmbedWikilink.build_from_match,
 		EmbedWikilink.regexp,
+	);
+	new_display = split_display<DisplayMath>(
+		new_display,
+		DisplayMath.build_from_match,
+		DisplayMath.regexp,
 	);
 	new_display = split_display<BlankLine>(
 		new_display,

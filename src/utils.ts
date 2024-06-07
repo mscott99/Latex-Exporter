@@ -10,6 +10,10 @@ export function make_file_path(vault: Vault, file: TFile) {
 	}
 }
 
+export function escape_latex(input:string){
+	return input.replace(/\\/g, '\\textbackslash{}').replace(/%/g, '\\%').replace(/&/g, '\\&').replace(/#/g, '\\#').replace(/\$/g, '\\$').replace(/_/g, '\\_').replace(/\{/g, '\\{').replace(/\}/g, '\\}').replace(/\^/g, '\\^{}').replace(/~/g, '\\textasciitilde{}').replace(/</g, '\\textless{}').replace(/>/g, '\\textgreater{}').replace(/\|/g, '\\textbar{}').replace(/"/g, "''").replace(/'/g, "`");
+}
+
 ("Searches recursively in the folder_path for a file with name file_name.");
 export function find_file(
 	the_vault: Vault,
@@ -58,6 +62,9 @@ export const DEFAULT_TEMPLATE = `\\documentclass{article}
 \\title{$title$}
 \\begin{document}
 \\maketitle
-$body$
-\\end{document}
-`;
+
+$abstract$\\end{abstract}
+$body$\\printbibliography
+\\section{Appendix}
+$appendix$
+\\end{document}`;

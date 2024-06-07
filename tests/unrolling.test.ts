@@ -7,7 +7,7 @@ import {
 	Environment,
 	DisplayMath,
 	Emphasis,
-	parse_markdown,
+	parse_display,
 	Strong,
 	Wikilink,
 	inline_node,
@@ -44,7 +44,7 @@ describe("split_display_blocks", () => {
 			throw new Error(`File not found: ${address} in ${notes_dir}`);
 		}
 		const file_contents = fs.readFileSync(longform_path, "utf-8");
-		const parsed_contents = parse_markdown(file_contents, address);
+		const parsed_contents = parse_display(file_contents, address);
 		const data = init_data(address, notes_dir);
 		const unrolled_content = parsed_contents.unroll(data);
 
@@ -66,7 +66,7 @@ describe("split_display_blocks", () => {
 			throw new Error(`File not found: ${address} in ${notes_dir}`);
 		}
 		const file_contents = fs.readFileSync(longform_path, "utf-8");
-		const parsed_contents = parse_markdown(file_contents, address);
+		const parsed_contents = parse_display(file_contents, address);
 		const data = init_data(address, notes_dir);
 		const unrolled_content = parsed_contents.unroll(data);
 
@@ -98,7 +98,7 @@ describe("split_display_blocks", () => {
 			throw new Error(`File not found: ${address} in ${notes_dir}`);
 		}
 		const file_contents = fs.readFileSync(longform_path, "utf-8");
-		const parsed_contents = parse_markdown(file_contents, address);
+		const parsed_contents = parse_display(file_contents, address);
 		const data = init_data(address, notes_dir);
 		const unrolled_content = parsed_contents.unroll(data);
 

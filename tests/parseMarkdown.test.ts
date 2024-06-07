@@ -5,7 +5,7 @@ import {
 	Environment,
 	DisplayMath,
 	Emphasis,
-	parse_markdown,
+	parse_display,
 	Strong,
 	Wikilink,
 	inline_node,
@@ -300,7 +300,7 @@ $$\\sum$$ hi there.`;
 					],
 				),
 			]
-		expect(parse_markdown(markdown)).toEqual(expected);
+		expect(parse_display(markdown)).toEqual(expected);
 	});
 	// test('test parsing lists', () => {
 	// To make tests we need to generalize the logic, because we need a loop to match lists.
