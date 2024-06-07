@@ -55,6 +55,7 @@ export function find_file(
 export const DEFAULT_TEMPLATE = `\\documentclass{article}
 \\input{header}
 \\addbibresource{bibliography.bib}
+\\title{$title$}
 \\begin{document}
 \\maketitle
 $body$

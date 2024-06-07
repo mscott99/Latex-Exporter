@@ -37,9 +37,11 @@ export function init_data(longform_file: TFile, notes_dir: Vault): unroll_data {
  */
 export class MDRoot implements node {
 	level = 0;
+	yaml: { [key: string]: string };
 	file: TFile;
 	children: node[];
-	constructor(children: node[], address: TFile) {
+	constructor(yaml:{ [key: string]: string }, children: node[], address: TFile) {
+		this.yaml = yaml;
 		this.children = children;
 		this.file = address;
 	}
@@ -63,17 +65,17 @@ export class Header implements node {
 	children: node[];
 	level: number;
 	label: string | undefined;
-	title: inline_node[];
+	title: node[];
 	constructor(
 		level: number,
-		title: inline_node[],
+		title: node[],
 		children: node[],
 		label?: string,
 	) {
 		this.level = level;
 		this.title = title;
 		this.children = children;
-		this.label = label === undefined ? undefined : label;
+		this.label = label;
 	}
 	async unroll(data: unroll_data): Promise<node[]> {
 		this.level += data.headers_level_offset;
@@ -104,22 +106,27 @@ export class Header implements node {
 	}
 
 	latex(buffer: Buffer, buffer_offset: number): number {
-		const header_title = this.title.forEach((x) =>
-			x.latex(buffer, buffer_offset),
-		);
+		const header_title = this.latex_title();
 		let header_string = "";
-		if (this.level > 6) {
+		if (this.level === 1) {
+			header_string = "\\section{" + header_title + "}\n";
+		} else if (this.level === 2) {
+			header_string = "\\subsection{" + header_title + "}\n";
+		} else if (this.level === 3) {
+			header_string = "\\subsubsection{" + header_title + "}\n";
+		} else if (this.level >= 4) {
 			header_string = "\\textbf{" + header_title + "}\n";
-		} else {
-			header_string = "#".repeat(this.level) + " " + header_title + "\n";
 		}
+
 		buffer_offset += buffer.write(header_string, buffer_offset);
+
 		if (this.label !== undefined) {
 			buffer_offset += buffer.write(
-				"\\label{sec:" + this.label + "}",
+				"\\label{sec:" + this.label + "}\n",
 				buffer_offset,
 			);
 		}
+
 		for (const e of this.children) {
 			buffer_offset = e.latex(buffer, buffer_offset);
 		}
@@ -131,6 +138,7 @@ export interface node {
 	unroll(data?: unroll_data): Promise<node[]>;
 	latex(buffer: Buffer, buffer_offset: number): number;
 }
+
 export function address_to_label(address: string): string {
 	//substitute
 	return address.toLowerCase().trim().replace(" ", "_");
@@ -187,7 +195,7 @@ export class Environment implements node {
 	}
 	async unroll(data: unroll_data): Promise<node[]> {
 		// If it is unrolled, it is likely an explicit env.
-		if (this.label) {
+		if (this.label !== undefined) {
 			this.label = explicit_label(
 				data.longform_file,
 				data.current_file,
@@ -213,8 +221,8 @@ export class Environment implements node {
 }
 
 export class Paragraph implements node {
-	elements: inline_node[];
-	constructor(elements: inline_node[]) {
+	elements: node[];
+	constructor(elements: node[]) {
 		this.elements = elements;
 	}
 	async unroll(): Promise<node[]> {
@@ -230,21 +238,18 @@ export class Paragraph implements node {
 	}
 }
 
-export interface inline_node {
-	content: string;
-	latex(buffer: Buffer, buffer_offset: number): number;
-}
-
 export class ExplicitRef implements node {
 	label: string;
 	constructor(content: string) {
 		this.label = content;
 	}
-	static regexp = /@(\w+?)/; // parse only after parsing for citations.
+	static regexp = /@(\S+)/g; // parse only after parsing for citations.
 	static build_from_match(regexmatch: RegExpMatchArray): ExplicitRef {
+		console.log("build from match");
 		return new ExplicitRef(regexmatch[1]);
 	}
 	async unroll(data: unroll_data): Promise<node[]> {
+		console.log("unrolling");
 		this.label = explicit_label(
 			data.longform_file,
 			data.current_file,
@@ -253,8 +258,9 @@ export class ExplicitRef implements node {
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
+		console.log("write out");
 		let output = "";
-		const eq_pattern = /eq-(\w+)/;
+		const eq_pattern = /eq-(\S+?)/;
 		const match = eq_pattern.exec(this.label);
 		if (match) {
 			output = "eq:" + match[1];
@@ -268,10 +274,13 @@ export class ExplicitRef implements node {
 	}
 }
 
-export class Text implements inline_node {
+export class Text implements node {
 	content: string;
 	constructor(content: string) {
 		this.content = content;
+	}
+	async unroll(): Promise<node[]> {
+		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
 		return buffer_offset + buffer.write(this.content, buffer_offset);
@@ -292,7 +301,7 @@ export class BlankLine implements node {
 	}
 }
 
-export class Emphasis implements inline_node {
+export class Emphasis implements node {
 	static regexp = /(?:\*(\S.*?)\*)|(?:_(\S.*?)_)/gs;
 	content: string;
 	label: string | undefined;
@@ -319,7 +328,7 @@ export class Emphasis implements inline_node {
 	}
 }
 
-export class Strong implements inline_node {
+export class Strong implements node {
 	// similar to emphasis but with double asterisks
 	static regexp = /(?:\*\*(\S.*?)\*\*)|(?:__(\S.*?)__)/gs;
 	content: string;
@@ -347,7 +356,7 @@ export class Strong implements inline_node {
 	}
 }
 
-export class InlineMath implements inline_node {
+export class InlineMath implements node {
 	static regexp = /\$([^\$]+)\$(?:{(.*?)})?/g;
 	content: string;
 	label: string | undefined;
@@ -365,6 +374,25 @@ export class InlineMath implements inline_node {
 		return (
 			buffer_offset +
 			buffer.write("$" + this.content + "$", buffer_offset)
+		);
+	}
+}
+
+export class InlineCode implements node {
+	code: string;
+	static regexp = /`(.*?)`/gs;
+	static build_from_match(match: RegExpMatchArray): InlineCode {
+		return new InlineCode(match[1]);
+	}
+	constructor(content: string) {
+		this.code = content;
+	}
+	async unroll(): Promise<node[]> {
+		return [this];
+	}
+	latex(buffer: Buffer, buffer_offset: number) {
+		return (
+			buffer_offset + buffer.write("`" + this.code + "`", buffer_offset)
 		);
 	}
 }
@@ -455,7 +483,7 @@ function check_level(
 				}
 				if (
 					header_address_stack.length > 0 &&
-					elt.title[0].content.toLowerCase().trim() ==
+					elt.latex_title().toLowerCase().trim() ==
 						current_check.toLowerCase().trim()
 				) {
 					if (header_address_stack.length == 1) {
@@ -549,7 +577,7 @@ export class EmbedWikilink implements node {
  * @returns {string} The sum of the two numbers.
  */
 
-export class Wikilink implements inline_node {
+export class Wikilink implements node {
 	attribute: string | undefined;
 	content: string;
 	header: string | undefined;
@@ -575,7 +603,9 @@ export class Wikilink implements inline_node {
 		if (match !== null) {
 			return [new Citation(match[1])];
 		} else {
-			return [new Reference(label_from_location(this.content))];
+			return [
+				new Reference(label_from_location(this.content, this.header)),
+			];
 		}
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
@@ -644,12 +674,13 @@ export class DisplayMath implements node {
 	content: string;
 	label: string | undefined;
 	explicit_env_name: string | undefined;
-	static regexp = /\$\$\s*?(?:\\begin\{(\S*?)\}\s*([\s\S]*?)\s*\\end\{\1\}\s*?|\s*([\s\S]*?)\s*?)\$\$(?:\s*?\{#eq-(.*?)\})?/g;
+	static regexp =
+		/\$\$\s*?(?:\\begin\{(\S*?)\}\s*([\s\S]*?)\s*\\end\{\1\}\s*?|\s*([\s\S]*?)\s*?)\$\$(?:\s*?\{#eq-(.*?)\})?/g;
 	static build_from_match(match: RegExpMatchArray): DisplayMath {
-		const latex = match[2] === undefined? match[3]: match[2]
+		const latex = match[2] === undefined ? match[3] : match[2];
 		return new DisplayMath(latex, match[4], match[1]);
 	}
-	constructor(latex: string, label?: string, explicit_env?:string) {
+	constructor(latex: string, label?: string, explicit_env?: string) {
 		this.content = latex;
 		this.label = label;
 		this.explicit_env_name = explicit_env;
@@ -658,8 +689,14 @@ export class DisplayMath implements node {
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
-		const env_name = this.explicit_env_name === undefined? "equation": this.explicit_env_name;
-		buffer_offset += buffer.write("\\begin{" + env_name + "}\n", buffer_offset);
+		const env_name =
+			this.explicit_env_name === undefined
+				? "equation"
+				: this.explicit_env_name;
+		buffer_offset += buffer.write(
+			"\\begin{" + env_name + "}\n",
+			buffer_offset,
+		);
 		if (this.label !== undefined) {
 			buffer_offset += buffer.write(
 				"\\label{eq:" + this.label + "}\n",
@@ -667,7 +704,10 @@ export class DisplayMath implements node {
 			);
 		}
 		buffer_offset += buffer.write(this.content + "\n", buffer_offset);
-		buffer_offset += buffer.write("\\end{"+ env_name + "}\n", buffer_offset);
+		buffer_offset += buffer.write(
+			"\\end{" + env_name + "}\n",
+			buffer_offset,
+		);
 		return buffer_offset;
 	}
 }
@@ -675,53 +715,41 @@ export class DisplayMath implements node {
 export async function export_longform(
 	notes_dir: Vault,
 	longform_file: TFile,
-): Promise<string> {
+): Promise<[{ [key: string]: string }, string]> {
 	if (longform_file === undefined) {
 		throw new Error(`File not found: ${longform_file} in ${notes_dir}`);
 	}
-	const file_contents = await notes_dir.read(longform_file)
+	const file_contents = await notes_dir.read(longform_file);
 	const parsed_contents = parse_markdown_file(file_contents, longform_file);
 	const data = init_data(longform_file, notes_dir);
-	const unrolled_content = new MDRoot(
+	const unrolled_content = new MDRoot(parsed_contents.yaml,
 		await parsed_contents.unroll(data),
 		longform_file,
 	);
+	console.log(unrolled_content);
 	const buffer = Buffer.alloc(100000);
 	const offset = unrolled_content.latex(buffer, 0);
-	return buffer.toString("utf8", 0, offset);
+	return [unrolled_content.yaml, buffer.toString("utf8", 0, offset)];
 }
 
 export async function export_longform_with_template(
 	notes_dir: Vault,
 	longform_file: TFile,
-	output_path: string,
-	template_path: string | undefined,
+	output_file: TFile,
+	template_file: TFile | null,
 ) {
 	const parsed_contents = await export_longform(notes_dir, longform_file);
-	let template_content: string | undefined;
-	// if (false || template_path !== undefined) {
-	// 	template_content = fs.readFileSync(template_path, "utf-8");
-	// 	if (template_content === undefined) {
-	// 		throw new Error(`Could not find the template: ${template_path}`);
-	// 	}
-	//jj } else {
-	template_content = DEFAULT_TEMPLATE;
-	// }
-	const out_str = template_content.replace(/\$body\$/, parsed_contents);
-	const out_file_name = "output/" + longform_file.basename + "_output.tex";
-	let out_file = notes_dir.getFileByPath(out_file_name);
-	if (out_file !== null) {
-		console.log("File exists, overwriting.");
-		await notes_dir.modify(out_file, out_str);
-	} else {
-		out_file = await notes_dir.create(out_file_name, out_str);
+	let template_content = DEFAULT_TEMPLATE;
+	if(template_file){
+		template_content = await notes_dir.read(template_file)
 	}
-	return new Notice("Exported to: " + out_file.path);
+	for(const key of Object.keys(parsed_contents[0])){
+		template_content = template_content.replace(RegExp(`\\\$${key}\\\$`, 'i'), parsed_contents[0][key]);
+	}
+	const out_str = template_content.replace(/\$body\$/i, parsed_contents[1]);
+	await notes_dir.modify(output_file, out_str);
+	return new Notice("Exported to: " + output_file.path);
 }
-
-// export default function parseMarkdown(markdown: string, address: string) {
-// const baseMD = new MDRoot([new Paragraph([new Text(markdown)])])
-// }
 
 // The custom part is a regex and a constructor. So a regex, and function to get the object from the regex
 export function split_display<T extends node>(
@@ -740,7 +768,7 @@ export function split_display<T extends node>(
 				elt.elements[0] instanceof Text,
 				"Paragraph should have only one text element at this stage of parsing",
 			);
-			const inline_element = elt.elements[0];
+			const inline_element = elt.elements[0] as Text;
 			let current_match: RegExpMatchArray | null = null;
 			let start_index = 0;
 			const string_to_parse = inline_element.content;
@@ -754,7 +782,7 @@ export function split_display<T extends node>(
 					start_index,
 					current_match.index,
 				);
-				if (prev_chunk.trim() != "") {
+				if (prev_chunk.trim() !== "") {
 					new_display.push(
 						new Paragraph([new Text(strip_newlines(prev_chunk))]),
 					);
@@ -766,7 +794,7 @@ export function split_display<T extends node>(
 			const return_string = strip_newlines(
 				inline_element.content.slice(start_index),
 			);
-			if (return_string.trim() != "") {
+			if (return_string.trim() !== "") {
 				new_display.push(new Paragraph([new Text(return_string)]));
 			}
 		} else {
@@ -784,100 +812,64 @@ function strip_newlines(thestring: string): string {
 	return result[1];
 }
 
-export function parse_inline<ClassObj extends inline_node>(
-	text: Text,
-	make_obj: (args: RegExpMatchArray) => ClassObj,
+export function parse_inline<ClassObj extends node>(
+	inline_arr: node[],
 	class_regexp: RegExp,
-): inline_node[] {
-	const new_inline: inline_node[] = [];
-	let current_match: RegExpMatchArray | null = null;
-	let start_index = 0;
-	while ((current_match = class_regexp.exec(text.content)) !== null) {
-		if (current_match.index == null) {
-			throw new Error("current_match.index is undefined");
+	make_obj: (args: RegExpMatchArray) => ClassObj,
+): node[] {
+	const new_inline: node[] = [];
+	for (const text of inline_arr) {
+		if (text instanceof Text) {
+			let current_match: RegExpMatchArray | null = null;
+			let start_index = 0;
+			while ((current_match = class_regexp.exec(text.content)) !== null) {
+				if (current_match.index == null) {
+					throw new Error("current_match.index is undefined");
+				}
+				const prev_chunk = text.content.slice(
+					start_index,
+					current_match.index,
+				);
+				if (prev_chunk.trim() !== "") {
+					new_inline.push(new Text(prev_chunk));
+				}
+				new_inline.push(make_obj(current_match));
+				start_index = current_match.index + current_match[0].length;
+			}
+			const last_string = text.content.slice(start_index);
+			if (last_string.trim() !== "") {
+				new_inline.push(new Text(last_string));
+			}
+		} else {
+			new_inline.push(text);
 		}
-		const prev_chunk = text.content.slice(start_index, current_match.index);
-		if (prev_chunk.trim() != "") {
-			new_inline.push(new Text(prev_chunk));
-		}
-		new_inline.push(make_obj(current_match));
-		start_index = current_match.index + current_match[0].length;
-	}
-	const last_string = text.content.slice(start_index);
-	if (last_string.trim() != "") {
-		new_inline.push(new Text(last_string));
 	}
 	return new_inline;
 }
 
-export function parse_all_inline(inline_arr: inline_node[]): inline_node[] {
-	let current_array: inline_node[] = inline_arr;
-
-	let new_inline: inline_node[] = [];
-	for (const current_inline of current_array) {
-		if (current_inline instanceof Text) {
-			new_inline.push(
-				...parse_inline<InlineMath>(
-					current_inline,
-					InlineMath.build_from_match,
-					InlineMath.regexp,
-				),
-			);
-		} else {
-			new_inline.push(current_inline);
-		}
-	}
-	current_array = new_inline;
-
-	new_inline = [];
-	for (const current_inline of current_array) {
-		if (current_inline instanceof Text) {
-			new_inline.push(
-				...parse_inline<Strong>(
-					current_inline,
-					Strong.build_from_match,
-					Strong.regexp,
-				),
-			);
-		} else {
-			new_inline.push(current_inline);
-		}
-	}
-	current_array = new_inline;
-
-	new_inline = [];
-	for (const current_inline of current_array) {
-		if (current_inline instanceof Text) {
-			new_inline.push(
-				...parse_inline<Emphasis>(
-					current_inline,
-					Emphasis.build_from_match,
-					Emphasis.regexp,
-				),
-			);
-		} else {
-			new_inline.push(current_inline);
-		}
-	}
-	current_array = new_inline;
-
-	new_inline = [];
-	for (const current_inline of current_array) {
-		if (current_inline instanceof Text) {
-			new_inline.push(
-				...parse_inline<Wikilink>(
-					current_inline,
-					Wikilink.build_from_match,
-					Wikilink.regexp,
-				),
-			);
-		} else {
-			new_inline.push(current_inline);
-		}
-	}
-	current_array = new_inline;
-
-	return current_array;
+export function parse_all_inline(inline_arr: node[]): node[] {
+	inline_arr = parse_inline<InlineMath>(
+		inline_arr,
+		InlineMath.regexp,
+		InlineMath.build_from_match,
+	);
+	inline_arr = parse_inline<Wikilink>(
+		inline_arr,
+		Wikilink.regexp,
+		Wikilink.build_from_match,
+	);
+	inline_arr = parse_inline<ExplicitRef>(inline_arr, ExplicitRef.regexp, ExplicitRef.build_from_match)
+	inline_arr = parse_inline<Strong>(
+		inline_arr,
+		Strong.regexp,
+		Strong.build_from_match,
+	);
+	inline_arr = parse_inline<Emphasis>(
+		inline_arr,
+		Emphasis.regexp,
+		Emphasis.build_from_match,
+	);
+	return inline_arr;
 }
 
 function traverse_and_parse_from_header(head: Header): void {
@@ -909,16 +901,6 @@ function parse_inside_env(input: string): node[] {
 		EmbedWikilink.build_from_match,
 		EmbedWikilink.regexp,
 	);
-	new_display = split_display<Wikilink>( // must be after Wikilink
-		new_display,
-		Wikilink.build_from_match,
-		Wikilink.regexp,
-	);
-	new_display = split_display<ExplicitRef>( // must be after Wikilink
-		new_display,
-		ExplicitRef.build_from_match,
-		ExplicitRef.regexp,
-	);
 	new_display = split_display<DisplayMath>(
 		new_display,
 		DisplayMath.build_from_match,
@@ -938,12 +920,31 @@ function parse_inside_env(input: string): node[] {
 }
 
 export function parse_markdown_file(input: string, address: TFile): MDRoot {
-	const content = parse_markdown(input);
-	return new MDRoot(content, address);
+	const [yaml, content] = parse_display(input);
+	console.log(content);
+	return new MDRoot(yaml, content, address);
 }
 
-export function parse_markdown(input: string): node[] {
-	let new_display = [new Paragraph([new Text(input)])] as node[];
+function parse_yaml_header(input:string): [{ [key: string]: string }, string]{
+	const match = /^---\n(.*?)---\n(.*)$/s.exec(input)
+	if(!match){
+		return [{}, input]
+	}
+	const yaml_content = match[1]
+	const remainder = match[2]
+	const field_regex = /^(['"]?)(\S+?)\1\s*?:\s+(['"]?)(.+?)\3$/mg
+	let field_match: RegExpMatchArray | null;
+	const field_dict: { [key: string]: string } = {};
+	while((field_match = field_regex.exec(yaml_content))!== null){
+		field_dict[field_match[2]] = field_match[4]
+	}
+	return [field_dict, remainder]
+}
+
+// There seems to be too many elements here, some should be inline.
+export function parse_display(input: string): [{ [key: string]: string }, node[]] {
+	const parsed_yaml = parse_yaml_header(input)
+	let new_display = [new Paragraph([new Text(parsed_yaml[1])])] as node[];
 	new_display = split_display<Environment>(
 		new_display,
 		Environment.build_from_match,
@@ -954,26 +955,6 @@ export function parse_markdown(input: string): node[] {
 		EmbedWikilink.build_from_match,
 		EmbedWikilink.regexp,
 	);
-	new_display = split_display<Wikilink>( // must be after Wikilink
-		new_display,
-		Wikilink.build_from_match,
-		Wikilink.regexp,
-	);
-	new_display = split_display<ExplicitRef>( // must be after Wikilink
-		new_display,
-		ExplicitRef.build_from_match,
-		ExplicitRef.regexp,
-	);
-	new_display = split_display<DisplayMath>(
-		new_display,
-		DisplayMath.build_from_match,
-		DisplayMath.regexp,
-	);
-	new_display = split_display<DisplayCode>(
-		new_display,
-		DisplayCode.build_from_match,
-		DisplayCode.regexp,
-	);
 	new_display = split_display<BlankLine>(
 		new_display,
 		BlankLine.build_from_match,
@@ -981,7 +962,7 @@ export function parse_markdown(input: string): node[] {
 	);
 	const new_content = make_heading_tree(new_display);
 	traverse_tree_and_parse_inline(new_content);
-	return new_content;
+	return [parsed_yaml[0], new_content];
 }
 
 class ZeroHeader {
@@ -1009,7 +990,7 @@ export function make_heading_tree(markdown: node[]): node[] {
 				elt.elements[0] instanceof Text,
 				"Paragraph should have only one text element at this stage of parsing",
 			);
-			const inline_element = elt.elements[0];
+			const inline_element = elt.elements[0] as Text;
 			let start_index = 0;
 			while (
 				(current_match = headingRegex.exec(inline_element.content)) !==
@@ -1022,7 +1003,7 @@ export function make_heading_tree(markdown: node[]): node[] {
 					start_index,
 					current_match.index,
 				);
-				if (prev_chunk.trim() != "") {
+				if (prev_chunk.trim() !== "") {
 					new_display.push(
 						new Paragraph([new Text(strip_newlines(prev_chunk))]),
 					);
@@ -1050,7 +1031,7 @@ export function make_heading_tree(markdown: node[]): node[] {
 			}
 			// possibility of a final piece of text after matches
 			const return_string = inline_element.content.slice(start_index);
-			if (return_string.trim() != "") {
+			if (return_string.trim() !== "") {
 				new_display.push(
 					new Paragraph([new Text(strip_newlines(return_string))]),
 				);
