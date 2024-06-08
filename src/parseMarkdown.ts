@@ -66,6 +66,40 @@ export class MDRoot implements node {
 	}
 }
 
+export class Quote implements node {
+	content: string;
+	static regexp = /^>(.*)$/gm
+	constructor(content: string) {
+		this.content = content;
+	}
+	static build_from_match(regexmatch: RegExpMatchArray): Quote {
+		return new Quote(regexmatch[1]);
+	}
+	async unroll(): Promise<node[]> {
+		return [this];
+	}
+	latex(buffer: Buffer, buffer_offset: number) {
+		return buffer_offset;
+	}
+}
+
+export class Comment implements node {
+	content: string;
+	static regexp = /\%\%(.*?)\%\%/gs
+	constructor(content: string) {
+		this.content = content;
+	}
+	static build_from_match(regexmatch: RegExpMatchArray): Quote {
+		return new Comment(regexmatch[1]);
+	}
+	async unroll(): Promise<node[]> {
+		return [this];
+	}
+	latex(buffer: Buffer, buffer_offset: number) {
+		return buffer_offset;
+	}
+}
+
 async function unroll_array(data: unroll_data, content_array: node[]) {
 	const new_children: node[] = [];
 	for (const elt of content_array) {
@@ -201,7 +235,7 @@ export class Environment implements node {
 	// address_of_origin: string | undefined;
 	constructor(children: node[], type: string, label?: string) {
 		this.children = children;
-		this.type = type;
+		this.type = type.toLowerCase().trim();
 		this.label = label;
 		// this.address_of_origin = address_of_origin;
 	}
@@ -226,22 +260,22 @@ export class Environment implements node {
 	}
 	latex(buffer: Buffer, buffer_offset: number): number {
 		buffer_offset += buffer.write(
-			"\\begin{" + this.type + "}\n",
+			"\\begin{" + this.type + "}",
 			buffer_offset,
 		);
 		if (this.label !== undefined) {
 			if (this.type === "proof") {
 				buffer_offset += buffer.write(
-					"\\hypertarget{" +
+					"[\\hypertarget{" +
 						this.label +
 						"}Proof of \\autoref{" +
 						this.label.replace("proof", "statement") +
-						"}",
+						"}]",
 					buffer_offset,
 				);
 			} else {
 				buffer_offset += buffer.write(
-					"\\label{" + this.label + "}\n",
+					"\n\\label{" + this.label + "}\n",
 					buffer_offset,
 				);
 			}
@@ -285,7 +319,7 @@ export class ExplicitRef implements node {
 	constructor(content: string) {
 		this.label = content;
 	}
-	static regexp = /@(\S+)/g; // parse only after parsing for citations.
+	static regexp = /@([\w-_:]+)/g; // parse only after parsing for citations.
 	static build_from_match(regexmatch: RegExpMatchArray): ExplicitRef {
 		return new ExplicitRef(regexmatch[1]);
 	}
@@ -299,7 +333,7 @@ export class ExplicitRef implements node {
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
 		let output = "";
-		const eq_pattern = /eq-(\S+)/;
+		const eq_pattern = /eq-(\w+)/;
 		const match = eq_pattern.exec(this.label);
 		if (match) {
 			output = "eq:" + match[1];
@@ -654,7 +688,7 @@ export class Wikilink implements node {
 		const match = /^@(.*)$/.exec(this.content);
 		if (match !== null) {
 			return [new Citation(match[1])];
-		} else if(this.header !== "proof") {
+		} else if(this.header?.toLowerCase().trim() !== "proof") {
 			return [
 				new Reference(
 					label_from_location(data, this.content, this.header),
@@ -753,7 +787,12 @@ export class DisplayMath implements node {
 		/\$\$\s*(?:\\begin{(\S*?)}\s*([\S\s]*?)\s*\\end{\1}|([\S\s]*?))\s*?\$\$(?:\s*?{#(\S*?)})?/gs;
 	static build_from_match(match: RegExpMatchArray): DisplayMath {
 		const latex = match[2] === undefined ? match[3] : match[2];
-		return new DisplayMath(latex, match[4], match[1]);
+		const label_match = /eq-(\w+)/.exec(match[1])
+		let label_val = match[1]
+		if (label_match && label_match[1] !== undefined){
+			label_val = label_match[1]
+		}
+		return new DisplayMath(latex, match[4], label_val);
 	}
 	constructor(latex: string, label?: string, explicit_env?: string) {
 		this.content = latex;
@@ -801,7 +840,7 @@ export async function export_longform(
 	}
 	const file_contents = await notes_dir.read(longform_file);
 	const parsed_contents = parse_markdown_file(file_contents, longform_file);
-	console.log("parsed contents before unroll: ", parsed_contents);
+	console.log("parsed the contents before unroll: ", parsed_contents);
 	let abstract_content: node[] | undefined;
 	for (const e of parsed_contents.children) {
 		if (
@@ -1157,6 +1196,16 @@ export function parse_display(
 ): [{ [key: string]: string }, node[]] {
 	const parsed_yaml = parse_yaml_header(input);
 	let new_display = [new Paragraph([new Text(parsed_yaml[1])])] as node[];
+	new_display = split_display<Comment>(
+		new_display,
+		Comment.build_from_match,
+		Comment.regexp,
+	);
+	new_display = split_display<Quote>(
+		new_display,
+		Quote.build_from_match,
+		Quote.regexp,
+	);
 	new_display = split_display<EmbedWikilink>(
 		new_display,
 		EmbedWikilink.build_from_match,
