@@ -1,10 +1,7 @@
-import { mkdir, existsSync } from "fs";
 import * as path from "path";
 import {
 	App,
-	Editor,
-	MarkdownView,
-	Modal,
+	// Modal,
 	Notice,
 	Plugin,
 	PluginSettingTab,
@@ -16,7 +13,7 @@ import {
 // import remarkObsidian from 'remark-obsidian';
 // Remember to rename these classes and interfaces!
 
-import { export_longform_with_template } from "./parseMarkdown";
+import { export_longform } from "./export_longform";
 
 interface ExportPluginSettings {
 	mySetting: string;
@@ -40,22 +37,20 @@ export default class ExportPaperPlugin extends Plugin {
 			id: "export-paper",
 			name: "Export to paper",
 			callback: async () => {
+
 				const active_file = this.app.workspace.getActiveFile();
-				const template_path = this.settings.template_path;
+				// const template_path = this.settings.template_path;
 
 				if (active_file instanceof TFile) {
-					if (!this.settings.base_output_folder) {
-						return new Notice(
-							"Remember to set your output folder in the settings.",
-						);
+					if(this.settings.base_output_folder === ""){
+						this.settings.base_output_folder = '/'
 					}
-					const base_folder = this.app.vault.getFolderByPath(
+					let base_folder = this.app.vault.getFolderByPath(
 						this.settings.base_output_folder,
 					);
 					if (!base_folder) {
-						return new Notice(
-							"The specified output folder does not exist",
-						);
+						base_folder = this.app.vault.getRoot()
+						console.warn("Output folder path not found, defaulting to the root of the vault.")
 					}
 					const output_file_name =
 						active_file.basename + "_output.tex";
@@ -84,14 +79,14 @@ export default class ExportPaperPlugin extends Plugin {
 						);
 					}
 					try {
-						await export_longform_with_template(
+						await export_longform(
 							this.app.vault,
 							active_file,
 							out_file,
 							template_file,
 						);
 					} catch (e) {
-						console.error(e)
+						console.error(e);
 					}
 				} else {
 					return new Notice("No active file found.");
@@ -184,21 +179,21 @@ export default class ExportPaperPlugin extends Plugin {
 	}
 }
 
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.setText("Woah!");
-	}
-
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
-	}
-}
+// class SampleModal extends Modal {
+// 	constructor(app: App) {
+// 		super(app);
+// 	}
+//
+// 	onOpen() {
+// 		const { contentEl } = this;
+// 		contentEl.setText("Woah!");
+// 	}
+//
+// 	onClose() {
+// 		const { contentEl } = this;
+// 		contentEl.empty();
+// 	}
+// }
 
 class SampleSettingTab extends PluginSettingTab {
 	plugin: ExportPaperPlugin;
@@ -255,6 +250,14 @@ class SampleSettingTab extends PluginSettingTab {
 				.setPlaceholder("path/to/output_folder/")
 				.setValue(this.plugin.settings.base_output_folder)
 				.onChange(async (value) => {
+					const match = /^(?:\/|\/?(.*?)\/?)$/.exec(value);
+					if (match) {
+						if (match[1] === undefined) {
+							value = "/";
+						} else {
+							value = match[1];
+						}
+					}
 					this.plugin.settings.base_output_folder = value;
 					await this.plugin.saveSettings();
 				}),
