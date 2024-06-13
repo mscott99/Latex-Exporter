@@ -1,3 +1,5 @@
+# State of the plugin
+The plugin is currently in alpha release. It works, with limited features.
 # Obsidian to LaTeX Math Academic Paper Exporter
 This project exports an Obsidian note to a LaTeX math academic paper, retaining embeds as proofs and results. The main feature is to embed contents through Obsidian wikilinks from other local files.
 
