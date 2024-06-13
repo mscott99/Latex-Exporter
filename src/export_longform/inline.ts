@@ -1,6 +1,7 @@
 import { node, metadata_for_unroll } from "./interfaces";
 import { Wikilink } from "./wikilinks";
 import { explicit_label } from "./labels";
+import {format_label} from "./labels";
 
 export function parse_inline(inline_arr: node[]): node[] {
 	inline_arr = split_inline<Wikilink>(
@@ -84,17 +85,9 @@ class ExplicitRef implements node {
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
-		let output = "";
-		const eq_pattern = /eq-(\w+)/;
-		const match = eq_pattern.exec(this.label);
-		if (match) {
-			output = "eq:" + match[1];
-		} else {
-			output = this.label;
-		}
 		return (
 			buffer_offset +
-			buffer.write("\\autoref{" + output + "}", buffer_offset)
+			buffer.write("\\autoref{" + format_label(this.label) + "}", buffer_offset)
 		);
 	}
 }

@@ -1,6 +1,4 @@
-import {
-	find_file,
-} from "./utils";
+import { find_file } from "./utils";
 import {
 	node,
 	metadata_for_unroll,
@@ -9,8 +7,13 @@ import {
 	parsed_note,
 	note_cache,
 } from "./interfaces";
-import { parse_display, Paragraph } from "./display";
-import {parse_inline} from "./inline"
+import {
+	parse_display,
+	Paragraph,
+	NumberedList,
+	parse_after_headers,
+} from "./display";
+import { parse_inline } from "./inline";
 import { Header, make_heading_tree, find_header } from "./headers";
 import { TFile, Notice, Vault } from "obsidian";
 
@@ -36,54 +39,77 @@ async function parse_longform(
 		throw new Error(`File not found: ${longform_file} in ${notes_dir}`);
 	}
 	const file_contents = await notes_dir.read(longform_file);
-	const parsed_longform = parse_note(file_contents)	
-	const cache = {} as note_cache
-	cache[longform_file.basename] = parsed_longform
-	console.log("initial cache: ", cache);
-	let parsed_content = parsed_longform.body
-	console.log("parsed the contents before unroll: ", parsed_content);
-	let abstract_content: node[] | undefined;
+	const parsed_longform = parse_note(file_contents);
+	const cache = {} as note_cache;
+	cache[longform_file.basename] = parsed_longform;
+	let parsed_content = parsed_longform.body;
+	let abstract_header: Header | undefined;
 	for (const e of parsed_content) {
 		if (
 			e instanceof Header &&
 			e.latex_title().toLowerCase().trim() === "abstract"
 		) {
-			abstract_content = e.children;
+			abstract_header = e;
 			parsed_content = parsed_content.filter((x) => x !== e);
 		}
 	}
-	let appendix_content: node[] | undefined;
+	let appendix_header: Header | undefined;
 	for (const e of parsed_content) {
 		if (
 			e instanceof Header &&
 			e.latex_title().toLowerCase().trim() === "appendix"
 		) {
-			appendix_content = e.children;
+			appendix_header = e;
 			parsed_content = parsed_content.filter((x) => x !== e);
 		}
 	}
 	let body_header_content = parsed_content;
+	let body_header: Header | undefined = undefined;
 	for (const e of parsed_content) {
 		if (
 			e instanceof Header &&
 			e.latex_title().toLowerCase().trim() === "body"
 		) {
+			body_header = e;
+			lower_headers([body_header]);
 			body_header_content = e.children;
-			lower_headers(body_header_content);
 		}
 	}
 
+	// Must unroll all before rendering into latex so that at latex() time there is access to all
+	// parsed files.
 	const data = init_data(longform_file, notes_dir);
 	data.parsed_file_bundle = cache;
+
+	if (abstract_header !== undefined) {
+		data.header_stack = [abstract_header];
+	}
+	const abstract_unrolled_content =
+		abstract_header === undefined
+			? undefined
+			: await unroll_array(data, abstract_header.children);
+
+	if (body_header !== undefined) {
+		data.header_stack = [body_header];
+	}
+	const body_unrolled_content = await unroll_array(data, body_header_content);
+
+	if (appendix_header !== undefined) {
+		data.header_stack = [appendix_header];
+	}
+	const appendix_unrolled_content =
+		appendix_header === undefined
+			? undefined
+			: await unroll_array(data, appendix_header.children);
 	const abstract_string =
-		abstract_content === undefined
+		abstract_unrolled_content === undefined
 			? undefined
-			: await render_content(data, abstract_content);
-	const body_string = await render_content(data, body_header_content);
+			: await render_content(data, abstract_unrolled_content);
+	const body_string = await render_content(data, body_unrolled_content);
 	const appendix_string =
-		appendix_content === undefined
+		appendix_unrolled_content === undefined
 			? undefined
-			: await render_content(data, appendix_content);
+			: await render_content(data, appendix_unrolled_content);
 	return {
 		yaml: parsed_longform.yaml,
 		abstract: abstract_string,
@@ -105,10 +131,9 @@ async function render_content(
 	data: metadata_for_unroll,
 	content: node[],
 ): Promise<string> {
-	const unrolled_content = await unroll_array(data, content);
 	const buffer = Buffer.alloc(10000000); // made this very big. Too big? For my paper I run out with two orders of magnitude smaller.
 	let offset = 0;
-	for (const elt of unrolled_content) {
+	for (const elt of content) {
 		offset = elt.latex(buffer, offset);
 	}
 	return buffer.toString("utf8", 0, offset);
@@ -209,33 +234,43 @@ async function write_without_template(
 	return new Notice("Exported to: " + output_file.path);
 }
 
+function traverse_tree_and_parse_display(md: node[]): node[] {
+	const new_md: node[] = [];
+	for (const elt of md) {
+		if (elt instanceof Paragraph) {
+			const parsed_objects = parse_after_headers([elt]);
+			new_md.push(...parsed_objects);
+		} else if (elt instanceof Header) {
+			elt.children = traverse_tree_and_parse_display(elt.children);
+			new_md.push(elt);
+		} else {
+			new_md.push(elt);
+		}
+	}
+	return new_md;
+}
+
 function traverse_tree_and_parse_inline(md: node[]): void {
 	for (const elt of md) {
 		if (elt instanceof Header) {
-			parse_tree_inline(elt);
-		}
-		if (elt instanceof Paragraph) {
+			traverse_tree_and_parse_inline(elt.children);
+			elt.title = parse_inline(elt.title);
+		} else if (elt instanceof NumberedList) {
+			for (const e of elt.content) {
+				traverse_tree_and_parse_inline(e);
+			}
+		} else if (elt instanceof Paragraph) {
 			elt.elements = parse_inline(elt.elements);
 		}
 	}
 }
 
-function parse_tree_inline(head: Header): void {
-	for (const elt of head.children) {
-		if (elt instanceof Header) {
-			parse_tree_inline(elt);
-		}
-		if (elt instanceof Paragraph) {
-			elt.elements = parse_inline(elt.elements);
-		}
-	}
-}
-
-function parse_note(file_contents:string):parsed_note{
+function parse_note(file_contents: string): parsed_note {
 	const [yaml, body] = parse_display(file_contents);
 	let parsed_contents = make_heading_tree(body);
+	parsed_contents = traverse_tree_and_parse_display(parsed_contents);
 	traverse_tree_and_parse_inline(parsed_contents);
-	return {yaml:yaml, body:parsed_contents};
+	return { yaml: yaml, body: parsed_contents };
 }
 
 async function parse_note_with_cache(
@@ -243,7 +278,7 @@ async function parse_note_with_cache(
 	notes_dir: Vault,
 	parsed_cache: { [key: string]: parsed_note },
 	// header: string | undefined,
-): Promise< parsed_note | undefined> {
+): Promise<parsed_note | undefined> {
 	const file_found = find_file(notes_dir, address);
 	if (file_found === undefined) {
 		// no warning necessary, already warned in find_file
@@ -252,21 +287,28 @@ async function parse_note_with_cache(
 	if (!(file_found.basename in Object.keys(parsed_cache))) {
 		const file_contents = await notes_dir.read(file_found);
 		// const file_contents = fs.readFileSync(make_file_path(notes_dir, file_found), "utf-8");
-		
-		parsed_cache[file_found.basename] = parse_note(
-			file_contents,
-		);
+
+		parsed_cache[file_found.basename] = parse_note(file_contents);
 	}
 	return parsed_cache[file_found.basename];
 }
 
-export async function parse_embed_content(address:string, notes_dir:Vault, parsed_cache:note_cache,header?:string):Promise<[node[], number] | undefined>{ 
-	const content = await parse_note_with_cache(address, notes_dir, parsed_cache);
-	if(content === undefined){
-		return undefined
+export async function parse_embed_content(
+	address: string,
+	notes_dir: Vault,
+	parsed_cache: note_cache,
+	header?: string,
+): Promise<[node[], number] | undefined> {
+	const content = await parse_note_with_cache(
+		address,
+		notes_dir,
+		parsed_cache,
+	);
+	if (content === undefined) {
+		return undefined;
 	}
-	if(header === undefined){
-		return [content.body, 0]
+	if (header === undefined) {
+		return [content.body, 0];
 	}
 	const header_elt = find_header(header, [content.body]);
 	if (header_elt === undefined) {

@@ -1,5 +1,5 @@
 import { node, metadata_for_unroll } from "./interfaces";
-import { label_from_location } from "./labels";
+import { label_from_location, format_label } from "./labels";
 import { Paragraph } from "./display";
 import { Text } from "./inline";
 import { strip_newlines } from "./utils";
@@ -7,6 +7,7 @@ import { strip_newlines } from "./utils";
 export class Header implements node {
 	children: node[];
 	level: number;
+	data: metadata_for_unroll;
 	label: string | undefined;
 	title: node[];
 	constructor(
@@ -31,11 +32,31 @@ export class Header implements node {
 		data.header_stack.push(this);
 		// this.label = data.header_stack.map(e => e.latex_title()).join(".");
 		// this.label = format_label(this.latex_title());
-		this.label = label_from_location(
-			data,
-			data.current_file.basename,
-			data.header_stack.map((e) => e.latex_title()),
-		);
+
+		this.data = {
+			depth: data.depth,
+			env_hash_list: data.env_hash_list,
+			parsed_file_bundle: data.parsed_file_bundle,
+			headers_level_offset: data.headers_level_offset,
+			explicit_env_index: data.explicit_env_index,
+			longform_file: data.longform_file,
+			current_file: data.current_file,
+			notes_dir: data.notes_dir,
+			header_stack: [...data.header_stack],
+		};
+
+		const new_title: node[] = [];
+		for (const elt of this.title) {
+			new_title.push(...(await elt.unroll(data)));
+		}
+		this.title = new_title;
+
+		// this.label = label_from_location(
+		// 	data,
+		// 	data.current_file.basename,
+		// 	data.header_stack.map((e) => e.latex_title()),
+		// );
+
 		const new_children: node[] = [];
 		for (const elt of this.children) {
 			new_children.push(...(await elt.unroll(data)));
@@ -66,12 +87,10 @@ export class Header implements node {
 
 		buffer_offset += buffer.write(header_string, buffer_offset);
 
-		if (this.label !== undefined) {
-			buffer_offset += buffer.write(
-				"\\label{" + this.label + "}\n",
-				buffer_offset,
-			);
-		}
+		buffer_offset += buffer.write(
+			"\\label{" + label_from_location(this.data, this.data.current_file.basename, this.data.header_stack.map(e => e.latex_title())) + "}\n",
+			buffer_offset,
+		);
 
 		for (const e of this.children) {
 			buffer_offset = e.latex(buffer, buffer_offset);
@@ -154,16 +173,15 @@ export function get_header_address(
 	}
 	for (const elt of current_content) {
 		if (elt instanceof Header) {
+			const current_check = header_stack[header_stack.length - 1];
+			console.assert(
+				current_check !== undefined,
+				"current_check is undefined",
+			);
 			const new_address =
 				built_address === undefined
 					? elt.latex_title()
 					: built_address + "." + elt.latex_title();
-			const current_check = header_stack[header_stack.length - 1];
-			if (current_check === undefined) {
-				throw new Error(
-					"current_check is undefined, should not be possible.",
-				);
-			}
 			if (
 				header_stack.length > 0 &&
 				elt.latex_title().toLowerCase().trim() ==
@@ -174,6 +192,7 @@ export function get_header_address(
 				}
 				header_stack.pop();
 			}
+			// keep going even if the current was not matched
 			const attempt = get_header_address(
 				header_stack,
 				elt.children,

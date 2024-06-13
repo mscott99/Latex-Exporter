@@ -7,6 +7,7 @@ import { escape_latex, strip_newlines } from "./utils";
 import {
 	label_from_location,
 	explicit_label,
+	format_label,
 } from "./labels";
 import { assert } from "console";
 
@@ -60,7 +61,7 @@ export class EmbedWikilink implements node {
 		}
 		const [parsed_contents, header_level] = return_data;
 		const ambient_header_offset = data.headers_level_offset;
-		data.headers_level_offset -= header_level - 1; //disregard nesting level of the embedded header.
+		data.headers_level_offset -= header_level - 2; //disregard nesting level of the embedded header.
 		const unrolled_contents = [] as node[];
 		for (const elt of parsed_contents) {
 			unrolled_contents.push(...(await elt.unroll(data)));
@@ -200,7 +201,7 @@ export class Environment implements node {
 				);
 			} else {
 				buffer_offset += buffer.write(
-					"\n\\label{" + this.label + "}\n",
+					"\n\\label{" + format_label(this.label) + "}\n",
 					buffer_offset,
 				);
 			}
@@ -222,7 +223,7 @@ export class Hyperlink implements node {
 		return (
 			buffer_offset +
 			buffer.write(
-				"\\hyperlink{" + this.address + "}{" + this.label + "}",
+				"\\hyperlink{" + this.address + "}{" + format_label(this.label) + "}",
 				buffer_offset,
 			)
 		);
@@ -301,7 +302,7 @@ export class Reference implements node {
 	latex(buffer: Buffer, buffer_offset: number): number {
 		return (
 			buffer_offset +
-			buffer.write("\\autoref{" + this.label + "}", buffer_offset)
+			buffer.write("\\autoref{" + format_label(this.label) + "}", buffer_offset)
 		);
 	}
 	async unroll(): Promise<node[]> {

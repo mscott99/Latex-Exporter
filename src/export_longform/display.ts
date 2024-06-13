@@ -1,7 +1,8 @@
-import {node, metadata_for_unroll} from "./interfaces"
-import {strip_newlines} from "./utils"
-import {Text} from "./inline"
-import {EmbedWikilink, Environment} from "./wikilinks"
+import { node, metadata_for_unroll, unroll_array } from "./interfaces";
+import { strip_newlines } from "./utils";
+import { Text } from "./inline";
+import {format_label} from "./labels"
+import { EmbedWikilink, Environment } from "./wikilinks";
 // The custom part is a regex and a constructor. So a regex, and function to get the object from the regex
 export function split_display<T extends node>(
 	display_elts: node[],
@@ -75,11 +76,25 @@ export function parse_display(
 		EmbedWikilink.build_from_match,
 		EmbedWikilink.regexp,
 	); //must come before explicit environment
-	new_display = split_display<Environment>(
+	return [parsed_yaml[0], new_display];
+}
+
+export function parse_after_headers(new_display: node[]): node[] {
+	// let new_display = [new Paragraph([new Text(input)])] as node[];
+	new_display = split_display<NumberedList>(
 		new_display,
-		Environment.build_from_match,
-		Environment.regexp,
+		NumberedList.build_from_match,
+		NumberedList.regexp,
 	);
+	for (const elt of new_display) {
+		if (elt instanceof NumberedList) {
+			const new_content: node[][] = [];
+			for (const e of elt.content) {
+				new_content.push(parse_after_headers(e));
+			}
+			elt.content = new_content;
+		} 
+	}
 	new_display = split_display<DisplayMath>(
 		new_display,
 		DisplayMath.build_from_match,
@@ -90,7 +105,37 @@ export function parse_display(
 		BlankLine.build_from_match,
 		BlankLine.regexp,
 	);
-	return [parsed_yaml[0] ,new_display]
+	new_display = split_display<Environment>(
+		new_display,
+		Environment.build_from_match,
+		Environment.regexp,
+	);
+	return new_display;
+}
+
+export function parse_inside_env(input: string): node[] {
+	let new_display = [new Paragraph([new Text(input)])] as node[];
+	new_display = split_display<EmbedWikilink>(
+		new_display,
+		EmbedWikilink.build_from_match,
+		EmbedWikilink.regexp,
+	);
+	new_display = split_display<DisplayMath>(
+		new_display,
+		DisplayMath.build_from_match,
+		DisplayMath.regexp,
+	);
+	new_display = split_display<DisplayCode>(
+		new_display,
+		DisplayCode.build_from_match,
+		DisplayCode.regexp,
+	);
+	new_display = split_display<BlankLine>(
+		new_display,
+		BlankLine.build_from_match,
+		BlankLine.regexp,
+	);
+	return new_display;
 }
 
 function parse_yaml_header(input: string): [{ [key: string]: string }, string] {
@@ -136,7 +181,7 @@ export class DisplayMath implements node {
 	latex(buffer: Buffer, buffer_offset: number) {
 		const env_name =
 			this.explicit_env_name === undefined
-				? "equation"
+				? "equation*"
 				: this.explicit_env_name;
 		buffer_offset += buffer.write(
 			"\\begin{" + env_name + "}\n",
@@ -144,7 +189,7 @@ export class DisplayMath implements node {
 		);
 		if (this.label !== undefined) {
 			buffer_offset += buffer.write(
-				"\\label{eq:" + this.label + "}\n",
+				"\\label{" + format_label(this.label) + "}\n",
 				buffer_offset,
 			);
 		}
@@ -242,6 +287,45 @@ export class Quote implements node {
 	}
 }
 
+export class NumberedList implements node {
+	content: node[][];
+	static regexp =
+		/(?<=^|\n)\s*?1\. (.*?)(?:2\. (.*?))?(?:3\. (.*?))?(?:4\. (.*?))?(?:5\. (.*?))?(?:6\. (.*?))?(?:7\. (.*?))?(?:8\. (.*?))?(?:9\. (.*?))?(?:10\. (.*?))?(?:11\. (.*?))?(?:12\. (.*?))?(?:13\. (.*?))?(?:14\. (.*?))?(?:15\. (.*?))?(?:16\. (.*?))?(?:17\. (.*?))?(?:18\. (.*?))?(?:19\. (.*?))?(?:20\. (.*?))?(?=\n\s*?\n|$)/gs;
+	constructor(content: node[][]) {
+		this.content = content;
+	}
+	static build_from_match(regexmatch: RegExpMatchArray): NumberedList {
+		const list_contents: string[] = [];
+		for (const e of regexmatch.slice(1)) {
+			if (e === undefined) {
+				break;
+			}
+			list_contents.push(e);
+		}
+		return new NumberedList(
+			list_contents.map((e) => [new Paragraph([new Text(e)])]),
+		);
+	}
+	async unroll(data: metadata_for_unroll): Promise<node[]> {
+		const new_content: node[][] = [];
+		for (const e of this.content) {
+			new_content.push(await unroll_array(data, e));
+		}
+		return [new NumberedList(new_content)];
+	}
+	latex(buffer: Buffer, buffer_offset: number) {
+		buffer_offset += buffer.write("\\begin{enumerate}\n", buffer_offset);
+		for (const e of this.content) {
+			buffer_offset += buffer.write("\\item ", buffer_offset);
+			for (const f of e) {
+				buffer_offset = f.latex(buffer, buffer_offset);
+			}
+		}
+		buffer_offset += buffer.write("\\end{enumerate}\n", buffer_offset);
+		return buffer_offset;
+	}
+}
+
 export class Comment implements node {
 	content: string;
 	static regexp = /\%\%(.*?)\%\%/gs;
@@ -258,29 +342,3 @@ export class Comment implements node {
 		return buffer_offset;
 	}
 }
-
-export function parse_inside_env(input: string): node[] {
-	let new_display = [new Paragraph([new Text(input)])] as node[];
-	new_display = split_display<EmbedWikilink>(
-		new_display,
-		EmbedWikilink.build_from_match,
-		EmbedWikilink.regexp,
-	);
-	new_display = split_display<DisplayMath>(
-		new_display,
-		DisplayMath.build_from_match,
-		DisplayMath.regexp,
-	);
-	new_display = split_display<DisplayCode>(
-		new_display,
-		DisplayCode.build_from_match,
-		DisplayCode.regexp,
-	);
-	new_display = split_display<BlankLine>(
-		new_display,
-		BlankLine.build_from_match,
-		BlankLine.regexp,
-	);
-	return new_display;
-}
-
