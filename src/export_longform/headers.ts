@@ -1,8 +1,8 @@
-import {node, metadata_for_unroll} from "./interfaces"
-import {format_label} from "./labels"
-import {Paragraph} from "./display"
-import {Text} from "./inline"
-import {strip_newlines} from "./utils"
+import { node, metadata_for_unroll } from "./interfaces";
+import { label_from_location } from "./labels";
+import { Paragraph } from "./display";
+import { Text } from "./inline";
+import { strip_newlines } from "./utils";
 
 export class Header implements node {
 	children: node[];
@@ -30,7 +30,12 @@ export class Header implements node {
 		}
 		data.header_stack.push(this);
 		// this.label = data.header_stack.map(e => e.latex_title()).join(".");
-		this.label = format_label(this.latex_title());
+		// this.label = format_label(this.latex_title());
+		this.label = label_from_location(
+			data,
+			data.current_file.basename,
+			data.header_stack.map((e) => e.latex_title()),
+		);
 		const new_children: node[] = [];
 		for (const elt of this.children) {
 			new_children.push(...(await elt.unroll(data)));
@@ -38,7 +43,6 @@ export class Header implements node {
 		this.children = new_children;
 		return [this];
 	}
-
 	latex_title(): string {
 		const buffer = Buffer.alloc(1000);
 		let buffer_offset = 0;
@@ -47,7 +51,6 @@ export class Header implements node {
 		}
 		return buffer.toString("utf8", 0, buffer_offset);
 	}
-
 	latex(buffer: Buffer, buffer_offset: number): number {
 		const header_title = this.latex_title();
 		let header_string = "";
@@ -65,7 +68,7 @@ export class Header implements node {
 
 		if (this.label !== undefined) {
 			buffer_offset += buffer.write(
-				"\\label{sec:" + this.label + "}\n",
+				"\\label{" + this.label + "}\n",
 				buffer_offset,
 			);
 		}
@@ -77,30 +80,30 @@ export class Header implements node {
 	}
 }
 
-
-export function check_level(
+export function find_header(
 	header: string[],
 	current_content: node[][],
 ): Header | undefined;
-export function check_level(header:string, 
+export function find_header(
+	header: string,
 	current_content: node[][],
 ): Header | undefined;
 
-export function check_level(header:string|string[], 
+export function find_header(
+	header: string | string[],
 	current_content: node[][],
-): Header | undefined{
-	let header_stack:string[];
-	if(typeof header === "string"){
-		header_stack = header.split("#").reverse()
-	}else{
-		header_stack = header;
+): Header | undefined {
+	let header_stack: string[];
+	if (typeof header === "string") {
+		header_stack = header.split("#").reverse();
+	} else {
+		header_stack = [...header];
 	}
 	const next_checks = [];
 	for (const node of current_content) {
 		for (const elt of node) {
 			if (elt instanceof Header) {
-				const current_check =
-					header_stack[header_stack.length - 1];
+				const current_check = header_stack[header_stack.length - 1];
 				if (current_check === undefined) {
 					throw new Error(
 						"current_check is undefined, should not be possible.",
@@ -123,10 +126,66 @@ export function check_level(header:string|string[],
 	if (next_checks.length == 0) {
 		return undefined;
 	}
-	return check_level(header_stack, next_checks);
+	return find_header(header_stack, next_checks);
 }
 
+// This will not prioritize low depth but oh well
+export function get_header_address(
+	header: string[],
+	current_content: node[],
+	built_address?: string,
+): string | undefined;
+export function get_header_address(
+	header: string,
+	current_content: node[],
+	built_address?: string,
+): string | undefined;
 
+export function get_header_address(
+	header: string | string[],
+	current_content: node[],
+	built_address?: string,
+): string | undefined {
+	let header_stack: string[];
+	if (typeof header === "string") {
+		header_stack = header.split("#").reverse();
+	} else {
+		header_stack = [...header];
+	}
+	for (const elt of current_content) {
+		if (elt instanceof Header) {
+			const new_address =
+				built_address === undefined
+					? elt.latex_title()
+					: built_address + "." + elt.latex_title();
+			const current_check = header_stack[header_stack.length - 1];
+			if (current_check === undefined) {
+				throw new Error(
+					"current_check is undefined, should not be possible.",
+				);
+			}
+			if (
+				header_stack.length > 0 &&
+				elt.latex_title().toLowerCase().trim() ==
+					current_check.toLowerCase().trim()
+			) {
+				if (header_stack.length == 1) {
+					return new_address;
+				}
+				header_stack.pop();
+			}
+			const attempt = get_header_address(
+				header_stack,
+				elt.children,
+				new_address,
+			);
+			if (attempt !== undefined) {
+				return attempt;
+			}
+		}
+	}
+	return undefined;
+}
 
 class ZeroHeader {
 	children: node[];

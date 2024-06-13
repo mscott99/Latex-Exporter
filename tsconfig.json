@@ -22,5 +22,5 @@
 	},
 	"include": [
 		"src/*.ts"
-	]
+, "src/export_longform/interfaces.ts", "src/export_longform/display.ts", "src/export_longform/utils.ts", "src/export_longform/parseMarkdown.ts", "src/export_longform/labels.ts", "src/export_longform/wikilinks.ts", "src/export_longform/inline.ts", "src/export_longform/headers.ts"	]
 }

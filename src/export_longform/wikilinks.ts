@@ -1,10 +1,14 @@
-import {node} from "./interfaces"
+import { node } from "./interfaces";
 import { metadata_for_unroll } from "./interfaces";
-import {Text} from "./inline"
-import {parse_embed_content} from "./parseMarkdown"
-import {Paragraph, BlankLine, parse_inside_env} from "./display"
-import {escape_latex, strip_newlines} from "./utils"
-import {label_from_location, explicit_label} from "./labels"
+import { Text } from "./inline";
+import { parse_embed_content } from "./parseMarkdown";
+import { Paragraph, BlankLine, parse_inside_env } from "./display";
+import { escape_latex, strip_newlines } from "./utils";
+import {
+	label_from_location,
+	explicit_label,
+} from "./labels";
+import { assert } from "console";
 
 export class EmbedWikilink implements node {
 	attribute: string | undefined;
@@ -64,16 +68,25 @@ export class EmbedWikilink implements node {
 		data.headers_level_offset = ambient_header_offset;
 		// Make a label.
 
+		const address = this.content === ""? data.longform_file.basename : this.content;
 		if (this.attribute !== undefined) {
 			return [
 				new Environment(
 					unrolled_contents,
 					this.attribute,
-					label_from_location(data, this.content, this.header),
+					label_from_location(
+						data,
+						address,
+						this.header,
+					),
 				),
 			];
 		}
-		this.label = label_from_location(data, this.content, this.header);
+		this.label = label_from_location(
+			data,
+			address,
+			this.header,
+		);
 		return unrolled_contents;
 	}
 	latex(buffer: Buffer, buffer_offset: number): number {
@@ -112,16 +125,15 @@ export class Wikilink implements node {
 		const match = /^@(.*)$/.exec(this.content);
 		if (match !== null) {
 			return [new Citation(match[1])];
-		} else if(this.header?.toLowerCase().trim() !== "proof") {
-			return [
-				new Reference(
-					label_from_location(data, this.content, this.header),
-				),
-			];
 		} else {
 			return [
-				new Hyperlink( "the proof", 
-					label_from_location(data, this.content, this.header)),
+				new UnrolledWikilink(
+					data,
+					this.attribute,
+					this.content,
+					this.header,
+					this.displayed,
+				),
 			];
 		}
 	}
@@ -204,37 +216,100 @@ export class Environment implements node {
 	}
 }
 export class Hyperlink implements node {
-	address:string
+	address: string;
 	label: string;
 	latex(buffer: Buffer, buffer_offset: number): number {
 		return (
 			buffer_offset +
-			buffer.write("\\hyperlink{" + this.address + "}{" + this.label+ "}", buffer_offset)
+			buffer.write(
+				"\\hyperlink{" + this.address + "}{" + this.label + "}",
+				buffer_offset,
+			)
 		);
 	}
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	constructor(label: string, address:string) {
+	constructor(label: string, address: string) {
 		this.label = label;
 		this.address = address;
 	}
 }
 
+// The purpose of this class is to defer the label resolution until all files are parsed. So labels are determined in the latex() call.
+export class UnrolledWikilink implements node {
+	unroll_data: metadata_for_unroll;
+	attribute: string|undefined;
+	address: string;
+	header: string | undefined;
+	displayed: string|undefined;
+	constructor(
+		unroll_data: metadata_for_unroll,
+		attribute: string|undefined,
+		address: string,
+		header: string | undefined,
+		displayed: string|undefined,
+	) {
+		assert(!/^@/.exec(address), "Should not be a citation");
+		this.unroll_data = {
+			depth: unroll_data.depth,
+			env_hash_list: unroll_data.env_hash_list,
+			parsed_file_bundle: unroll_data.parsed_file_bundle,
+			headers_level_offset: unroll_data.headers_level_offset,
+			explicit_env_index: unroll_data.explicit_env_index,
+			longform_file: unroll_data.longform_file,
+			current_file: unroll_data.current_file,
+			notes_dir: unroll_data.notes_dir,
+			header_stack: [...unroll_data.header_stack],
+		};
+		this.attribute = attribute;
+		this.address = address;
+		this.header = header;
+		this.displayed = displayed;
+	}
+	latex(buffer: Buffer, buffer_offset: number): number {
+		const address = this.address === ""? this.unroll_data.longform_file.basename : this.address;
+
+		const label = label_from_location(
+			this.unroll_data,
+			address,
+			this.header,
+		);
+
+		if (this.header?.toLowerCase().trim() !== "proof") {
+			return (
+				buffer_offset +
+				buffer.write("\\autoref{" + label + "}", buffer_offset)
+			);
+		} else {
+			return (
+				buffer_offset +
+				buffer.write(
+					"\\hyperlink{"+label+"}{the proof}",
+					buffer_offset,
+				)
+			);
+		}
+	}
+	async unroll(): Promise<node[]> {
+		return [this];
+	}
+}
+
 export class Reference implements node {
-    label: string;
-    latex(buffer: Buffer, buffer_offset: number): number {
-        return (
-            buffer_offset +
-            buffer.write("\\autoref{" + this.label + "}", buffer_offset)
-        );
-    }
-    async unroll(): Promise<node[]> {
-        return [this];
-    }
-    constructor(label: string) {
-        this.label = label;
-    }
+	label: string;
+	latex(buffer: Buffer, buffer_offset: number): number {
+		return (
+			buffer_offset +
+			buffer.write("\\autoref{" + this.label + "}", buffer_offset)
+		);
+	}
+	async unroll(): Promise<node[]> {
+		return [this];
+	}
+	constructor(label: string) {
+		this.label = label;
+	}
 }
 
 export class Citation implements node {

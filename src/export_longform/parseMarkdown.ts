@@ -11,7 +11,7 @@ import {
 } from "./interfaces";
 import { parse_display, Paragraph } from "./display";
 import {parse_inline} from "./inline"
-import { Header, make_heading_tree, check_level } from "./headers";
+import { Header, make_heading_tree, find_header } from "./headers";
 import { TFile, Notice, Vault } from "obsidian";
 
 // Describe label system
@@ -38,7 +38,8 @@ async function parse_longform(
 	const file_contents = await notes_dir.read(longform_file);
 	const parsed_longform = parse_note(file_contents)	
 	const cache = {} as note_cache
-	cache[longform_file.path] = parsed_longform
+	cache[longform_file.basename] = parsed_longform
+	console.log("initial cache: ", cache);
 	let parsed_content = parsed_longform.body
 	console.log("parsed the contents before unroll: ", parsed_content);
 	let abstract_content: node[] | undefined;
@@ -73,6 +74,7 @@ async function parse_longform(
 	}
 
 	const data = init_data(longform_file, notes_dir);
+	data.parsed_file_bundle = cache;
 	const abstract_string =
 		abstract_content === undefined
 			? undefined
@@ -104,7 +106,7 @@ async function render_content(
 	content: node[],
 ): Promise<string> {
 	const unrolled_content = await unroll_array(data, content);
-	const buffer = Buffer.alloc(100000);
+	const buffer = Buffer.alloc(10000000); // made this very big. Too big? For my paper I run out with two orders of magnitude smaller.
 	let offset = 0;
 	for (const elt of unrolled_content) {
 		offset = elt.latex(buffer, offset);
@@ -247,17 +249,15 @@ async function parse_note_with_cache(
 		// no warning necessary, already warned in find_file
 		return undefined;
 	}
-	if (!(file_found.path in Object.keys(parsed_cache))) {
+	if (!(file_found.basename in Object.keys(parsed_cache))) {
 		const file_contents = await notes_dir.read(file_found);
 		// const file_contents = fs.readFileSync(make_file_path(notes_dir, file_found), "utf-8");
 		
-		parsed_cache[file_found.path] = parse_note(
+		parsed_cache[file_found.basename] = parse_note(
 			file_contents,
 		);
 	}
-	return parsed_cache[file_found.path];
-	// if (header === undefined) {
-	// }
+	return parsed_cache[file_found.basename];
 }
 
 export async function parse_embed_content(address:string, notes_dir:Vault, parsed_cache:note_cache,header?:string):Promise<[node[], number] | undefined>{ 
@@ -268,7 +268,7 @@ export async function parse_embed_content(address:string, notes_dir:Vault, parse
 	if(header === undefined){
 		return [content.body, 0]
 	}
-	const header_elt = check_level(header, [content.body]);
+	const header_elt = find_header(header, [content.body]);
 	if (header_elt === undefined) {
 		console.warn(
 			"Header not found: ",
