@@ -30,8 +30,6 @@ export class Header implements node {
 			}
 		}
 		data.header_stack.push(this);
-		// this.label = data.header_stack.map(e => e.latex_title()).join(".");
-		// this.label = format_label(this.latex_title());
 
 		this.data = {
 			depth: data.depth,

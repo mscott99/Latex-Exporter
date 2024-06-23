@@ -34,11 +34,17 @@ type parsed_longform = {
 async function parse_longform(
 	notes_dir: Vault,
 	longform_file: TFile,
+	selection?: string,
 ): Promise<parsed_longform> {
 	if (longform_file === undefined) {
 		throw new Error(`File not found: ${longform_file} in ${notes_dir}`);
 	}
-	const file_contents = await notes_dir.read(longform_file);
+	let file_contents: string;
+	if (selection === undefined) {
+		file_contents = await notes_dir.read(longform_file);
+	} else {
+		file_contents = selection;
+	}
 	const parsed_longform = parse_note(file_contents);
 	const cache = {} as note_cache;
 	cache[longform_file.basename] = parsed_longform;
@@ -144,8 +150,20 @@ export async function export_longform(
 	longform_file: TFile,
 	output_file: TFile,
 	template_file: TFile | null,
-) {
-	const parsed_contents = await parse_longform(notes_dir, longform_file);
+	selection?: string,
+)  {
+	const parsed_contents = await parse_longform(
+		notes_dir,
+		longform_file,
+		selection,
+	);
+	if (selection !== undefined) {
+		const content = await join_sections(parsed_contents)
+		// copy content to clipboard
+		await navigator.clipboard.writeText(content);
+		new Notice("Latex content copied to clipboard");
+		return;
+	}
 	if (template_file) {
 		write_with_template(
 			template_file,
@@ -153,8 +171,10 @@ export async function export_longform(
 			output_file,
 			notes_dir,
 		);
+		new Notice("Latex content written to "+ output_file.path+ " by using the template file "+ template_file.path);
 	} else {
 		write_without_template(parsed_contents, output_file, notes_dir);
+		new Notice("Latex content written to "+ output_file.path+ " by using the default template");
 	}
 }
 
@@ -192,7 +212,23 @@ async function write_with_template(
 		);
 	}
 	await notes_dir.modify(output_file, template_content);
-	return new Notice("Exported to: " + output_file.path);
+}
+
+async function join_sections(parsed_contents: parsed_longform) {
+	let content = "";
+	if (parsed_contents["abstract"] !== undefined) {
+		content =
+			content +
+			`\\begin{abstract}\n` +
+			parsed_contents["abstract"] +
+			`\\end{abstract}\n`;
+	}
+	content += parsed_contents["body"];
+	if (parsed_contents["appendix"] !== undefined) {
+		content += `\\printbibliography\n`;
+		content += `\\section{Appendix}\n` + parsed_contents["appendix"];
+	}
+	return content
 }
 
 async function write_without_template(
@@ -212,12 +248,6 @@ async function write_without_template(
 	content += `\\begin{document}
 \\maketitle
 `;
-	for (const key of Object.keys(parsed_contents["yaml"])) {
-		content = content.replace(
-			RegExp(`\\\$${key}\\\$`, "i"),
-			parsed_contents["yaml"][key],
-		);
-	}
 	if (parsed_contents["abstract"] !== undefined) {
 		content =
 			content +
@@ -231,7 +261,6 @@ async function write_without_template(
 	}
 	content += "\\end{document}";
 	await notes_dir.modify(output_file, content);
-	return new Notice("Exported to: " + output_file.path);
 }
 
 function traverse_tree_and_parse_display(md: node[]): node[] {
