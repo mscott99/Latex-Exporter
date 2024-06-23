@@ -20,7 +20,7 @@ export function find_file(
 ): TFile | undefined {
 	let file_found: TFile | undefined = undefined;
 	Vault.recurseChildren(the_vault.getRoot(), (file) => {
-		if (file instanceof TFile && file.basename === address) {
+		if (file instanceof TFile && file.basename.toLowerCase() === address.toLowerCase()) {
 			if (file_found !== undefined) {
 				console.warn(
 					"Multiple files found with the same name. Returning the first one found.",

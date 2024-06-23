@@ -11,7 +11,7 @@ import {
 	TFile,
 } from "obsidian";
 
-import { export_longform } from "./export_longform";
+import { export_longform, export_selection } from "./export_longform";
 
 interface ExportPluginSettings {
 	mySetting: string;
@@ -28,11 +28,15 @@ const DEFAULT_SETTINGS: ExportPluginSettings = {
 export default class ExportPaperPlugin extends Plugin {
 	settings: ExportPluginSettings;
 
-	async find_files_and_export(active_file: TFile, selection?: string) {
+	async find_files_and_export(active_file: TFile) {
+		if(this.settings.base_output_folder === ""){
+			this.settings.base_output_folder = "/"
+		}
 		let base_folder = this.app.vault.getFolderByPath(
 			this.settings.base_output_folder,
 		);
 		if (!base_folder) {
+			console.log(this.settings.base_output_folder)
 			base_folder = this.app.vault.getRoot();
 			console.warn(
 				"Output folder path not found, defaulting to the root of the vault.",
@@ -65,6 +69,17 @@ export default class ExportPaperPlugin extends Plugin {
 				active_file,
 				out_file,
 				template_file,
+			);
+		} catch (e) {
+			console.error(e);
+		}
+	}
+
+	async export_with_selection(active_file:TFile, selection:string){
+		try {
+			return await export_selection(
+				this.app.vault,
+				active_file,
 				selection,
 			);
 		} catch (e) {
@@ -78,9 +93,11 @@ export default class ExportPaperPlugin extends Plugin {
 		this.addCommand({
 			id: "export-paper",
 			name: "Export to paper",
-			callback: async () => {
-				const active_file = this.app.workspace.getActiveFile();
-
+			editorCallback: async (
+				editor: Editor,
+				ctx: MarkdownView | MarkdownFileInfo,
+			) => {
+				const active_file = ctx.file
 				if (!(active_file instanceof TFile)) {
 					new Notice("No active file found.");
 					throw new Error("No active file found.");
@@ -99,12 +116,12 @@ export default class ExportPaperPlugin extends Plugin {
 				if (checking) {
 					return editor.somethingSelected();
 				}
-				const selection = editor.getSelection();
 				const active_file = ctx.file;
 				if (!active_file) {
 					throw new Error("No active file found.");
 				}
-				this.find_files_and_export(active_file, selection);
+				const selection = editor.getSelection();
+				this.export_with_selection(active_file, selection);
 			},
 		});
 		this.addSettingTab(new SampleSettingTab(this.app, this));

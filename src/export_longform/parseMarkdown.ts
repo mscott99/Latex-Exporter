@@ -145,25 +145,35 @@ async function render_content(
 	return buffer.toString("utf8", 0, offset);
 }
 
-export async function export_longform(
+export async function export_selection(
 	notes_dir: Vault,
 	longform_file: TFile,
-	output_file: TFile,
-	template_file: TFile | null,
-	selection?: string,
-)  {
+	selection: string,
+) {
 	const parsed_contents = await parse_longform(
 		notes_dir,
 		longform_file,
 		selection,
 	);
 	if (selection !== undefined) {
-		const content = await join_sections(parsed_contents)
+		const content = await join_sections(parsed_contents);
 		// copy content to clipboard
 		await navigator.clipboard.writeText(content);
 		new Notice("Latex content copied to clipboard");
 		return;
 	}
+}
+
+export async function export_longform(
+	notes_dir: Vault,
+	longform_file: TFile,
+	output_file: TFile,
+	template_file: TFile | null,
+) {
+	const parsed_contents = await parse_longform(
+		notes_dir,
+		longform_file,
+	);
 	if (template_file) {
 		write_with_template(
 			template_file,
@@ -171,10 +181,19 @@ export async function export_longform(
 			output_file,
 			notes_dir,
 		);
-		new Notice("Latex content written to "+ output_file.path+ " by using the template file "+ template_file.path);
+		new Notice(
+			"Latex content written to " +
+				output_file.path +
+				" by using the template file " +
+				template_file.path,
+		);
 	} else {
 		write_without_template(parsed_contents, output_file, notes_dir);
-		new Notice("Latex content written to "+ output_file.path+ " by using the default template");
+		new Notice(
+			"Latex content written to " +
+				output_file.path +
+				" by using the default template",
+		);
 	}
 }
 
@@ -228,7 +247,7 @@ async function join_sections(parsed_contents: parsed_longform) {
 		content += `\\printbibliography\n`;
 		content += `\\section{Appendix}\n` + parsed_contents["appendix"];
 	}
-	return content
+	return content;
 }
 
 async function write_without_template(

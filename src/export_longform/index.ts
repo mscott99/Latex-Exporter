@@ -1,1 +1,1 @@
-export {export_longform} from "./parseMarkdown"
+export {export_selection, export_longform} from "./parseMarkdown"
