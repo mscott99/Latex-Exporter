@@ -1,7 +1,7 @@
 import { node, metadata_for_unroll, unroll_array } from "./interfaces";
 import { strip_newlines } from "./utils";
 import { Text } from "./inline";
-import {format_label} from "./labels"
+import { format_label } from "./labels";
 import { EmbedWikilink, Environment } from "./wikilinks";
 // The custom part is a regex and a constructor. So a regex, and function to get the object from the regex
 export function split_display<T extends node>(
@@ -93,7 +93,21 @@ export function parse_after_headers(new_display: node[]): node[] {
 				new_content.push(parse_after_headers(e));
 			}
 			elt.content = new_content;
-		} 
+		}
+	}
+	new_display = split_display<UnorderedList>(
+		new_display,
+		UnorderedList.build_from_match,
+		UnorderedList.regexp,
+	);
+	for (const elt of new_display) {
+		if (elt instanceof UnorderedList) {
+			const new_content: node[][] = [];
+			for (const e of elt.content) {
+				new_content.push(parse_after_headers(e));
+			}
+			elt.content = new_content;
+		}
 	}
 	new_display = split_display<DisplayMath>(
 		new_display,
@@ -322,6 +336,47 @@ export class NumberedList implements node {
 			}
 		}
 		buffer_offset += buffer.write("\\end{enumerate}\n", buffer_offset);
+		return buffer_offset;
+	}
+}
+
+export class UnorderedList implements node {
+	content: node[][];
+	static regexp =
+		//gs;
+		/(?<=^|\n)\s*?(?:-|\+|\*) (.*?)(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?=\n\s*?\n|$)/gs;
+
+	constructor(content: node[][]) {
+		this.content = content;
+	}
+	static build_from_match(regexmatch: RegExpMatchArray): UnorderedList {
+		const list_contents: string[] = [];
+		for (const e of regexmatch.slice(1)) {
+			if (e === undefined) {
+				break;
+			}
+			list_contents.push(e);
+		}
+		return new UnorderedList(
+			list_contents.map((e) => [new Paragraph([new Text(e)])]),
+		);
+	}
+	async unroll(data: metadata_for_unroll): Promise<node[]> {
+		const new_content: node[][] = [];
+		for (const e of this.content) {
+			new_content.push(await unroll_array(data, e));
+		}
+		return [new UnorderedList(new_content)];
+	}
+	latex(buffer: Buffer, buffer_offset: number) {
+		buffer_offset += buffer.write("\\begin{itemize}\n", buffer_offset);
+		for (const e of this.content) {
+			buffer_offset += buffer.write("\\item ", buffer_offset);
+			for (const f of e) {
+				buffer_offset = f.latex(buffer, buffer_offset);
+			}
+		}
+		buffer_offset += buffer.write("\\end{itemize}\n", buffer_offset);
 		return buffer_offset;
 	}
 }

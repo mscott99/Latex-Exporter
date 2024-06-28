@@ -11,6 +11,7 @@ import {
 	parse_display,
 	Paragraph,
 	NumberedList,
+	UnorderedList,
 	parse_after_headers,
 } from "./display";
 import { parse_inline } from "./inline";
@@ -304,6 +305,10 @@ function traverse_tree_and_parse_inline(md: node[]): void {
 			traverse_tree_and_parse_inline(elt.children);
 			elt.title = parse_inline(elt.title);
 		} else if (elt instanceof NumberedList) {
+			for (const e of elt.content) {
+				traverse_tree_and_parse_inline(e);
+			}
+		} else if (elt instanceof UnorderedList) {
 			for (const e of elt.content) {
 				traverse_tree_and_parse_inline(e);
 			}
