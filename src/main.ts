@@ -9,45 +9,67 @@ import {
 	PluginSettingTab,
 	Setting,
 	TFile,
+	Vault,
 } from "obsidian";
 
-import { export_longform, export_selection } from "./export_longform";
+import {
+	export_longform,
+	export_selection,
+	get_header_tex,
+} from "./export_longform";
 
 interface ExportPluginSettings {
 	mySetting: string;
 	template_path: string;
 	base_output_folder: string;
+	preamble_file: string;
+	bib_file: string;
 }
 
 const DEFAULT_SETTINGS: ExportPluginSettings = {
 	mySetting: "default",
 	template_path: "",
 	base_output_folder: "/",
+	preamble_file: "preamble.sty",
+	bib_file: "bibliography.bib",
 };
 
 export default class ExportPaperPlugin extends Plugin {
 	settings: ExportPluginSettings;
 
 	async find_files_and_export(active_file: TFile) {
-		if(this.settings.base_output_folder === ""){
-			this.settings.base_output_folder = "/"
+		if (this.settings.base_output_folder === "") {
+			this.settings.base_output_folder = "/";
 		}
 		let base_folder = this.app.vault.getFolderByPath(
 			this.settings.base_output_folder,
 		);
 		if (!base_folder) {
-			console.log(this.settings.base_output_folder)
+			console.log(this.settings.base_output_folder);
 			base_folder = this.app.vault.getRoot();
 			console.warn(
 				"Output folder path not found, defaulting to the root of the vault.",
 			);
+			new Notice(
+				"Output folder path not found, defaulting to the root of the vault.",
+			);
 		}
 		const output_file_name = active_file.basename + "_output.tex";
-		let output_path = path.join(base_folder.path, output_file_name);
-		const output_path_match = /^\/(.*)$/.exec(output_path);
-		if (output_path_match) {
-			output_path = output_path_match[1];
+		let output_folder_path = path.join(
+			base_folder.path,
+			active_file.basename.replace(/ /g, "_"),
+		);
+		const output_folder_match = /^\/(.*)$/.exec(output_folder_path);
+		if (output_folder_match) {
+			output_folder_path = output_folder_match[1];
 		}
+		let output_path = path.join(output_folder_path, output_file_name);
+
+		let out_dir = this.app.vault.getFolderByPath(output_folder_path);
+		if (out_dir === null) {
+			out_dir = await this.app.vault.createFolder(output_folder_path);
+		}
+
 		let out_file = this.app.vault.getFileByPath(output_path);
 		if (out_file !== null) {
 			console.log("File exists, overwriting.");
@@ -55,9 +77,47 @@ export default class ExportPaperPlugin extends Plugin {
 			console.log("Creating new output file");
 			out_file = await this.app.vault.create(output_path, "");
 		}
-		const template_file = this.app.vault.getFileByPath(
+
+		const the_preamble_file = this.app.vault.getFileByPath(
+			this.settings.preamble_file,
+		);
+		const preamble_file = the_preamble_file ? the_preamble_file : undefined;
+		if (preamble_file !== undefined) {
+			const new_preamble = path.join(output_folder_path, "preamble.sty");
+			if (!this.app.vault.getFileByPath(new_preamble))
+				this.app.vault.copy(preamble_file, new_preamble);
+		} else {
+			console.log("no preamble file found.");
+		}
+
+		const header_file = this.app.vault.getFileByPath(
+			path.join(output_folder_path, "header.tex"),
+		);
+		if (!header_file) {
+			this.app.vault.create(
+				path.join(output_folder_path, "header.tex"),
+				get_header_tex(),
+			);
+		}
+
+		const the_bib_file = this.app.vault.getFileByPath(
+			this.settings.bib_file,
+		);
+		const bib_file = the_bib_file ? the_bib_file : undefined;
+		if (bib_file !== undefined) {
+			const new_bib = path.join(output_folder_path, "bibliography.bib");
+			if (!this.app.vault.getFileByPath(new_bib))
+				this.app.vault.copy(bib_file, new_bib);
+		} else {
+			console.log("no bib file found.");
+		}
+
+		const the_template_file = this.app.vault.getFileByPath(
 			this.settings.template_path,
 		);
+		const template_file =
+			the_template_file !== null ? the_template_file : undefined;
+
 		if (!template_file) {
 			console.log(
 				"Template file not found, exporting with default template.",
@@ -69,13 +129,14 @@ export default class ExportPaperPlugin extends Plugin {
 				active_file,
 				out_file,
 				template_file,
+				preamble_file,
 			);
 		} catch (e) {
 			console.error(e);
 		}
 	}
 
-	async export_with_selection(active_file:TFile, selection:string){
+	async export_with_selection(active_file: TFile, selection: string) {
 		try {
 			return await export_selection(
 				this.app.vault,
@@ -97,7 +158,7 @@ export default class ExportPaperPlugin extends Plugin {
 				editor: Editor,
 				ctx: MarkdownView | MarkdownFileInfo,
 			) => {
-				const active_file = ctx.file
+				const active_file = ctx.file;
 				if (!(active_file instanceof TFile)) {
 					new Notice("No active file found.");
 					throw new Error("No active file found.");
@@ -204,6 +265,24 @@ class SampleSettingTab extends PluginSettingTab {
 						}
 					}
 					this.plugin.settings.base_output_folder = value;
+					await this.plugin.saveSettings();
+				}),
+		);
+		new Setting(containerEl).setName("Math preamble file").addText((text) =>
+			text
+				.setPlaceholder("path/to/preamble_file")
+				.setValue(this.plugin.settings.preamble_file)
+				.onChange(async (value) => {
+					this.plugin.settings.preamble_file = value;
+					await this.plugin.saveSettings();
+				}),
+		);
+		new Setting(containerEl).setName("Bib file").addText((text) =>
+			text
+				.setPlaceholder("path/to/bib_file")
+				.setValue(this.plugin.settings.bib_file)
+				.onChange(async (value) => {
+					this.plugin.settings.bib_file = value;
 					await this.plugin.saveSettings();
 				}),
 		);

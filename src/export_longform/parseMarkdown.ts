@@ -169,13 +169,11 @@ export async function export_longform(
 	notes_dir: Vault,
 	longform_file: TFile,
 	output_file: TFile,
-	template_file: TFile | null,
+	template_file?: TFile,
+	preamble_file?: TFile,
 ) {
-	const parsed_contents = await parse_longform(
-		notes_dir,
-		longform_file,
-	);
-	if (template_file) {
+	const parsed_contents = await parse_longform(notes_dir, longform_file);
+	if (template_file !== undefined) {
 		write_with_template(
 			template_file,
 			parsed_contents,
@@ -189,7 +187,12 @@ export async function export_longform(
 				template_file.path,
 		);
 	} else {
-		write_without_template(parsed_contents, output_file, notes_dir);
+		write_without_template(
+			parsed_contents,
+			output_file,
+			notes_dir,
+			preamble_file,
+		);
 		new Notice(
 			"Latex content written to " +
 				output_file.path +
@@ -255,10 +258,14 @@ async function write_without_template(
 	parsed_contents: parsed_longform,
 	output_file: TFile,
 	notes_dir: Vault,
+	preamble_file?: TFile,
 ) {
 	let content = `\\documentclass{article}
-\\input{header}
-\\addbibresource{bibliography.bib}\n`;
+\\input{header}\n`;
+	if (preamble_file !== undefined) {
+		content += "\\input{" + preamble_file.name + "}\n";
+	}
+	content += `\\addbibresource{bibliography.bib}\n`;
 	if (parsed_contents["yaml"]["title"] !== undefined) {
 		content += `\\title{` + parsed_contents["yaml"]["title"] + `}\n`;
 	}
