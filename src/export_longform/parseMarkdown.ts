@@ -234,9 +234,11 @@ export async function write_without_template(
 		content += "\\input{" + preamble_file.name + "}\n";
 	}
 	content += `\\addbibresource{bibliography.bib}\n`;
+	content += `\\title{`
 	if (parsed_contents["yaml"]["title"] !== undefined) {
-		content += `\\title{` + parsed_contents["yaml"]["title"] + `}\n`;
+		 content += parsed_contents["yaml"]["title"] 
 	}
+	content += `}\n`;
 	if (parsed_contents["yaml"]["author"] !== undefined) {
 		content += `\\author{` + parsed_contents["yaml"]["author"] + `}\n`;
 	}

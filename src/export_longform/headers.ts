@@ -41,6 +41,8 @@ export class Header implements node {
 			current_file: data.current_file,
 			notes_dir: data.notes_dir,
 			header_stack: [...data.header_stack],
+			media_files: data.media_files,
+			bib_keys: data.bib_keys
 		};
 
 		const new_title: node[] = [];
