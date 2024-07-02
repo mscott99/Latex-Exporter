@@ -1,23 +1,23 @@
-import {TFile, Vault} from "obsidian";
-import {Header} from "./headers"
+import { TFile, Vault } from "obsidian";
+import { Header } from "./headers";
 
 export interface node {
 	unroll(data?: metadata_for_unroll): Promise<node[]>;
 	latex(buffer: Buffer, buffer_offset: number): number;
 }
 
-export interface file_content{
+export interface file_content {
 	yaml: { [key: string]: string };
 	file: TFile;
 	children: node[];
 }
 
 export type parsed_note = {
-	yaml: { [key: string]: string }
-	body: node[],
-}
+	yaml: { [key: string]: string };
+	body: node[];
+};
 
-export type note_cache = { [key: string]: parsed_note }
+export type note_cache = { [key: string]: parsed_note };
 
 export type metadata_for_unroll = {
 	depth: number;
@@ -29,9 +29,14 @@ export type metadata_for_unroll = {
 	current_file: TFile;
 	notes_dir: Vault;
 	header_stack: Header[];
+	media_files: TFile[];
+	bib_keys: string[];
 };
 
-export function init_data(longform_file: TFile, notes_dir: Vault): metadata_for_unroll {
+export function init_data(
+	longform_file: TFile,
+	notes_dir: Vault,
+): metadata_for_unroll {
 	return {
 		depth: 0,
 		env_hash_list: [] as string[],
@@ -42,11 +47,22 @@ export function init_data(longform_file: TFile, notes_dir: Vault): metadata_for_
 		current_file: longform_file,
 		notes_dir: notes_dir,
 		header_stack: [] as Header[],
+		media_files: [] as TFile[],
+		bib_keys: [] as string[],
 	} as metadata_for_unroll;
 }
 
+export function address_is_image_file(address: string) {
+	if (/\.(?:jpeg|svg|pdf|png|jpg|gif|svg|pdf|tiff?)$/.exec(address)) {
+		return true;
+	}
+	return false;
+}
 
-export async function unroll_array(data: metadata_for_unroll, content_array: node[]) {
+export async function unroll_array(
+	data: metadata_for_unroll,
+	content_array: node[],
+) {
 	const new_children: node[] = [];
 	for (const elt of content_array) {
 		new_children.push(...(await elt.unroll(data)));

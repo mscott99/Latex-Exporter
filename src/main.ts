@@ -9,12 +9,13 @@ import {
 	PluginSettingTab,
 	Setting,
 	TFile,
-	Vault,
 } from "obsidian";
 
 import {
-	export_longform,
+	parse_longform,
 	export_selection,
+	write_without_template,
+	write_with_template,
 	get_header_tex,
 } from "./export_longform";
 
@@ -64,15 +65,12 @@ export default class ExportPaperPlugin extends Plugin {
 			output_folder_path = output_folder_match[1];
 		}
 		let output_path = path.join(output_folder_path, output_file_name);
-
-		let out_dir = this.app.vault.getFolderByPath(output_folder_path);
-		if (out_dir === null) {
-			out_dir = await this.app.vault.createFolder(output_folder_path);
-		}
+		await this.app.vault.createFolder(output_folder_path).catch(e => e);
+		// await this.create_folder_if_not(output_folder_path);
 
 		let out_file = this.app.vault.getFileByPath(output_path);
 		if (out_file !== null) {
-			console.log("File exists, overwriting.");
+			console.log("Overwritting the main tex file.");
 		} else {
 			console.log("Creating new output file");
 			out_file = await this.app.vault.create(output_path, "");
@@ -94,7 +92,7 @@ export default class ExportPaperPlugin extends Plugin {
 			path.join(output_folder_path, "header.tex"),
 		);
 		if (!header_file) {
-			this.app.vault.create(
+			await this.app.vault.create(
 				path.join(output_folder_path, "header.tex"),
 				get_header_tex(),
 			);
@@ -123,22 +121,63 @@ export default class ExportPaperPlugin extends Plugin {
 				"Template file not found, exporting with default template.",
 			);
 		}
-		try {
-			return await export_longform(
-				this.app.vault,
-				active_file,
-				out_file,
+
+		const notes_dir = this.app.vault;
+		const longform_file = active_file;
+		const output_file = out_file;
+
+		const parsed_contents = await parse_longform(notes_dir, longform_file);
+
+		if (parsed_contents.media_files.length > 0) {
+			const files_folder = path.join(output_folder_path, "Files");
+			await this.app.vault.createFolder(files_folder).catch(e => e);
+			// await this.create_folder_if_not(files_folder);
+			for (const media_file of parsed_contents.media_files) {
+				await this.app.vault.copy(media_file, path.join(files_folder, media_file.name)).catch(e => e);
+			}
+		 }
+
+		if (template_file !== undefined) {
+			await write_with_template(
 				template_file,
+				parsed_contents,
+				output_file,
+				notes_dir,
+			);
+			new Notice(
+				"Latex content written to " +
+					output_file.path +
+					" by using the template file " +
+					template_file.path,
+			);
+		} else {
+			await write_without_template(
+				parsed_contents,
+				output_file,
+				notes_dir,
 				preamble_file,
 			);
-		} catch (e) {
-			console.error(e);
+			new Notice(
+				"Latex content written to " +
+					output_file.path +
+					" by using the default template",
+			);
 		}
+		// try {
+		// 	return await export_longform(
+		// 		this.app.vault,
+		// 		active_file,
+		// 		out_file,
+		// 		template_file,
+		// 		preamble_file,
+		// 	);
+		// } catch (e) {
+		// 	console.error(e);
+		// }
 	}
-
 	async export_with_selection(active_file: TFile, selection: string) {
 		try {
-			return await export_selection(
+			return export_selection(
 				this.app.vault,
 				active_file,
 				selection,

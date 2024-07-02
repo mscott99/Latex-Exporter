@@ -30,9 +30,11 @@ type parsed_longform = {
 	abstract: string | undefined;
 	body: string;
 	appendix: string | undefined;
+	media_files: TFile[];
+	bib_keys: string[];
 };
 
-async function parse_longform(
+export async function parse_longform(
 	notes_dir: Vault,
 	longform_file: TFile,
 	selection?: string,
@@ -122,6 +124,8 @@ async function parse_longform(
 		abstract: abstract_string,
 		body: body_string,
 		appendix: appendix_string,
+		media_files: data.media_files,
+		bib_keys: data.bib_keys,
 	};
 }
 
@@ -165,43 +169,7 @@ export async function export_selection(
 	}
 }
 
-export async function export_longform(
-	notes_dir: Vault,
-	longform_file: TFile,
-	output_file: TFile,
-	template_file?: TFile,
-	preamble_file?: TFile,
-) {
-	const parsed_contents = await parse_longform(notes_dir, longform_file);
-	if (template_file !== undefined) {
-		write_with_template(
-			template_file,
-			parsed_contents,
-			output_file,
-			notes_dir,
-		);
-		new Notice(
-			"Latex content written to " +
-				output_file.path +
-				" by using the template file " +
-				template_file.path,
-		);
-	} else {
-		write_without_template(
-			parsed_contents,
-			output_file,
-			notes_dir,
-			preamble_file,
-		);
-		new Notice(
-			"Latex content written to " +
-				output_file.path +
-				" by using the default template",
-		);
-	}
-}
-
-async function write_with_template(
+export async function write_with_template(
 	template_file: TFile,
 	parsed_contents: parsed_longform,
 	output_file: TFile,
@@ -237,7 +205,7 @@ async function write_with_template(
 	await notes_dir.modify(output_file, template_content);
 }
 
-async function join_sections(parsed_contents: parsed_longform) {
+function join_sections(parsed_contents: parsed_longform) {
 	let content = "";
 	if (parsed_contents["abstract"] !== undefined) {
 		content =
@@ -254,7 +222,7 @@ async function join_sections(parsed_contents: parsed_longform) {
 	return content;
 }
 
-async function write_without_template(
+export async function write_without_template(
 	parsed_contents: parsed_longform,
 	output_file: TFile,
 	notes_dir: Vault,
@@ -346,8 +314,6 @@ async function parse_note_with_cache(
 	}
 	if (!(file_found.basename in Object.keys(parsed_cache))) {
 		const file_contents = await notes_dir.read(file_found);
-		// const file_contents = fs.readFileSync(make_file_path(notes_dir, file_found), "utf-8");
-
 		parsed_cache[file_found.basename] = parse_note(file_contents);
 	}
 	return parsed_cache[file_found.basename];

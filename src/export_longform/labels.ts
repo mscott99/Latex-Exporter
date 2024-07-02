@@ -1,7 +1,7 @@
 import { TFile, Vault } from "obsidian";
 import { get_header_address } from "./headers";
 import { find_file } from "./utils";
-import { node, note_cache, metadata_for_unroll } from "./interfaces";
+import { node, note_cache, metadata_for_unroll, address_is_image_file } from "./interfaces";
 
 export function format_label(label: string): string {
 	//substitute
@@ -41,6 +41,9 @@ export function label_from_location(
 	address: string,
 	header?: string | string[],
 ): string {
+	if (address_is_image_file(address)) {
+		return format_label("fig:"+ address)
+	}
 	if (header === "" || header === undefined) {
 		header = "statement";
 	}
@@ -67,7 +70,7 @@ export function label_from_location(
 	return format_label("loc:" + address + "." + resolved_header);
 }
 
-export function resolve_header_label(
+function resolve_header_label(
 	address: string,
 	header: string | string[],
 	file_cache: note_cache,

@@ -1,14 +1,12 @@
-import { node } from "./interfaces";
+import * as path from "path";
+import { address_is_image_file, node } from "./interfaces";
+import { Notice, TFile } from "obsidian";
 import { metadata_for_unroll } from "./interfaces";
 import { Text } from "./inline";
 import { parse_embed_content } from "./parseMarkdown";
 import { Paragraph, BlankLine, parse_inside_env } from "./display";
-import { escape_latex, strip_newlines } from "./utils";
-import {
-	label_from_location,
-	explicit_label,
-	format_label,
-} from "./labels";
+import { escape_latex, strip_newlines, find_file } from "./utils";
+import { label_from_location, explicit_label, format_label } from "./labels";
 import { assert } from "console";
 
 export class EmbedWikilink implements node {
@@ -35,6 +33,29 @@ export class EmbedWikilink implements node {
 	}
 
 	async unroll(data: metadata_for_unroll): Promise<node[]> {
+		if (address_is_image_file(this.content)) {
+			const file = find_file(data.notes_dir, this.content);
+			if (file === undefined) {
+				const err_msg =
+					"Content not found: Could not find the content of the plot with image '" +
+					escape_latex(this.content) +
+					"'";
+				new Notice(err_msg);
+				console.warn(err_msg);
+				return [
+					new BlankLine(),
+					new Paragraph([new Text(err_msg)]),
+					new BlankLine(),
+				];
+			} else {
+				data.media_files.push(file);
+				const p = new Plot(file, this.display);
+				p.label = label_from_location(data, file.name);
+				// Resolve the label early. We can do this because label_from_location will not need to resolve headers.
+				return [p];
+			}
+		}
+
 		if (this.display !== undefined) {
 			return [new Text(this.display)];
 		}
@@ -46,18 +67,25 @@ export class EmbedWikilink implements node {
 			header_val,
 		);
 		if (return_data === undefined) {
+			const err_msg =
+				"Content not found: Could not find the content of \\emph{" +
+				escape_latex(this.content) +
+				"} with header \\emph{" +
+				this.header +
+				"}";
+			const other_err_msg =
+				"Content not found: Could not find the content of '" +
+				escape_latex(this.content) +
+				"' with header '" +
+				this.header +
+				"'";
+			new Notice(other_err_msg);
 			return [
 				new BlankLine(),
-				new Paragraph([
-					new Text(
-						"Content not found: Could not find the content of \\emph{" +
-							escape_latex(this.content) +
-							"} with header \\emph{" +
-							this.header +
-							"}",
-					),
-				]),
+				new Paragraph([new Text(err_msg)]),
+				new BlankLine(),
 			];
+			return [];
 		}
 		const [parsed_contents, header_level] = return_data;
 		const ambient_header_offset = data.headers_level_offset;
@@ -69,25 +97,18 @@ export class EmbedWikilink implements node {
 		data.headers_level_offset = ambient_header_offset;
 		// Make a label.
 
-		const address = this.content === ""? data.longform_file.basename : this.content;
+		const address =
+			this.content === "" ? data.longform_file.basename : this.content;
 		if (this.attribute !== undefined) {
 			return [
 				new Environment(
 					unrolled_contents,
 					this.attribute,
-					label_from_location(
-						data,
-						address,
-						this.header,
-					),
+					label_from_location(data, address, this.header),
 				),
 			];
 		}
-		this.label = label_from_location(
-			data,
-			address,
-			this.header,
-		);
+		this.label = label_from_location(data, address, this.header);
 		return unrolled_contents;
 	}
 	latex(buffer: Buffer, buffer_offset: number): number {
@@ -95,6 +116,45 @@ export class EmbedWikilink implements node {
 			buffer_offset +
 			buffer.write("\\autoref{" + this.label + "}\n", buffer_offset)
 		);
+	}
+}
+
+export class Plot implements node {
+	image: TFile;
+	label: string;
+	caption: string | undefined;
+	constructor(image: TFile, caption?: string) {
+		this.image = image;
+		this.caption = caption;
+	}
+	async unroll(): Promise<node[]> {
+		return [this];
+	}
+	latex(buffer: Buffer, buffer_offset: number) {
+		buffer_offset += buffer.write(
+			`\\begin{figure}[t]
+\\centering
+\\includegraphics[width=\\textwidth]{` +
+				path.join("Files", this.image.name) +
+				"}\n",
+			buffer_offset,
+		);
+		let caption_text: string;
+		if (this.caption === undefined) {
+			caption_text = "";
+			const warning =
+				"Figure created from '" + this.image.name + "' has no caption.";
+			new Notice("WARNING: " + warning);
+			console.warn(warning);
+		} else {
+			caption_text = this.caption;
+		}
+		buffer_offset += buffer.write(
+			"\\caption{" + caption_text + "\\label{" + this.label + "}}\n",
+			buffer_offset,
+		);
+		buffer_offset += buffer.write("\\end{figure}\n", buffer_offset);
+		return buffer_offset;
 	}
 }
 
@@ -125,6 +185,7 @@ export class Wikilink implements node {
 		}
 		const match = /^@(.*)$/.exec(this.content);
 		if (match !== null) {
+			data.bib_keys.push(this.content);
 			return [new Citation(match[1])];
 		} else {
 			return [
@@ -223,7 +284,11 @@ export class Hyperlink implements node {
 		return (
 			buffer_offset +
 			buffer.write(
-				"\\hyperlink{" + this.address + "}{" + format_label(this.label) + "}",
+				"\\hyperlink{" +
+					this.address +
+					"}{" +
+					format_label(this.label) +
+					"}",
 				buffer_offset,
 			)
 		);
@@ -240,16 +305,16 @@ export class Hyperlink implements node {
 // The purpose of this class is to defer the label resolution until all files are parsed. So labels are determined in the latex() call.
 export class UnrolledWikilink implements node {
 	unroll_data: metadata_for_unroll;
-	attribute: string|undefined;
+	attribute: string | undefined;
 	address: string;
 	header: string | undefined;
-	displayed: string|undefined;
+	displayed: string | undefined;
 	constructor(
 		unroll_data: metadata_for_unroll,
-		attribute: string|undefined,
+		attribute: string | undefined,
 		address: string,
 		header: string | undefined,
-		displayed: string|undefined,
+		displayed: string | undefined,
 	) {
 		assert(!/^@/.exec(address), "Should not be a citation");
 		this.unroll_data = {
@@ -262,6 +327,8 @@ export class UnrolledWikilink implements node {
 			current_file: unroll_data.current_file,
 			notes_dir: unroll_data.notes_dir,
 			header_stack: [...unroll_data.header_stack],
+			media_files: [...unroll_data.media_files],
+			bib_keys: [...unroll_data.bib_keys],
 		};
 		this.attribute = attribute;
 		this.address = address;
@@ -269,7 +336,10 @@ export class UnrolledWikilink implements node {
 		this.displayed = displayed;
 	}
 	latex(buffer: Buffer, buffer_offset: number): number {
-		const address = this.address === ""? this.unroll_data.longform_file.basename : this.address;
+		const address =
+			this.address === ""
+				? this.unroll_data.longform_file.basename
+				: this.address;
 
 		const label = label_from_location(
 			this.unroll_data,
@@ -286,7 +356,7 @@ export class UnrolledWikilink implements node {
 			return (
 				buffer_offset +
 				buffer.write(
-					"\\hyperlink{"+label+"}{the proof}",
+					"\\hyperlink{" + label + "}{the proof}",
 					buffer_offset,
 				)
 			);
@@ -302,7 +372,10 @@ export class Reference implements node {
 	latex(buffer: Buffer, buffer_offset: number): number {
 		return (
 			buffer_offset +
-			buffer.write("\\autoref{" + format_label(this.label) + "}", buffer_offset)
+			buffer.write(
+				"\\autoref{" + format_label(this.label) + "}",
+				buffer_offset,
+			)
 		);
 	}
 	async unroll(): Promise<node[]> {
