@@ -81,6 +81,16 @@ export function parse_display(
 
 export function parse_after_headers(new_display: node[]): node[] {
 	// let new_display = [new Paragraph([new Text(input)])] as node[];
+	new_display = split_display<Environment>(
+		new_display,
+		Environment.build_from_match,
+		Environment.regexp,
+	);
+	new_display = split_display<DisplayMath>(
+		new_display,
+		DisplayMath.build_from_match,
+		DisplayMath.regexp,
+	);
 	new_display = split_display<NumberedList>(
 		new_display,
 		NumberedList.build_from_match,
@@ -109,20 +119,10 @@ export function parse_after_headers(new_display: node[]): node[] {
 			elt.content = new_content;
 		}
 	}
-	new_display = split_display<DisplayMath>(
-		new_display,
-		DisplayMath.build_from_match,
-		DisplayMath.regexp,
-	);
 	new_display = split_display<BlankLine>(
 		new_display,
 		BlankLine.build_from_match,
 		BlankLine.regexp,
-	);
-	new_display = split_display<Environment>(
-		new_display,
-		Environment.build_from_match,
-		Environment.regexp,
 	);
 	return new_display;
 }
