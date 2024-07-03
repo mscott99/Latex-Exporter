@@ -132,7 +132,7 @@ export class Plot implements node {
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
 		buffer_offset += buffer.write(
-			`\\begin{figure}[t]
+			`\\begin{figure}[h]
 \\centering
 \\includegraphics[width=\\textwidth]{` +
 				path.join("Files", this.image.name) +
