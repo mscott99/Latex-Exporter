@@ -164,7 +164,7 @@ export class Wikilink implements node {
 	header: string | undefined;
 	displayed: string | undefined;
 	static regexp =
-		/(?:::(\S*?))?\[\[([\s\S]*?)(?:\#([\s\S]*?))?(?:\|([\s\S]*?))?\]\]/g;
+		/(?:(\S*?)::)?\[\[([\s\S]*?)(?:\#([\s\S]*?))?(?:\|([\s\S]*?))?\]\]/g;
 	static build_from_match(args: RegExpMatchArray): Wikilink {
 		return new Wikilink(args[1], args[2], args[3], args[4]);
 	}
