@@ -193,10 +193,13 @@ export class DisplayMath implements node {
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
-		const env_name =
-			this.explicit_env_name === undefined
-				? "equation*"
-				: this.explicit_env_name;
+		let env_name = "equation*"
+		if (this.label !== undefined) {
+			env_name = "equation";
+		}
+		if (this.explicit_env_name !== undefined) {
+			env_name = this.explicit_env_name;
+		}
 		buffer_offset += buffer.write(
 			"\\begin{" + env_name + "}\n",
 			buffer_offset,
