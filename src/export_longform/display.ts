@@ -1,5 +1,5 @@
 import { node, metadata_for_unroll, unroll_array } from "./interfaces";
-import { strip_newlines } from "./utils";
+import { notice_and_warn, strip_newlines } from "./utils";
 import { Text } from "./inline";
 import { format_label } from "./labels";
 import { EmbedWikilink, Environment } from "./wikilinks";
@@ -193,7 +193,7 @@ export class DisplayMath implements node {
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
-		let env_name = "equation*"
+		let env_name = "equation*";
 		if (this.label !== undefined) {
 			env_name = "equation";
 		}
@@ -282,7 +282,22 @@ export class DisplayCode implements node {
 		return [this];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
-		console.warn("Code to latex not implemented");
+		// notice_and_warn("Code to latex not implemented");
+		buffer_offset += buffer.write(
+			"\\begin{lstlisting}\n",
+			buffer_offset,
+		);
+		// if (this.label !== undefined) {
+		// 	buffer_offset += buffer.write(
+		// 		"\\label{" + format_label(this.label) + "}\n",
+		// 		buffer_offset,
+		// 	);
+		// }
+		buffer_offset += buffer.write(this.code + "\n", buffer_offset);
+		buffer_offset += buffer.write(
+			"\\end{lstlisting}\n",
+			buffer_offset,
+		);
 		return buffer_offset;
 	}
 }

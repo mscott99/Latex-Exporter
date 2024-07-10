@@ -19,7 +19,7 @@ import {
 	get_header_tex,
 } from "./export_longform";
 
-interface ExportPluginSettings {
+export interface ExportPluginSettings {
 	mySetting: string;
 	template_path: string;
 	base_output_folder: string;

@@ -1,11 +1,17 @@
 import * as path from "path";
+import type { ExportPluginSettings } from "../main";
 import { address_is_image_file, node } from "./interfaces";
-import { Notice, TFile } from "obsidian";
+import { Notice, PluginSettingTab, TFile } from "obsidian";
 import { metadata_for_unroll } from "./interfaces";
 import { Text } from "./inline";
 import { parse_embed_content } from "./parseMarkdown";
 import { Paragraph, BlankLine, parse_inside_env } from "./display";
-import { escape_latex, strip_newlines, find_file } from "./utils";
+import {
+	escape_latex,
+	strip_newlines,
+	find_file,
+	notice_and_warn,
+} from "./utils";
 import { label_from_location, explicit_label, format_label } from "./labels";
 import { assert } from "console";
 
@@ -40,8 +46,7 @@ export class EmbedWikilink implements node {
 					"Content not found: Could not find the content of the plot with image '" +
 					escape_latex(this.content) +
 					"'";
-				new Notice(err_msg);
-				console.warn(err_msg);
+				notice_and_warn(err_msg);
 				return [
 					new BlankLine(),
 					new Paragraph([new Text(err_msg)]),
@@ -143,9 +148,10 @@ export class Plot implements node {
 		if (this.caption === undefined) {
 			caption_text = "";
 			const warning =
-				"Figure created from '" + this.image.name + "' has no caption.";
-			new Notice("WARNING: " + warning);
-			console.warn(warning);
+				"WARNING: Figure created from '" +
+				this.image.name +
+				"' has no caption.";
+			notice_and_warn(warning);
 		} else {
 			caption_text = this.caption;
 		}
@@ -397,7 +403,13 @@ export class Citation implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	latex(buffer: Buffer, buffer_offset: number): number {
+	latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings?: ExportPluginSettings,
+	): number {
+		const citeword = "textcite";
+		// TODO: change the use of textcite to an option in settings
 		if (this.result !== undefined) {
 			return (
 				buffer_offset +
@@ -409,7 +421,10 @@ export class Citation implements node {
 		} else {
 			return (
 				buffer_offset +
-				buffer.write("\\cite{" + this.id + "}", buffer_offset)
+				buffer.write(
+					"\\" + citeword + "{" + this.id + "}",
+					buffer_offset,
+				)
 			);
 		}
 	}

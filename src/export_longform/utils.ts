@@ -1,4 +1,4 @@
-import { Vault, TFile, FileSystemAdapter } from "obsidian";
+import { Vault, TFile, Notice, FileSystemAdapter } from "obsidian";
 
 export function make_file_path(vault: Vault, file: TFile) {
 	const adapter = vault.adapter;
@@ -7,6 +7,11 @@ export function make_file_path(vault: Vault, file: TFile) {
 	} else {
 		throw new Error("Unsupported adapter");
 	}
+}
+
+export function notice_and_warn(message:string){
+	new Notice(message);
+	console.warn(message);
 }
 
 export function escape_latex(input:string){
@@ -22,7 +27,7 @@ export function find_file(
 	Vault.recurseChildren(the_vault.getRoot(), (file) => {
 		if (file instanceof TFile && (file.basename.toLowerCase() === address.toLowerCase() || file.name.toLowerCase() === address.toLowerCase())) {
 			if (file_found !== undefined) {
-				console.warn(
+				notice_and_warn(
 					"Multiple files found with the same name. Returning the first one found.",
 				);
 			} else {
@@ -31,7 +36,7 @@ export function find_file(
 		}
 	});
 	if (file_found === undefined) {
-		console.warn("File not found: " + address);
+		notice_and_warn("File not found: " + address);
 	}
 	return file_found;
 }
