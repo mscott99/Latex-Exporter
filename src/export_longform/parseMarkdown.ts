@@ -1,4 +1,4 @@
-import { find_file } from "./utils";
+import { find_file, notice_and_warn } from "./utils";
 import {
 	node,
 	metadata_for_unroll,
@@ -217,7 +217,7 @@ function join_sections(parsed_contents: parsed_longform) {
 	content += parsed_contents["body"];
 	if (parsed_contents["appendix"] !== undefined) {
 		content += `\\printbibliography\n`;
-		content += `\\section{Appendix}\n` + parsed_contents["appendix"];
+		content += `\\appendix\n\\section{Appendix}\n` + parsed_contents["appendix"];
 	}
 	return content;
 }
@@ -254,7 +254,7 @@ export async function write_without_template(
 	}
 	content += parsed_contents["body"] + `\\printbibliography\n`;
 	if (parsed_contents["appendix"] !== undefined) {
-		content += `\\section{Appendix}\n` + parsed_contents["appendix"];
+		content += `\\appendix\n\\section{Appendix}\n` + parsed_contents["appendix"];
 	}
 	content += "\\end{document}";
 	await notes_dir.modify(output_file, content);
@@ -340,11 +340,11 @@ export async function parse_embed_content(
 	}
 	const header_elt = find_header(header, [content.body]);
 	if (header_elt === undefined) {
-		console.warn(
-			"Header not found: ",
-			header,
-			" in file with address ",
-			address,
+		notice_and_warn(
+			"Header not found: "+
+			header+
+			" in file with address "+
+			address
 		);
 		return undefined;
 	}

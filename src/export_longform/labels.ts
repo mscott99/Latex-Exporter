@@ -1,7 +1,12 @@
 import { TFile, Vault } from "obsidian";
 import { get_header_address } from "./headers";
-import { find_file } from "./utils";
-import { node, note_cache, metadata_for_unroll, address_is_image_file } from "./interfaces";
+import { find_file, notice_and_warn } from "./utils";
+import {
+	node,
+	note_cache,
+	metadata_for_unroll,
+	address_is_image_file,
+} from "./interfaces";
 
 export function format_label(label: string): string {
 	//substitute
@@ -42,7 +47,7 @@ export function label_from_location(
 	header?: string | string[],
 ): string {
 	if (address_is_image_file(address)) {
-		return format_label("fig:"+ address)
+		return format_label("fig:" + address);
 	}
 	if (header === "" || header === undefined) {
 		header = "statement";
@@ -54,12 +59,12 @@ export function label_from_location(
 		data.notes_dir,
 	);
 	if (resolved_header === undefined) {
-		console.warn(
-			"could not resolve header at ",
-			address,
-			": ",
-			header,
-			" keeping the header label as-is",
+		notice_and_warn(
+			"could not resolve header at " +
+				address +
+				": " +
+				header +
+				" keeping the header label as-is",
 		);
 		resolved_header =
 			typeof header === "string" ? header : header.join(".");
@@ -82,20 +87,20 @@ function resolve_header_label(
 		const file = find_file(vault, address);
 		if (file === undefined || file_cache[file.basename] === undefined) {
 			if (file !== undefined && file_cache[file.basename] === undefined) {
-				console.warn(
-					"address of reference '",
-					address,
-					"' is referenced but was not embedded.",
+				notice_and_warn(
+					"address of reference '" +
+						address +
+						"' is referenced but was not embedded.",
 				);
 			}
 			const header_string =
 				typeof header === "string" ? header : header.join(".");
-			console.warn(
-				"keeping the header address of ",
-				address,
-				": ",
-				header_string,
-				" as-is",
+			notice_and_warn(
+				"keeping the header address of " +
+					address +
+					": " +
+					header_string +
+					" as-is",
 			);
 			return header_string;
 		}
@@ -114,12 +119,12 @@ function resolve_header_label(
 	if (new_label === undefined) {
 		const header_string =
 			typeof header === "string" ? header : header.join(".");
-		console.warn(
-			"Could not resolve header name '",
-			header_string,
-			"' in file with address '",
-			address,
-			"', keeping the header label as-is",
+		notice_and_warn(
+			"Could not resolve header name '"+
+			header_string+
+			"' in file with address '"+
+			address+
+			"', keeping the header label as-is"
 		);
 		return header_string;
 	}
