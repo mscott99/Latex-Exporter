@@ -168,6 +168,19 @@ function parse_yaml_header(input: string): [{ [key: string]: string }, string] {
 	return [field_dict, remainder];
 }
 
+export function insert_align_labels(math_content:string, master_label:string){
+	// math content is the inside of a latex align environment. Each line ends with \\
+	// except possibly the last
+	// Insert \master_label-1 on the first line
+	// before the first & and \master_label-2 before the second & and so on. Return the modified content.
+	
+	const lines = math_content.split("\\\\");
+	const new_lines = lines.map((line, index) => {
+		return "\\label{" + format_label(master_label + "-" + (index+1).toString()) + "} & " + line;
+	});
+	return new_lines.join("\\\\");
+}
+
 export class DisplayMath implements node {
 	// parent: node;
 	content: string;
@@ -198,6 +211,17 @@ export class DisplayMath implements node {
 			env_name = "equation";
 		}
 		if (this.explicit_env_name !== undefined) {
+			if (this.label !== undefined) {
+				if (this.explicit_env_name == "align*") {
+					notice_and_warn(
+						"Environment with label '" +
+							this.label +
+							"' is align*, should probably be align to support references.",
+					);
+				}else if(this.explicit_env_name == "align"){
+					this.content = insert_align_labels(this.content, this.label);
+				}
+			}
 			env_name = this.explicit_env_name;
 		}
 		buffer_offset += buffer.write(
@@ -283,10 +307,7 @@ export class DisplayCode implements node {
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
 		// notice_and_warn("Code to latex not implemented");
-		buffer_offset += buffer.write(
-			"\\begin{lstlisting}\n",
-			buffer_offset,
-		);
+		buffer_offset += buffer.write("\\begin{lstlisting}\n", buffer_offset);
 		// if (this.label !== undefined) {
 		// 	buffer_offset += buffer.write(
 		// 		"\\label{" + format_label(this.label) + "}\n",
@@ -294,10 +315,7 @@ export class DisplayCode implements node {
 		// 	);
 		// }
 		buffer_offset += buffer.write(this.code + "\n", buffer_offset);
-		buffer_offset += buffer.write(
-			"\\end{lstlisting}\n",
-			buffer_offset,
-		);
+		buffer_offset += buffer.write("\\end{lstlisting}\n", buffer_offset);
 		return buffer_offset;
 	}
 }

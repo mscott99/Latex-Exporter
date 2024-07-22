@@ -20,6 +20,7 @@ export type parsed_note = {
 export type note_cache = { [key: string]: parsed_note };
 
 export type metadata_for_unroll = {
+	in_thm_env: boolean,
 	depth: number;
 	env_hash_list: string[];
 	parsed_file_bundle: note_cache; // use the path of the files as keys.
@@ -38,6 +39,7 @@ export function init_data(
 	notes_dir: Vault,
 ): metadata_for_unroll {
 	return {
+		in_thm_env: false,
 		depth: 0,
 		env_hash_list: [] as string[],
 		parsed_file_bundle: {} as note_cache,
@@ -53,7 +55,7 @@ export function init_data(
 }
 
 export function address_is_image_file(address: string) {
-	if (/\.(?:jpeg|svg|pdf|png|jpg|gif|svg|pdf|tiff?)$/.exec(address)) {
+	if (/\.(?:jpeg|svg|pdf|png|jpg|gif|svg|pdf|tiff|excalidraw?)$/.exec(address)) {
 		return true;
 	}
 	return false;

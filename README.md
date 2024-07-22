@@ -38,3 +38,9 @@ I suggest to put each relevant result into its own note with a h1 header "statem
 To omit information at the end of files, use a line break `---`, and insert the information after. Only dashed line breaks will be considered for this.
 # Other projects
 See also the Obsidian-to-latex repository in python for an alternative implementation with a different focus.
+
+## Additional quirks
+### Excalidraw support
+In the Excalidraw settings, enable "Embedding Excalidraw into your Notes and Exporting > Export Settings > Auto-export Settings > Auto-export PNG"
+Also, make sure that the exported png is in the /Files folder. The embedding wikilink can be to the excalidraw note, the plugin will convert it to a png link.
+

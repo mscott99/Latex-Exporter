@@ -11,6 +11,7 @@ import {
 	strip_newlines,
 	find_file,
 	notice_and_warn,
+	find_image_file,
 } from "./utils";
 import { label_from_location, explicit_label, format_label } from "./labels";
 import { assert } from "console";
@@ -40,7 +41,7 @@ export class EmbedWikilink implements node {
 
 	async unroll(data: metadata_for_unroll): Promise<node[]> {
 		if (address_is_image_file(this.content)) {
-			const file = find_file(data.notes_dir, this.content);
+			const file = find_image_file(data.notes_dir, this.content);
 			if (file === undefined) {
 				const err_msg =
 					"Content not found: Could not find the content of the plot with image '" +
@@ -96,8 +97,16 @@ export class EmbedWikilink implements node {
 		const ambient_header_offset = data.headers_level_offset;
 		data.headers_level_offset -= header_level - 2; //disregard nesting level of the embedded header.
 		const unrolled_contents = [] as node[];
+		const was_in_thm_env = data.in_thm_env;
+		if (this.attribute !== undefined) {
+			//unrolling within an environment
+			data.in_thm_env = true;
+		}
 		for (const elt of parsed_contents) {
 			unrolled_contents.push(...(await elt.unroll(data)));
+		}
+		if (!was_in_thm_env) {
+			data.in_thm_env = false;
 		}
 		data.headers_level_offset = ambient_header_offset;
 		// Make a label.
@@ -139,7 +148,7 @@ export class Plot implements node {
 		buffer_offset += buffer.write(
 			`\\begin{figure}[h]
 \\centering
-\\includegraphics[width=\\textwidth]{` +
+\\includegraphics[width=0.5\\textwidth]{` +
 				path.join("Files", this.image.name) +
 				"}\n",
 			buffer_offset,
@@ -186,9 +195,6 @@ export class Wikilink implements node {
 		this.displayed = displayed;
 	}
 	async unroll(data: metadata_for_unroll): Promise<node[]> {
-		if (this.displayed !== undefined) {
-			return [new Text(this.displayed)];
-		}
 		const match = /^@(.*)$/.exec(this.content);
 		if (match !== null) {
 			data.bib_keys.push(this.content);
@@ -324,6 +330,7 @@ export class UnrolledWikilink implements node {
 	) {
 		assert(!/^@/.exec(address), "Should not be a citation");
 		this.unroll_data = {
+			in_thm_env: unroll_data.in_thm_env,
 			depth: unroll_data.depth,
 			env_hash_list: unroll_data.env_hash_list,
 			parsed_file_bundle: unroll_data.parsed_file_bundle,
@@ -346,13 +353,20 @@ export class UnrolledWikilink implements node {
 			this.address === ""
 				? this.unroll_data.longform_file.basename
 				: this.address;
-
 		const label = label_from_location(
 			this.unroll_data,
 			address,
 			this.header,
 		);
-
+		if (this.displayed !== undefined) {
+			return (
+				buffer_offset +
+				buffer.write(
+					"\\hyperref[" + label + "]{" + this.displayed + "}",
+					buffer_offset,
+				)
+			);
+		}
 		if (this.header?.toLowerCase().trim() !== "proof") {
 			return (
 				buffer_offset +
@@ -396,9 +410,11 @@ export class Citation implements node {
 	// TODO: Implement multi-citations
 	id: string;
 	result: string | undefined;
-	constructor(id: string, result?: string) {
+	display: string | undefined;
+	constructor(id: string, result?: string, display?: string) {
 		this.id = id;
 		this.result = result;
+		this.display = display;
 	}
 	async unroll(): Promise<node[]> {
 		return [this];
@@ -418,14 +434,10 @@ export class Citation implements node {
 					buffer_offset,
 				)
 			);
-		} else {
-			return (
-				buffer_offset +
-				buffer.write(
-					"\\" + citeword + "{" + this.id + "}",
-					buffer_offset,
-				)
-			);
 		}
+		return (
+			buffer_offset +
+			buffer.write("\\" + citeword + "{" + this.id + "}", buffer_offset)
+		);
 	}
 }

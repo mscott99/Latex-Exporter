@@ -4,6 +4,21 @@ import { Paragraph } from "./display";
 import { Text } from "./inline";
 import { strip_newlines } from "./utils";
 
+export class ProofHeader implements node {
+	title: string;
+	constructor(title: string) {
+		this.title = title;
+	}
+	async unroll(): Promise<node[]> {
+		return [this];
+	}
+	latex(buffer: Buffer, buffer_offset: number): number {
+		const header_string = "\n\\textbf{" + this.title + "}\n\n";
+		buffer_offset += buffer.write(header_string, buffer_offset);
+		return buffer_offset;
+	}
+}
+
 export class Header implements node {
 	children: node[];
 	level: number;
@@ -22,6 +37,13 @@ export class Header implements node {
 		this.label = label;
 	}
 	async unroll(data: metadata_for_unroll): Promise<node[]> {
+		if (data.in_thm_env) {
+			const new_children: node[] = [];
+			for (const elt of this.children) {
+				new_children.push(...(await elt.unroll(data)));
+			}
+			return [new ProofHeader(this.latex_title()), ...new_children];
+		}
 		this.level += data.headers_level_offset;
 		for (let i = 0; i < data.header_stack.length; i++) {
 			if (data.header_stack[i].level >= this.level) {
@@ -32,6 +54,7 @@ export class Header implements node {
 		data.header_stack.push(this);
 
 		this.data = {
+			in_thm_env: data.in_thm_env,
 			depth: data.depth,
 			env_hash_list: data.env_hash_list,
 			parsed_file_bundle: data.parsed_file_bundle,
@@ -42,7 +65,7 @@ export class Header implements node {
 			notes_dir: data.notes_dir,
 			header_stack: [...data.header_stack],
 			media_files: data.media_files,
-			bib_keys: data.bib_keys
+			bib_keys: data.bib_keys,
 		};
 
 		const new_title: node[] = [];
@@ -82,13 +105,19 @@ export class Header implements node {
 		} else if (this.level === 3) {
 			header_string = "\\subsubsection{" + header_title + "}\n";
 		} else if (this.level >= 4) {
-			header_string = "\\textbf{" + header_title + "}\n";
+			header_string = "\n\\textbf{" + header_title + "}\n\n";
 		}
 
 		buffer_offset += buffer.write(header_string, buffer_offset);
-
+		console.log(header_string);
 		buffer_offset += buffer.write(
-			"\\label{" + label_from_location(this.data, this.data.current_file.basename, this.data.header_stack.map(e => e.latex_title())) + "}\n",
+			"\\label{" +
+				label_from_location(
+					this.data,
+					this.data.current_file.basename,
+					this.data.header_stack.map((e) => e.latex_title()),
+				) +
+				"}\n",
 			buffer_offset,
 		);
 
