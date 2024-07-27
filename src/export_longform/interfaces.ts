@@ -1,4 +1,4 @@
-import type { TFile, Vault } from "obsidian";
+import type { TFile } from "obsidian";
 import { Header } from "./headers";
 
 export interface node {
@@ -28,7 +28,8 @@ export type metadata_for_unroll = {
 	explicit_env_index: number;
 	longform_file: TFile;
 	current_file: TFile;
-	notes_dir: Vault;
+	read_tfile: (file: TFile) => Promise<string>;
+	find_file: (address: string) => Promise<TFile | undefined>;
 	header_stack: Header[];
 	media_files: TFile[];
 	bib_keys: string[];
@@ -36,7 +37,8 @@ export type metadata_for_unroll = {
 
 export function init_data(
 	longform_file: TFile,
-	notes_dir: Vault,
+	read_tfile: (file: TFile) => Promise<string>,
+	find_file: (address: string) => Promise<TFile | undefined>,
 ): metadata_for_unroll {
 	return {
 		in_thm_env: false,
@@ -47,7 +49,8 @@ export function init_data(
 		explicit_env_index: 1,
 		longform_file: longform_file,
 		current_file: longform_file,
-		notes_dir: notes_dir,
+		read_tfile: read_tfile,
+		find_file: find_file,
 		header_stack: [] as Header[],
 		media_files: [] as TFile[],
 		bib_keys: [] as string[],

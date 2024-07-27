@@ -1,5 +1,5 @@
 import { node, metadata_for_unroll } from "./interfaces";
-import { label_from_location, format_label } from "./labels";
+import { label_from_location } from "./labels";
 import { Paragraph } from "./display";
 import { Text } from "./inline";
 import { strip_newlines } from "./utils";
@@ -60,9 +60,10 @@ export class Header implements node {
 			parsed_file_bundle: data.parsed_file_bundle,
 			headers_level_offset: data.headers_level_offset,
 			explicit_env_index: data.explicit_env_index,
+			read_tfile: data.read_tfile,
+			find_file: data.find_file,
 			longform_file: data.longform_file,
 			current_file: data.current_file,
-			notes_dir: data.notes_dir,
 			header_stack: [...data.header_stack],
 			media_files: data.media_files,
 			bib_keys: data.bib_keys,

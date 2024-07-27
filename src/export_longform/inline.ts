@@ -32,7 +32,7 @@ export function parse_inline(inline_arr: node[]): node[] {
 	return inline_arr;
 }
 
-function split_inline<ClassObj extends node>(
+export function split_inline<ClassObj extends node>(
 	inline_arr: node[],
 	class_regexp: RegExp,
 	make_obj: (args: RegExpMatchArray) => ClassObj,

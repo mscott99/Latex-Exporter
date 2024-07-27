@@ -18,6 +18,7 @@ import {
 	write_with_template,
 	get_header_tex,
 } from "./export_longform";
+import { find_file } from "./export_longform/utils";
 
 export interface ExportPluginSettings {
 	mySetting: string;
@@ -65,7 +66,7 @@ export default class ExportPaperPlugin extends Plugin {
 			output_folder_path = output_folder_match[1];
 		}
 		let output_path = path.join(output_folder_path, output_file_name);
-		await this.app.vault.createFolder(output_folder_path).catch(e => e);
+		await this.app.vault.createFolder(output_folder_path).catch((e) => e);
 		// await this.create_folder_if_not(output_folder_path);
 
 		let out_file = this.app.vault.getFileByPath(output_path);
@@ -126,23 +127,30 @@ export default class ExportPaperPlugin extends Plugin {
 		const longform_file = active_file;
 		const output_file = out_file;
 
-		const parsed_contents = await parse_longform(notes_dir, longform_file);
+		const parsed_contents = await parse_longform(
+			notes_dir.read,
+			async (address: string) => find_file(notes_dir, address),
+			longform_file,
+		);
 
 		if (parsed_contents.media_files.length > 0) {
 			const files_folder = path.join(output_folder_path, "Files");
-			await this.app.vault.createFolder(files_folder).catch(e => e);
+			await this.app.vault.createFolder(files_folder).catch((e) => e);
 			// await this.create_folder_if_not(files_folder);
 			for (const media_file of parsed_contents.media_files) {
-				await this.app.vault.copy(media_file, path.join(files_folder, media_file.name)).catch(e => e);
+				await this.app.vault
+					.copy(media_file, path.join(files_folder, media_file.name))
+					.catch((e) => e);
 			}
-		 }
+		}
 
 		if (template_file !== undefined) {
 			await write_with_template(
 				template_file,
 				parsed_contents,
 				output_file,
-				notes_dir,
+				notes_dir.modify,
+				notes_dir.cachedRead,
 			);
 			new Notice(
 				"Latex content written to " +
@@ -154,7 +162,7 @@ export default class ExportPaperPlugin extends Plugin {
 			await write_without_template(
 				parsed_contents,
 				output_file,
-				notes_dir,
+				notes_dir.modify,
 				preamble_file,
 			);
 			new Notice(
@@ -175,10 +183,12 @@ export default class ExportPaperPlugin extends Plugin {
 		// 	console.error(e);
 		// }
 	}
+
 	async export_with_selection(active_file: TFile, selection: string) {
 		try {
 			return export_selection(
-				this.app.vault,
+				this.app.vault.cachedRead,
+				async (address: string) => find_file(this.app.vault, address),
 				active_file,
 				selection,
 			);

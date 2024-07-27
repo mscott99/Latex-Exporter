@@ -1,7 +1,7 @@
 import * as path from "path";
 import type { ExportPluginSettings } from "../main";
 import { address_is_image_file, node } from "./interfaces";
-import { Notice, PluginSettingTab, TFile } from "obsidian";
+import { Notice, TFile } from "obsidian";
 import { metadata_for_unroll } from "./interfaces";
 import { Text } from "./inline";
 import { parse_embed_content } from "./parseMarkdown";
@@ -9,7 +9,6 @@ import { Paragraph, BlankLine, parse_inside_env } from "./display";
 import {
 	escape_latex,
 	strip_newlines,
-	find_file,
 	notice_and_warn,
 	find_image_file,
 } from "./utils";
@@ -41,7 +40,7 @@ export class EmbedWikilink implements node {
 
 	async unroll(data: metadata_for_unroll): Promise<node[]> {
 		if (address_is_image_file(this.content)) {
-			const file = find_image_file(data.notes_dir, this.content);
+			const file = await find_image_file(data.find_file, this.content);
 			if (file === undefined) {
 				const err_msg =
 					"Content not found: Could not find the content of the plot with image '" +
@@ -56,7 +55,7 @@ export class EmbedWikilink implements node {
 			} else {
 				data.media_files.push(file);
 				const p = new Plot(file, this.display);
-				p.label = label_from_location(data, file.name);
+				p.label = await label_from_location(data, file.name);
 				// Resolve the label early. We can do this because label_from_location will not need to resolve headers.
 				return [p];
 			}
@@ -68,7 +67,8 @@ export class EmbedWikilink implements node {
 		const header_val = this.header;
 		const return_data = await parse_embed_content(
 			this.content,
-			data.notes_dir,
+			data.find_file,
+			data.read_tfile,
 			data.parsed_file_bundle,
 			header_val,
 		);
@@ -91,7 +91,6 @@ export class EmbedWikilink implements node {
 				new Paragraph([new Text(err_msg)]),
 				new BlankLine(),
 			];
-			return [];
 		}
 		const [parsed_contents, header_level] = return_data;
 		const ambient_header_offset = data.headers_level_offset;
@@ -118,11 +117,11 @@ export class EmbedWikilink implements node {
 				new Environment(
 					unrolled_contents,
 					this.attribute,
-					label_from_location(data, address, this.header),
+					await label_from_location(data, address, this.header),
 				),
 			];
 		}
-		this.label = label_from_location(data, address, this.header);
+		this.label = await label_from_location(data, address, this.header);
 		return unrolled_contents;
 	}
 	latex(buffer: Buffer, buffer_offset: number): number {
@@ -220,7 +219,7 @@ export class Wikilink implements node {
 }
 
 export class Citation implements node {
-	// TODO: Make this a full item, not a result of an unroll. 
+	// TODO: Make this a full item, not a result of an unroll.
 	id: string;
 	result: string | undefined;
 	display: string | undefined;
@@ -379,9 +378,10 @@ export class UnrolledWikilink implements node {
 			parsed_file_bundle: unroll_data.parsed_file_bundle,
 			headers_level_offset: unroll_data.headers_level_offset,
 			explicit_env_index: unroll_data.explicit_env_index,
+			find_file: unroll_data.find_file,
+			read_tfile: unroll_data.read_tfile,
 			longform_file: unroll_data.longform_file,
 			current_file: unroll_data.current_file,
-			notes_dir: unroll_data.notes_dir,
 			header_stack: [...unroll_data.header_stack],
 			media_files: [...unroll_data.media_files],
 			bib_keys: [...unroll_data.bib_keys],

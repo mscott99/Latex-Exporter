@@ -1,51 +1,43 @@
-import { find_file } from "./test_utils";
+jest.mock("obsidian");
+import { TFile } from "obsidian";
+import { make_tfile } from "./test_utils";
+import { get_find_file_fn, get_read_tfile_fn } from "./test_utils";
 import {
 	parse_longform,
-	Citation,
 	init_data,
 	Reference,
 	Environment,
 	DisplayMath,
-	Emphasis,
 	parse_display,
-	Strong,
-	Wikilink,
-	node,
-	parse_inline,
-	InlineMath,
-	split_display,
-	make_heading_tree,
-	EmbedWikilink,
-	DisplayCode,
-	parsed_longform,
 	Paragraph,
 	Text,
 	Header,
-	BlankLine,
 } from "../src/export_longform";
 import * as fs from "fs";
-import { parse } from "path";
+import {join} from "path";
 
 describe("split_display_blocks", () => {
+	const notes_dir = "./tests/files/";
+	const find_file = get_find_file_fn(notes_dir)
+	const read_tfile = get_read_tfile_fn(notes_dir)
 	test("should find the files", () => {
-		expect(find_file("./tests/files/", "lemma2")).toEqual(
+		expect(find_file("lemma2")).toEqual(
 			"tests/files/subfolder/lemma2.md",
 		);
-		expect(find_file("./tests/files/", "simple_embed")).toEqual(
+		expect(find_file("simple_embed")).toEqual(
 			"tests/files/simple_embed.md",
 		);
 	});
-	test("test environment unrolling", () => {
+	test("test environment unrolling", async () => {
 		const address = "simple_embed";
-		const notes_dir = "./tests/files/";
-		const longform_path = find_file(notes_dir, address);
-		if (longform_path === null) {
-			throw new Error(`File not found: ${address} in ${notes_dir}`);
+		const longform_path = await find_file(address);
+		if (longform_path === undefined) {
+			throw new Error(`File not found: ${address}`);
 		}
-		const file_contents = fs.readFileSync(longform_path, "utf-8");
-		const parsed_contents = parse_display(file_contents, address);
-		const data = init_data(address, notes_dir);
-		const unrolled_content = parsed_contents.unroll(data);
+		const file_contents = fs.readFileSync(join(notes_dir, longform_path.path), "utf-8");
+		const parsed_contents = parse_display(file_contents);
+		const data = init_data(make_tfile(address), read_tfile, find_file);
+		const unrolled_content = parsed_contents[1][0].unroll(data);
 
 		const expected_content = [
 			new Environment(
@@ -57,17 +49,16 @@ describe("split_display_blocks", () => {
 
 		expect(unrolled_content).toEqual(expected_content);
 	});
-	test("test env labels", () => {
+	test("test env labels", async () => {
 		const address = "longform_labels";
-		const notes_dir = "./tests/files/";
-		const longform_path = find_file(notes_dir, address);
-		if (longform_path === null) {
-			throw new Error(`File not found: ${address} in ${notes_dir}`);
+		const longform_path = await find_file(address);
+		if (longform_path === undefined) {
+			throw new Error(`File not found: ${address}`);
 		}
-		const file_contents = fs.readFileSync(longform_path, "utf-8");
-		const parsed_contents = parse_display(file_contents, address);
-		const data = init_data(address, notes_dir);
-		const unrolled_content = parsed_contents.unroll(data);
+		const file_contents = fs.readFileSync(longform_path.path, "utf-8");
+		const parsed_contents = parse_display(file_contents);
+		const data = init_data(make_tfile(address), read_tfile, find_file);
+		const unrolled_content = parsed_contents[1][0].unroll(data);
 
 		const expected_content = [
 			new Environment(
@@ -89,17 +80,17 @@ describe("split_display_blocks", () => {
 
 		expect(unrolled_content).toEqual(expected_content);
 	});
-	test("test header embed", () => {
+
+	test("test header embed", async () => {
 		const address = "find_header";
-		const notes_dir = "./tests/files/";
-		const longform_path = find_file(notes_dir, address);
-		if (longform_path === null) {
-			throw new Error(`File not found: ${address} in ${notes_dir}`);
+		const longform_path = await find_file(address);
+		if (longform_path === undefined) {
+			throw new Error(`File not found: ${address}`);
 		}
-		const file_contents = fs.readFileSync(longform_path, "utf-8");
-		const parsed_contents = parse_display(file_contents, address);
-		const data = init_data(address, notes_dir);
-		const unrolled_content = parsed_contents.unroll(data);
+		const file_contents = fs.readFileSync(longform_path.path, "utf-8");
+		const parsed_contents = parse_display(file_contents);
+		const data = init_data(make_tfile(address), read_tfile, find_file);
+		const unrolled_content = parsed_contents[1][0].unroll(data);
 
 		const expected_content = [
 			new Header(
@@ -121,8 +112,7 @@ describe("split_display_blocks", () => {
 	});
 	test("test env labels", () => {
 		const address = "longform_labels";
-		const notes_dir = "./tests/files/";
-		const parsed_content = export_longform(notes_dir, address);
+		const parsed_content = parse_longform(read_tfile, find_file, make_tfile(address));
 		const expected_content = `\\begin{lemma}\n\\label{lem:label_1}\nsome stuff\n\\begin{equation}\n	\\varepsilon\n\\end{equation}\n\\end{lemma}\n\\begin{theorem}\n\\label{res:other_lem.statement}\nContent of the other lemma.\n\\end{theorem}\nreference:\n\\autoref{res:other_lem.statement}`;
 		expect(parsed_content).toEqual(expected_content);
 	});

@@ -1,6 +1,6 @@
 import { TFile} from "obsidian";
 import { get_header_address } from "./headers";
-import { find_file, notice_and_warn } from "./utils";
+import { notice_and_warn } from "./utils";
 import {
 	node,
 	note_cache,
@@ -41,22 +41,22 @@ function explicit_label_with_address(label: string, address: string) {
 	}
 }
 
-export function label_from_location(
+export async function label_from_location(
 	data: metadata_for_unroll,
 	address: string,
 	header?: string | string[],
-): string {
+): Promise<string> {
 	if (address_is_image_file(address)) {
 		return format_label("fig:" + address);
 	}
 	if (header === "" || header === undefined) {
 		header = "statement";
 	}
-	let resolved_header = resolve_header_label(
+	let resolved_header = await resolve_header_label(
 		address,
 		header,
 		data.parsed_file_bundle,
-		(x:string):TFile|undefined => find_file(data.notes_dir, x),
+		data.find_file,
 	);
 	if (resolved_header === undefined) {
 		notice_and_warn(
@@ -75,16 +75,16 @@ export function label_from_location(
 	return format_label("loc:" + address + "." + resolved_header);
 }
 
-function resolve_header_label(
+async function resolve_header_label(
 	address: string,
 	header: string | string[],
 	file_cache: note_cache,
-	find_file_in_vault: (address: string) => TFile | undefined,
-): string | undefined {
+	find_file_in_vault: (address: string) => Promise<TFile | undefined>,
+): Promise<string | undefined> {
 	let file_content: node[];
 	const cached_content = file_cache[address];
 	if (cached_content === undefined) {
-		const file = find_file_in_vault(address);
+		const file = await find_file_in_vault(address);
 		if (file === undefined || file_cache[file.basename] === undefined) {
 			if (file !== undefined && file_cache[file.basename] === undefined) {
 				notice_and_warn(

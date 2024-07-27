@@ -57,15 +57,15 @@ export function find_file(
 	return file_found;
 }
 
-export function find_image_file(
-	the_vault: Vault,
+export async function find_image_file(
+	find_file: (address: string) => Promise<TFile | undefined>,
 	address: string,
-): TFile | undefined {
+): Promise<TFile | undefined> {
 	const matchExcalidraw = /^.*\.excalidraw$/.exec(address);
 	if (matchExcalidraw !== null) {
 		address = matchExcalidraw[0] + ".png";
 	}
-	return find_file(the_vault, address);
+	return await find_file(address);
 }
 
 export function strip_newlines(thestring: string): string {

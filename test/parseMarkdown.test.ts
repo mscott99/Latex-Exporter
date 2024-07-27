@@ -1,26 +1,23 @@
-import {App} from "obsidian"
+jest.mock("obsidian");
 import {
-	Citation,
-	Reference,
 	Environment,
 	DisplayMath,
 	Emphasis,
 	parse_display,
 	Strong,
 	Wikilink,
-	inline_node,
+	node,
 	parse_inline,
 	InlineMath,
 	split_display,
 	make_heading_tree,
 	EmbedWikilink,
 	DisplayCode,
-	MDRoot,
 	Paragraph,
 	Text,
 	Header,
 	BlankLine,
-	parse_all_inline,
+	split_inline,
 } from "../src/export_longform";
 
 describe("split_display_blocks", () => {
@@ -143,15 +140,15 @@ describe("split_display_blocks", () => {
 	});
 	test("test inline math", () => {
 		const text_to_parse = new Text("This is a text with $\\sum${label}");
-		const expected: inline_node[] = [
+		const expected: node[] = [
 			new Text("This is a text with "),
 			new InlineMath("\\sum", "label"),
 		];
 		expect(
-			parse_inline<InlineMath>(
-				text_to_parse,
-				InlineMath.build_from_match,
+			split_inline<InlineMath>(
+				[text_to_parse],
 				InlineMath.regexp,
+				InlineMath.build_from_match,
 			),
 		).toEqual(expected);
 	});
@@ -159,7 +156,7 @@ describe("split_display_blocks", () => {
 		const text_to_parse = new Text(
 			"This is a text with *emphasis* and _emphasis again_ for the $\\sum$",
 		);
-		const expected: inline_node[] = [
+		const expected: node[] = [
 			new Text("This is a text with "),
 			new Emphasis("emphasis"),
 			new Text(" and "),
@@ -167,10 +164,10 @@ describe("split_display_blocks", () => {
 			new Text(" for the $\\sum$"),
 		];
 		expect(
-			parse_inline<Emphasis>(
-				text_to_parse,
-				Emphasis.build_from_match,
+			split_inline<Emphasis>(
+				[text_to_parse],
 				Emphasis.regexp,
+				Emphasis.build_from_match,
 			),
 		).toEqual(expected);
 	});
@@ -178,7 +175,7 @@ describe("split_display_blocks", () => {
 		const text_to_parse = new Text(
 			"This is a text with **strong** and __strong again__ for the $\\sum$",
 		);
-		const expected: inline_node[] = [
+		const expected: node[] = [
 			new Text("This is a text with "),
 			new Strong("strong"),
 			new Text(" and "),
@@ -186,10 +183,10 @@ describe("split_display_blocks", () => {
 			new Text(" for the $\\sum$"),
 		];
 		expect(
-			parse_inline<Strong>(
-				text_to_parse,
-				Strong.build_from_match,
+			split_inline<Strong>(
+				[text_to_parse],
 				Strong.regexp,
+				Strong.build_from_match,
 			),
 		).toEqual(expected);
 	});
@@ -198,15 +195,15 @@ describe("split_display_blocks", () => {
 		const text_to_parse = new Text(
 			"This is a text with [[wikilink#header|display text]]",
 		);
-		const expected: inline_node[] = [
+		const expected: node[] = [
 			new Text("This is a text with "),
 			new Wikilink(undefined, "wikilink", "header", "display text"),
 		];
 		expect(
-			parse_inline<Wikilink>(
-				text_to_parse,
-				Wikilink.build_from_match,
+			split_inline<Wikilink>(
+				[text_to_parse],
 				Wikilink.regexp,
+				Wikilink.build_from_match,
 			),
 		).toEqual(expected);
 	});
@@ -214,7 +211,7 @@ describe("split_display_blocks", () => {
 		const text_to_parse = new Text(
 			"This is a text with **strong** and _emphasis again_ for the $\\sum$",
 		);
-		const expected: inline_node[] = [
+		const expected: node[] = [
 			new Text("This is a text with "),
 			new Strong("strong"),
 			new Text(" and "),
@@ -222,7 +219,7 @@ describe("split_display_blocks", () => {
 			new Text(" for the "),
 			new InlineMath("\\sum"),
 		];
-		expect(parse_all_inline([text_to_parse])).toEqual(expected);
+		expect(parse_inline([text_to_parse])).toEqual(expected);
 	});
 	test("test explicit environment", () => {
 		const markdown = [

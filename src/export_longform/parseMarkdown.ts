@@ -1,4 +1,4 @@
-import { find_file, notice_and_warn } from "./utils";
+import { notice_and_warn } from "./utils";
 import {
 	node,
 	metadata_for_unroll,
@@ -16,7 +16,7 @@ import {
 } from "./display";
 import { parse_inline } from "./inline";
 import { Header, make_heading_tree, find_header } from "./headers";
-import { TFile, Notice, Vault } from "obsidian";
+import { TFile, Notice } from "obsidian";
 
 // Describe label system
 // If embedwikilink env, the label is an address to the embedded header, defaults to "statement" if no header is provided.
@@ -35,16 +35,17 @@ export type parsed_longform = {
 };
 
 export async function parse_longform(
-	notes_dir: Vault,
+	read_tfile: (file: TFile) => Promise<string>,
+	find_file: (address: string) => Promise<TFile | undefined>,
 	longform_file: TFile,
 	selection?: string,
 ): Promise<parsed_longform> {
 	if (longform_file === undefined) {
-		throw new Error(`File not found: ${longform_file} in ${notes_dir}`);
+		throw new Error(`File not found: ${longform_file}`);
 	}
 	let file_contents: string;
 	if (selection === undefined) {
-		file_contents = await notes_dir.read(longform_file);
+		file_contents = await read_tfile(longform_file);
 	} else {
 		file_contents = selection;
 	}
@@ -87,7 +88,7 @@ export async function parse_longform(
 
 	// Must unroll all before rendering into latex so that at latex() time there is access to all
 	// parsed files.
-	const data = init_data(longform_file, notes_dir);
+	const data = init_data(longform_file, read_tfile, find_file);
 	data.parsed_file_bundle = cache;
 
 	if (abstract_header !== undefined) {
@@ -151,17 +152,19 @@ async function render_content(
 }
 
 export async function export_selection(
-	notes_dir: Vault,
+	read_tfile: (file: TFile) => Promise<string>,
+	find_file: (address: string) => Promise<TFile | undefined>,
 	longform_file: TFile,
 	selection: string,
 ) {
 	const parsed_contents = await parse_longform(
-		notes_dir,
+		read_tfile,
+		find_file,
 		longform_file,
 		selection,
 	);
 	if (selection !== undefined) {
-		const content = await join_sections(parsed_contents);
+		const content = join_sections(parsed_contents);
 		// copy content to clipboard
 		await navigator.clipboard.writeText(content);
 		new Notice("Latex content copied to clipboard");
@@ -173,9 +176,10 @@ export async function write_with_template(
 	template_file: TFile,
 	parsed_contents: parsed_longform,
 	output_file: TFile,
-	notes_dir: Vault,
+	modify_tfile: (file: TFile, content: string) => Promise<void>,
+	read_tfile: (file: TFile) => Promise<string>,
 ) {
-	let template_content = await notes_dir.read(template_file);
+	let template_content = await read_tfile(template_file);
 	for (const key of Object.keys(parsed_contents["yaml"])) {
 		template_content = template_content.replace(
 			RegExp(`\\\$${key}\\\$`, "i"),
@@ -202,7 +206,7 @@ export async function write_with_template(
 			parsed_contents["appendix"],
 		);
 	}
-	await notes_dir.modify(output_file, template_content);
+	await modify_tfile(output_file, template_content);
 }
 
 function join_sections(parsed_contents: parsed_longform) {
@@ -225,7 +229,7 @@ function join_sections(parsed_contents: parsed_longform) {
 export async function write_without_template(
 	parsed_contents: parsed_longform,
 	output_file: TFile,
-	notes_dir: Vault,
+	modify: (file: TFile, content: string) => Promise<void>,
 	preamble_file?: TFile,
 ) {
 	let content = `\\documentclass{article}
@@ -257,7 +261,7 @@ export async function write_without_template(
 		content += `\\appendix\n\\section{Appendix}\n` + parsed_contents["appendix"];
 	}
 	content += "\\end{document}";
-	await notes_dir.modify(output_file, content);
+	await modify(output_file, content);
 }
 
 function traverse_tree_and_parse_display(md: node[]): node[] {
@@ -303,35 +307,23 @@ function parse_note(file_contents: string): parsed_note {
 	return { yaml: yaml, body: parsed_contents };
 }
 
-async function parse_note_with_cache(
+export async function parse_embed_content(
 	address: string,
-	notes_dir: Vault,
-	parsed_cache: { [key: string]: parsed_note },
-	// header: string | undefined,
-): Promise<parsed_note | undefined> {
-	const file_found = find_file(notes_dir, address);
+	find_file: (address: string) => Promise<TFile | undefined>,
+	read_tfile: (file: TFile) => Promise<string>,
+	parsed_cache: note_cache,
+	header?: string,
+): Promise<[node[], number] | undefined> {
+	const file_found = await find_file(address);
 	if (file_found === undefined) {
 		// no warning necessary, already warned in find_file
 		return undefined;
 	}
 	if (!(file_found.basename in Object.keys(parsed_cache))) {
-		const file_contents = await notes_dir.read(file_found);
+		const file_contents = await read_tfile(file_found);
 		parsed_cache[file_found.basename] = parse_note(file_contents);
 	}
-	return parsed_cache[file_found.basename];
-}
-
-export async function parse_embed_content(
-	address: string,
-	notes_dir: Vault,
-	parsed_cache: note_cache,
-	header?: string,
-): Promise<[node[], number] | undefined> {
-	const content = await parse_note_with_cache(
-		address,
-		notes_dir,
-		parsed_cache,
-	);
+	const content =	parsed_cache[file_found.basename];
 	if (content === undefined) {
 		return undefined;
 	}
