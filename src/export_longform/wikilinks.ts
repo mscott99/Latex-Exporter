@@ -195,21 +195,15 @@ export class Wikilink implements node {
 		this.displayed = displayed;
 	}
 	async unroll(data: metadata_for_unroll): Promise<node[]> {
-		const match = /^@(.*)$/.exec(this.content);
-		if (match !== null) {
-			data.bib_keys.push(this.content);
-			return [new Citation(match[1])];
-		} else {
-			return [
-				new UnrolledWikilink(
-					data,
-					this.attribute,
-					this.content,
-					this.header,
-					this.displayed,
-				),
-			];
-		}
+		return [
+			new UnrolledWikilink(
+				data,
+				this.attribute,
+				this.content,
+				this.header,
+				this.displayed,
+			),
+		];
 	}
 	latex(buffer: Buffer, buffer_offset: number) {
 		if (this.header === undefined) {
@@ -221,6 +215,54 @@ export class Wikilink implements node {
 				"[[" + this.content + "#" + this.header + "]]",
 				buffer_offset,
 			)
+		);
+	}
+}
+
+export class Citation implements node {
+	// TODO: Make this a full item, not a result of an unroll. 
+	id: string;
+	result: string | undefined;
+	display: string | undefined;
+	constructor(id: string, result?: string, display?: string) {
+		this.id = id;
+		this.result = result;
+		this.display = display;
+	}
+	async unroll(): Promise<node[]> {
+		return [this];
+	}
+	latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings?: ExportPluginSettings,
+	): number {
+		const citeword = "textcite";
+		// TODO: change the use of textcite to an option in settings
+		if (this.result !== undefined) {
+			console.log(this.result);
+			if (this.result === "std") {
+				return (
+					buffer_offset +
+					buffer.write("\\cite{" + this.id + "}", buffer_offset)
+				);
+			} else if (this.result === "text") {
+				return (
+					buffer_offset +
+					buffer.write("\\textcite{" + this.id + "}", buffer_offset)
+				);
+			}
+			return (
+				buffer_offset +
+				buffer.write(
+					"\\cite[" + this.result + "]{" + this.id + "}",
+					buffer_offset,
+				)
+			);
+		}
+		return (
+			buffer_offset +
+			buffer.write("\\" + citeword + "{" + this.id + "}", buffer_offset)
 		);
 	}
 }
@@ -289,6 +331,7 @@ export class Environment implements node {
 		return buffer_offset;
 	}
 }
+
 export class Hyperlink implements node {
 	address: string;
 	label: string;
@@ -403,41 +446,5 @@ export class Reference implements node {
 	}
 	constructor(label: string) {
 		this.label = label;
-	}
-}
-
-export class Citation implements node {
-	// TODO: Implement multi-citations
-	id: string;
-	result: string | undefined;
-	display: string | undefined;
-	constructor(id: string, result?: string, display?: string) {
-		this.id = id;
-		this.result = result;
-		this.display = display;
-	}
-	async unroll(): Promise<node[]> {
-		return [this];
-	}
-	latex(
-		buffer: Buffer,
-		buffer_offset: number,
-		settings?: ExportPluginSettings,
-	): number {
-		const citeword = "textcite";
-		// TODO: change the use of textcite to an option in settings
-		if (this.result !== undefined) {
-			return (
-				buffer_offset +
-				buffer.write(
-					"\\cite[" + this.result + "]{" + this.id + "}",
-					buffer_offset,
-				)
-			);
-		}
-		return (
-			buffer_offset +
-			buffer.write("\\" + citeword + "{" + this.id + "}", buffer_offset)
-		);
 	}
 }

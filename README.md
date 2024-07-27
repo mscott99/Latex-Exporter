@@ -31,6 +31,7 @@ Citations are wikilinks starting with the '@' character. Markdown citations are 
 
 This item is made to work with either markdown citations or either the "Zotero Integration" or the "Citations" plugin in Obsidian. Support is only tested for the wikilink format.
 
+The default citation command is `\textcite{}`, but a link of the form `[std][[@...]]` will be converted to `\cite{}`. Specifying `[text]` will convert the link to a textcite.
 ## Markdown Note Structure
 
 I suggest to put each relevant result into its own note with a h1 header "statement" and one h1 header "Proof"; and possibly one #Remark.

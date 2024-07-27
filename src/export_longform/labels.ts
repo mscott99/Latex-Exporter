@@ -1,4 +1,4 @@
-import { TFile, Vault } from "obsidian";
+import { TFile} from "obsidian";
 import { get_header_address } from "./headers";
 import { find_file, notice_and_warn } from "./utils";
 import {
@@ -56,7 +56,7 @@ export function label_from_location(
 		address,
 		header,
 		data.parsed_file_bundle,
-		data.notes_dir,
+		(x:string):TFile|undefined => find_file(data.notes_dir, x),
 	);
 	if (resolved_header === undefined) {
 		notice_and_warn(
@@ -79,12 +79,12 @@ function resolve_header_label(
 	address: string,
 	header: string | string[],
 	file_cache: note_cache,
-	vault: Vault,
+	find_file_in_vault: (address: string) => TFile | undefined,
 ): string | undefined {
 	let file_content: node[];
 	const cached_content = file_cache[address];
 	if (cached_content === undefined) {
-		const file = find_file(vault, address);
+		const file = find_file_in_vault(address);
 		if (file === undefined || file_cache[file.basename] === undefined) {
 			if (file !== undefined && file_cache[file.basename] === undefined) {
 				notice_and_warn(
@@ -120,11 +120,11 @@ function resolve_header_label(
 		const header_string =
 			typeof header === "string" ? header : header.join(".");
 		notice_and_warn(
-			"Could not resolve header name '"+
-			header_string+
-			"' in file with address '"+
-			address+
-			"', keeping the header label as-is"
+			"Could not resolve header name '" +
+				header_string +
+				"' in file with address '" +
+				address +
+				"', keeping the header label as-is",
 		);
 		return header_string;
 	}

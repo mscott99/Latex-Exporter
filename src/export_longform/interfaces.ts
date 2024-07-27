@@ -1,4 +1,4 @@
-import { TFile, Vault } from "obsidian";
+import type { TFile, Vault } from "obsidian";
 import { Header } from "./headers";
 
 export interface node {
@@ -71,10 +71,3 @@ export async function unroll_array(
 	}
 	return new_children;
 }
-
-// function latex_array(children:node[], buffer: Buffer, offset: number):number {
-// 		for (const elt of children) {
-// 			offset = elt.latex(buffer, offset);
-// 		}
-// 		return offset;
-// }

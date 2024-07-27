@@ -1,14 +1,5 @@
-import { Vault, TFile, Notice, FileSystemAdapter } from "obsidian";
+import { Vault, TFile, Notice } from "obsidian";
 import { address_is_image_file } from "./interfaces";
-
-export function make_file_path(vault: Vault, file: TFile) {
-	const adapter = vault.adapter;
-	if (adapter instanceof FileSystemAdapter) {
-		return adapter.getBasePath() + "/" + file.path;
-	} else {
-		throw new Error("Unsupported adapter");
-	}
-}
 
 export function notice_and_warn(message: string) {
 	new Notice(message);

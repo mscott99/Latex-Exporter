@@ -109,7 +109,6 @@ export class Header implements node {
 		}
 
 		buffer_offset += buffer.write(header_string, buffer_offset);
-		console.log(header_string);
 		buffer_offset += buffer.write(
 			"\\label{" +
 				label_from_location(

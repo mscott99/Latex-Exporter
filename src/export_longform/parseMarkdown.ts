@@ -25,7 +25,7 @@ import { TFile, Notice, Vault } from "obsidian";
 /**
  * Plays the role of the zero'th header. Use this data structure when representing the markdown content of a file, or of some markdown with header structures.
  */
-type parsed_longform = {
+export type parsed_longform = {
 	yaml: { [key: string]: string };
 	abstract: string | undefined;
 	body: string;
