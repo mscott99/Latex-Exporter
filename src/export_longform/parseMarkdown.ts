@@ -8,10 +8,10 @@ import {
 	note_cache,
 } from "./interfaces";
 import {
-	parse_display,
 	Paragraph,
 	NumberedList,
 	UnorderedList,
+	parse_display,
 	parse_after_headers,
 } from "./display";
 import { parse_inline } from "./inline";
@@ -36,7 +36,7 @@ export type parsed_longform = {
 
 export async function parse_longform(
 	read_tfile: (file: TFile) => Promise<string>,
-	find_file: (address: string) => Promise<TFile | undefined>,
+	find_file: (address: string) => TFile | undefined,
 	longform_file: TFile,
 	selection?: string,
 ): Promise<parsed_longform> {
@@ -57,7 +57,7 @@ export async function parse_longform(
 	for (const e of parsed_content) {
 		if (
 			e instanceof Header &&
-			e.latex_title().toLowerCase().trim() === "abstract"
+			(await e.latex_title()).toLowerCase().trim() === "abstract"
 		) {
 			abstract_header = e;
 			parsed_content = parsed_content.filter((x) => x !== e);
@@ -67,7 +67,7 @@ export async function parse_longform(
 	for (const e of parsed_content) {
 		if (
 			e instanceof Header &&
-			e.latex_title().toLowerCase().trim() === "appendix"
+			(await e.latex_title()).toLowerCase().trim() === "appendix"
 		) {
 			appendix_header = e;
 			parsed_content = parsed_content.filter((x) => x !== e);
@@ -78,7 +78,7 @@ export async function parse_longform(
 	for (const e of parsed_content) {
 		if (
 			e instanceof Header &&
-			e.latex_title().toLowerCase().trim() === "body"
+			(await e.latex_title()).toLowerCase().trim() === "body"
 		) {
 			body_header = e;
 			lower_headers([body_header]);
@@ -146,14 +146,14 @@ async function render_content(
 	const buffer = Buffer.alloc(10000000); // made this very big. Too big? For my paper I run out with two orders of magnitude smaller.
 	let offset = 0;
 	for (const elt of content) {
-		offset = elt.latex(buffer, offset);
+		offset = await elt.latex(buffer, offset);
 	}
 	return buffer.toString("utf8", 0, offset);
 }
 
 export async function export_selection(
 	read_tfile: (file: TFile) => Promise<string>,
-	find_file: (address: string) => Promise<TFile | undefined>,
+	find_file: (address: string) => TFile | undefined,
 	longform_file: TFile,
 	selection: string,
 ) {
@@ -299,7 +299,7 @@ function traverse_tree_and_parse_inline(md: node[]): void {
 	}
 }
 
-function parse_note(file_contents: string): parsed_note {
+export function parse_note(file_contents: string): parsed_note {
 	const [yaml, body] = parse_display(file_contents);
 	let parsed_contents = make_heading_tree(body);
 	parsed_contents = traverse_tree_and_parse_display(parsed_contents);
@@ -309,12 +309,12 @@ function parse_note(file_contents: string): parsed_note {
 
 export async function parse_embed_content(
 	address: string,
-	find_file: (address: string) => Promise<TFile | undefined>,
+	find_file: (address: string) => TFile | undefined,
 	read_tfile: (file: TFile) => Promise<string>,
 	parsed_cache: note_cache,
 	header?: string,
 ): Promise<[node[], number] | undefined> {
-	const file_found = await find_file(address);
+	const file_found = find_file(address);
 	if (file_found === undefined) {
 		// no warning necessary, already warned in find_file
 		return undefined;
@@ -330,7 +330,7 @@ export async function parse_embed_content(
 	if (header === undefined) {
 		return [content.body, 0];
 	}
-	const header_elt = find_header(header, [content.body]);
+	const header_elt = await find_header(header, [content.body]);
 	if (header_elt === undefined) {
 		notice_and_warn(
 			"Header not found: "+

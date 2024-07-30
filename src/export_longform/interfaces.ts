@@ -3,7 +3,7 @@ import { Header } from "./headers";
 
 export interface node {
 	unroll(data?: metadata_for_unroll): Promise<node[]>;
-	latex(buffer: Buffer, buffer_offset: number): number;
+	latex(buffer: Buffer, buffer_offset: number): Promise<number>;
 }
 
 export interface file_content {
@@ -29,7 +29,7 @@ export type metadata_for_unroll = {
 	longform_file: TFile;
 	current_file: TFile;
 	read_tfile: (file: TFile) => Promise<string>;
-	find_file: (address: string) => Promise<TFile | undefined>;
+	find_file: (address: string) => TFile | undefined;
 	header_stack: Header[];
 	media_files: TFile[];
 	bib_keys: string[];
@@ -38,7 +38,7 @@ export type metadata_for_unroll = {
 export function init_data(
 	longform_file: TFile,
 	read_tfile: (file: TFile) => Promise<string>,
-	find_file: (address: string) => Promise<TFile | undefined>,
+	find_file: (address: string) => TFile | undefined,
 ): metadata_for_unroll {
 	return {
 		in_thm_env: false,

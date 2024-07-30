@@ -12,7 +12,7 @@ export class ProofHeader implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	latex(buffer: Buffer, buffer_offset: number): number {
+	async latex(buffer: Buffer, buffer_offset: number): Promise<number> {
 		const header_string = "\n\\textbf{" + this.title + "}\n\n";
 		buffer_offset += buffer.write(header_string, buffer_offset);
 		return buffer_offset;
@@ -30,11 +30,15 @@ export class Header implements node {
 		title: node[],
 		children: node[],
 		label?: string,
+		data?: metadata_for_unroll
 	) {
 		this.level = level;
 		this.title = title;
 		this.children = children;
 		this.label = label;
+		if(data !== undefined) {
+			this.data = data;
+		}
 	}
 	async unroll(data: metadata_for_unroll): Promise<node[]> {
 		if (data.in_thm_env) {
@@ -42,7 +46,7 @@ export class Header implements node {
 			for (const elt of this.children) {
 				new_children.push(...(await elt.unroll(data)));
 			}
-			return [new ProofHeader(this.latex_title()), ...new_children];
+			return [new ProofHeader(await this.latex_title()), ...new_children];
 		}
 		this.level += data.headers_level_offset;
 		for (let i = 0; i < data.header_stack.length; i++) {
@@ -88,16 +92,16 @@ export class Header implements node {
 		this.children = new_children;
 		return [this];
 	}
-	latex_title(): string {
+	async latex_title(): Promise<string> {
 		const buffer = Buffer.alloc(1000);
 		let buffer_offset = 0;
 		for (const e of this.title) {
-			buffer_offset = e.latex(buffer, buffer_offset);
+			buffer_offset = await e.latex(buffer, buffer_offset);
 		}
 		return buffer.toString("utf8", 0, buffer_offset);
 	}
-	latex(buffer: Buffer, buffer_offset: number): number {
-		const header_title = this.latex_title();
+	async latex(buffer: Buffer, buffer_offset: number): Promise<number> {
+		const header_title = await this.latex_title();
 		let header_string = "";
 		if (this.level === 1) {
 			header_string = "\\section{" + header_title + "}\n";
@@ -110,37 +114,38 @@ export class Header implements node {
 		}
 
 		buffer_offset += buffer.write(header_string, buffer_offset);
+		const promises = this.data.header_stack.map(async (e) => await e.latex_title())
 		buffer_offset += buffer.write(
 			"\\label{" +
 				label_from_location(
 					this.data,
 					this.data.current_file.basename,
-					this.data.header_stack.map((e) => e.latex_title()),
+					await Promise.all(promises),
 				) +
 				"}\n",
 			buffer_offset,
 		);
 
 		for (const e of this.children) {
-			buffer_offset = e.latex(buffer, buffer_offset);
+			buffer_offset = await e.latex(buffer, buffer_offset);
 		}
 		return buffer_offset;
 	}
 }
 
-export function find_header(
+export async function find_header(
 	header: string[],
 	current_content: node[][],
-): Header | undefined;
-export function find_header(
+): Promise<Header | undefined>;
+export async function find_header(
 	header: string,
 	current_content: node[][],
-): Header | undefined;
+): Promise<Header | undefined>;
 
-export function find_header(
+export async function find_header(
 	header: string | string[],
 	current_content: node[][],
-): Header | undefined {
+): Promise<Header | undefined> {
 	let header_stack: string[];
 	if (typeof header === "string") {
 		header_stack = header.split("#").reverse();
@@ -159,7 +164,7 @@ export function find_header(
 				}
 				if (
 					header_stack.length > 0 &&
-					elt.latex_title().toLowerCase().trim() ==
+					(await elt.latex_title()).toLowerCase().trim() ==
 						current_check.toLowerCase().trim()
 				) {
 					if (header_stack.length == 1) {
@@ -174,26 +179,26 @@ export function find_header(
 	if (next_checks.length == 0) {
 		return undefined;
 	}
-	return find_header(header_stack, next_checks);
+	return await find_header(header_stack, next_checks);
 }
 
 // This will not prioritize low depth but oh well
-export function get_header_address(
+export async function get_header_address(
 	header: string[],
 	current_content: node[],
 	built_address?: string,
-): string | undefined;
-export function get_header_address(
+): Promise<string | undefined>;
+export async function get_header_address(
 	header: string,
 	current_content: node[],
 	built_address?: string,
-): string | undefined;
+): Promise<string | undefined>;
 
-export function get_header_address(
+export async function get_header_address(
 	header: string | string[],
 	current_content: node[],
 	built_address?: string,
-): string | undefined {
+): Promise<string | undefined> {
 	let header_stack: string[];
 	if (typeof header === "string") {
 		header_stack = header.split("#").reverse();
@@ -209,11 +214,11 @@ export function get_header_address(
 			);
 			const new_address =
 				built_address === undefined
-					? elt.latex_title()
-					: built_address + "." + elt.latex_title();
+					? (await elt.latex_title())
+					: built_address + "." + (await elt.latex_title());
 			if (
 				header_stack.length > 0 &&
-				elt.latex_title().toLowerCase().trim() ==
+				(await elt.latex_title()).toLowerCase().trim() ==
 					current_check.toLowerCase().trim()
 			) {
 				if (header_stack.length == 1) {
@@ -222,7 +227,7 @@ export function get_header_address(
 				header_stack.pop();
 			}
 			// keep going even if the current was not matched
-			const attempt = get_header_address(
+			const attempt = await get_header_address(
 				header_stack,
 				elt.children,
 				new_address,

@@ -1,9 +1,14 @@
 import { node, metadata_for_unroll } from "./interfaces";
-import { Wikilink } from "./wikilinks";
+import { Wikilink, Citation } from "./wikilinks";
 import { explicit_label } from "./labels";
 import {format_label} from "./labels";
 
 export function parse_inline(inline_arr: node[]): node[] {
+	inline_arr = split_inline<Citation>(
+		inline_arr,
+		Citation.regexp,
+		Citation.build_from_match,
+	); // must be before inline math so as to include math in displayed text.
 	inline_arr = split_inline<Wikilink>(
 		inline_arr,
 		Wikilink.regexp,
@@ -84,7 +89,7 @@ class ExplicitRef implements node {
 		);
 		return [this];
 	}
-	latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number) {
 		return (
 			buffer_offset +
 			buffer.write("\\autoref{" + format_label(this.label) + "}", buffer_offset)
@@ -100,7 +105,7 @@ export class Text implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number) {
 		return buffer_offset + buffer.write(this.content, buffer_offset);
 	}
 }
@@ -124,7 +129,7 @@ export class Emphasis implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number) {
 		return (
 			buffer_offset +
 			buffer.write("\\emph{" + this.content + "}", buffer_offset)
@@ -152,7 +157,7 @@ export class Strong implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number) {
 		return (
 			buffer_offset +
 			buffer.write("\\textbf{" + this.content + "}", buffer_offset)
@@ -174,7 +179,7 @@ export class InlineMath implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number) {
 		return (
 			buffer_offset +
 			buffer.write("$" + this.content + "$", buffer_offset)
@@ -194,7 +199,7 @@ export class InlineCode implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number) {
 		return (
 			buffer_offset + buffer.write("`" + this.code + "`", buffer_offset)
 		);

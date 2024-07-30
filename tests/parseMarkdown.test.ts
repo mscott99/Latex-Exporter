@@ -3,7 +3,7 @@ import {
 	Environment,
 	DisplayMath,
 	Emphasis,
-	parse_display,
+	parse_note,
 	Strong,
 	Wikilink,
 	node,
@@ -55,9 +55,9 @@ describe("split_display_blocks", () => {
 
 		const expected = [
 			new Paragraph([new Text("This is the")]),
-			new DisplayMath("hi\n", "label"),
+			new DisplayMath("hi", "eq-label"),
 			new Paragraph([new Text(" first and ")]),
-			new DisplayMath(" $ all \\sum_{} ", undefined),
+			new DisplayMath("$ all \\sum_{}", undefined),
 			new Paragraph([new Text(" paragraph.$$")]),
 		];
 
@@ -297,7 +297,7 @@ $$\\sum$$ hi there.`;
 					],
 				),
 			]
-		expect(parse_display(markdown)).toEqual(expected);
+		expect(parse_note(markdown).body).toEqual(expected);
 	});
 	// test('test parsing lists', () => {
 	// To make tests we need to generalize the logic, because we need a loop to match lists.

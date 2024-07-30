@@ -192,7 +192,7 @@ export class DisplayMath implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number) {
 		let env_name = "equation*";
 		if (this.label !== undefined) {
 			env_name = "equation";
@@ -232,10 +232,10 @@ export class Paragraph implements node {
 		this.elements = new_elements;
 		return [this];
 	}
-	latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number) {
 		let new_offset = buffer_offset;
 		for (const elt of this.elements) {
-			new_offset = elt.latex(buffer, new_offset);
+			new_offset = await elt.latex(buffer, new_offset);
 		}
 		new_offset += buffer.write("\n", new_offset);
 		return new_offset;
@@ -250,7 +250,7 @@ export class BlankLine implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number) {
 		return buffer_offset + buffer.write("\n", buffer_offset);
 		// the other \n should be done at the end of the previous display object.
 	}
@@ -281,7 +281,7 @@ export class DisplayCode implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number) {
 		// notice_and_warn("Code to latex not implemented");
 		buffer_offset += buffer.write(
 			"\\begin{lstlisting}\n",
@@ -314,7 +314,7 @@ export class Quote implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number) {
 		return buffer_offset;
 	}
 }
@@ -345,12 +345,12 @@ export class NumberedList implements node {
 		}
 		return [new NumberedList(new_content)];
 	}
-	latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number) {
 		buffer_offset += buffer.write("\\begin{enumerate}\n", buffer_offset);
 		for (const e of this.content) {
 			buffer_offset += buffer.write("\\item ", buffer_offset);
 			for (const f of e) {
-				buffer_offset = f.latex(buffer, buffer_offset);
+				buffer_offset = await f.latex(buffer, buffer_offset);
 			}
 		}
 		buffer_offset += buffer.write("\\end{enumerate}\n", buffer_offset);
@@ -386,12 +386,12 @@ export class UnorderedList implements node {
 		}
 		return [new UnorderedList(new_content)];
 	}
-	latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number) {
 		buffer_offset += buffer.write("\\begin{itemize}\n", buffer_offset);
 		for (const e of this.content) {
 			buffer_offset += buffer.write("\\item ", buffer_offset);
 			for (const f of e) {
-				buffer_offset = f.latex(buffer, buffer_offset);
+				buffer_offset = await f.latex(buffer, buffer_offset);
 			}
 		}
 		buffer_offset += buffer.write("\\end{itemize}\n", buffer_offset);
@@ -411,7 +411,7 @@ export class Comment implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number) {
 		return buffer_offset;
 	}
 }

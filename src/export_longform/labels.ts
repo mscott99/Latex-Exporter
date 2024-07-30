@@ -79,12 +79,12 @@ async function resolve_header_label(
 	address: string,
 	header: string | string[],
 	file_cache: note_cache,
-	find_file_in_vault: (address: string) => Promise<TFile | undefined>,
+	find_file: (address: string) => TFile | undefined,
 ): Promise<string | undefined> {
 	let file_content: node[];
 	const cached_content = file_cache[address];
 	if (cached_content === undefined) {
-		const file = await find_file_in_vault(address);
+		const file = find_file(address);
 		if (file === undefined || file_cache[file.basename] === undefined) {
 			if (file !== undefined && file_cache[file.basename] === undefined) {
 				notice_and_warn(
@@ -111,9 +111,9 @@ async function resolve_header_label(
 	let new_label: string | undefined;
 	if (typeof header === "string") {
 		// to make typescript happy
-		new_label = get_header_address(header, file_content);
+		new_label = await get_header_address(header, file_content);
 	} else {
-		new_label = get_header_address([...header].reverse(), file_content);
+		new_label = await get_header_address([...header].reverse(), file_content);
 	}
 
 	if (new_label === undefined) {

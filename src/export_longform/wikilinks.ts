@@ -40,7 +40,7 @@ export class EmbedWikilink implements node {
 
 	async unroll(data: metadata_for_unroll): Promise<node[]> {
 		if (address_is_image_file(this.content)) {
-			const file = await find_image_file(data.find_file, this.content);
+			const file = find_image_file(data.find_file, this.content);
 			if (file === undefined) {
 				const err_msg =
 					"Content not found: Could not find the content of the plot with image '" +
@@ -124,7 +124,7 @@ export class EmbedWikilink implements node {
 		this.label = await label_from_location(data, address, this.header);
 		return unrolled_contents;
 	}
-	latex(buffer: Buffer, buffer_offset: number): number {
+	async latex(buffer: Buffer, buffer_offset: number): Promise<number> {
 		return (
 			buffer_offset +
 			buffer.write("\\autoref{" + this.label + "}\n", buffer_offset)
@@ -143,7 +143,7 @@ export class Plot implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number) {
 		buffer_offset += buffer.write(
 			`\\begin{figure}[h]
 \\centering
@@ -204,7 +204,7 @@ export class Wikilink implements node {
 			),
 		];
 	}
-	latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number) {
 		if (this.header === undefined) {
 			this.header = "";
 		}
@@ -218,53 +218,6 @@ export class Wikilink implements node {
 	}
 }
 
-export class Citation implements node {
-	// TODO: Make this a full item, not a result of an unroll.
-	id: string;
-	result: string | undefined;
-	display: string | undefined;
-	constructor(id: string, result?: string, display?: string) {
-		this.id = id;
-		this.result = result;
-		this.display = display;
-	}
-	async unroll(): Promise<node[]> {
-		return [this];
-	}
-	latex(
-		buffer: Buffer,
-		buffer_offset: number,
-		settings?: ExportPluginSettings,
-	): number {
-		const citeword = "textcite";
-		// TODO: change the use of textcite to an option in settings
-		if (this.result !== undefined) {
-			console.log(this.result);
-			if (this.result === "std") {
-				return (
-					buffer_offset +
-					buffer.write("\\cite{" + this.id + "}", buffer_offset)
-				);
-			} else if (this.result === "text") {
-				return (
-					buffer_offset +
-					buffer.write("\\textcite{" + this.id + "}", buffer_offset)
-				);
-			}
-			return (
-				buffer_offset +
-				buffer.write(
-					"\\cite[" + this.result + "]{" + this.id + "}",
-					buffer_offset,
-				)
-			);
-		}
-		return (
-			buffer_offset +
-			buffer.write("\\" + citeword + "{" + this.id + "}", buffer_offset)
-		);
-	}
-}
 
 export class Environment implements node {
 	children: node[];
@@ -298,7 +251,7 @@ export class Environment implements node {
 		}
 		return [this];
 	}
-	latex(buffer: Buffer, buffer_offset: number): number {
+	async latex(buffer: Buffer, buffer_offset: number): Promise<number> {
 		buffer_offset += buffer.write(
 			"\\begin{" + this.type + "}",
 			buffer_offset,
@@ -321,7 +274,7 @@ export class Environment implements node {
 			}
 		}
 		for (const e of this.children) {
-			buffer_offset = e.latex(buffer, buffer_offset);
+			buffer_offset = await e.latex(buffer, buffer_offset);
 		}
 		buffer_offset += buffer.write(
 			"\\end{" + this.type + "}\n",
@@ -334,7 +287,7 @@ export class Environment implements node {
 export class Hyperlink implements node {
 	address: string;
 	label: string;
-	latex(buffer: Buffer, buffer_offset: number): number {
+	async latex(buffer: Buffer, buffer_offset: number): Promise<number> {
 		return (
 			buffer_offset +
 			buffer.write(
@@ -391,12 +344,12 @@ export class UnrolledWikilink implements node {
 		this.header = header;
 		this.displayed = displayed;
 	}
-	latex(buffer: Buffer, buffer_offset: number): number {
+	async latex(buffer: Buffer, buffer_offset: number): Promise<number> {
 		const address =
 			this.address === ""
 				? this.unroll_data.longform_file.basename
 				: this.address;
-		const label = label_from_location(
+		const label = await label_from_location(
 			this.unroll_data,
 			address,
 			this.header,
@@ -430,21 +383,57 @@ export class UnrolledWikilink implements node {
 	}
 }
 
-export class Reference implements node {
-	label: string;
-	latex(buffer: Buffer, buffer_offset: number): number {
-		return (
-			buffer_offset +
-			buffer.write(
-				"\\autoref{" + format_label(this.label) + "}",
-				buffer_offset,
-			)
-		);
+export class Citation implements node {
+	// TODO: Make this a full item, not a result of an unroll.
+	id: string;
+	result: string | undefined;
+	display: string | undefined;
+	header: string | undefined;
+	static regexp =
+		/(?:\[([^\[]*?)\])?\[\[@([\s\S]*?)(?:\#([\s\S]*?))?(?:\|([\s\S]*?))?\]\]/g;
+	static build_from_match(args: RegExpMatchArray): Citation {
+		return new Citation(args[2], args[1], args[3], args[4]);
+	}
+	constructor(id: string, result?: string, header?:string, display?: string) {
+		this.id = id;
+		this.result = result;
+		this.display = display;
+		this.header = header;
 	}
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	constructor(label: string) {
-		this.label = label;
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings?: ExportPluginSettings,
+	): Promise<number> {
+		const citeword = "textcite";
+		// TODO: change the use of textcite to an option in settings
+		if (this.result !== undefined) {
+			console.log(this.result);
+			if (this.result === "std") {
+				return (
+					buffer_offset +
+					buffer.write("\\cite{" + this.id + "}", buffer_offset)
+				);
+			} else if (this.result === "text") {
+				return (
+					buffer_offset +
+					buffer.write("\\textcite{" + this.id + "}", buffer_offset)
+				);
+			}
+			return (
+				buffer_offset +
+				buffer.write(
+					"\\cite[" + this.result + "]{" + this.id + "}",
+					buffer_offset,
+				)
+			);
+		}
+		return (
+			buffer_offset +
+			buffer.write("\\" + citeword + "{" + this.id + "}", buffer_offset)
+		);
 	}
 }
