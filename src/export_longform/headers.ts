@@ -117,7 +117,7 @@ export class Header implements node {
 		const promises = this.data.header_stack.map(async (e) => await e.latex_title())
 		buffer_offset += buffer.write(
 			"\\label{" +
-				label_from_location(
+				await label_from_location(
 					this.data,
 					this.data.current_file.basename,
 					await Promise.all(promises),

@@ -218,7 +218,6 @@ export class Wikilink implements node {
 	}
 }
 
-
 export class Environment implements node {
 	children: node[];
 	// Can parse a label as well
@@ -390,11 +389,16 @@ export class Citation implements node {
 	display: string | undefined;
 	header: string | undefined;
 	static regexp =
-		/(?:\[([^\[]*?)\])?\[\[@([\s\S]*?)(?:\#([\s\S]*?))?(?:\|([\s\S]*?))?\]\]/g;
+		/(?:\[([^\[]*?)\])?\[\[@([^\]:\|]*?)(?:\#([^\]\|]*?))?(?:\|([^\]]*?))?\]\]/g;
 	static build_from_match(args: RegExpMatchArray): Citation {
 		return new Citation(args[2], args[1], args[3], args[4]);
 	}
-	constructor(id: string, result?: string, header?:string, display?: string) {
+	constructor(
+		id: string,
+		result?: string,
+		header?: string,
+		display?: string,
+	) {
 		this.id = id;
 		this.result = result;
 		this.display = display;
@@ -411,7 +415,6 @@ export class Citation implements node {
 		const citeword = "textcite";
 		// TODO: change the use of textcite to an option in settings
 		if (this.result !== undefined) {
-			console.log(this.result);
 			if (this.result === "std") {
 				return (
 					buffer_offset +
@@ -435,5 +438,42 @@ export class Citation implements node {
 			buffer_offset +
 			buffer.write("\\" + citeword + "{" + this.id + "}", buffer_offset)
 		);
+	}
+}
+
+export class MultiCitation implements node {
+	// TODO: Make this a full item, not a result of an unroll.
+	ids: string[];
+	static regexp =
+		/(?:\[std\])?\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\]\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\](?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?/g;
+	static build_from_match(args: RegExpMatchArray): MultiCitation {
+		return new MultiCitation(args);
+	}
+	constructor(args: string[]) {
+		this.ids = [];
+		for(const id of args.slice(1)){
+			if (id === undefined) {
+				break;
+			}
+			this.ids.push(id);
+		}
+	}
+	async unroll(): Promise<node[]> {
+		return [this];
+	}
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings?: ExportPluginSettings,
+	): Promise<number> {
+		buffer_offset += buffer.write("\\cite{", buffer_offset);
+		for (const id of this.ids.slice(0, -1)) {
+			buffer_offset += buffer.write(id + ", ", buffer_offset);
+		}
+		buffer_offset += buffer.write(
+			this.ids[this.ids.length - 1] + "}",
+			buffer_offset,
+		);
+		return buffer_offset;
 	}
 }

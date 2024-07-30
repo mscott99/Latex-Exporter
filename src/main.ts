@@ -124,13 +124,10 @@ export default class ExportPaperPlugin extends Plugin {
 		}
 
 		const notes_dir = this.app.vault;
-		const longform_file = active_file;
-		const output_file = out_file;
-
 		const parsed_contents = await parse_longform(
-			notes_dir.read,
-			async (address: string) => find_file(notes_dir, address),
-			longform_file,
+			notes_dir.cachedRead.bind(notes_dir),
+			(address: string) => find_file(notes_dir, address),
+			active_file,
 		);
 
 		if (parsed_contents.media_files.length > 0) {
@@ -148,26 +145,26 @@ export default class ExportPaperPlugin extends Plugin {
 			await write_with_template(
 				template_file,
 				parsed_contents,
-				output_file,
-				notes_dir.modify,
-				notes_dir.cachedRead,
+				out_file,
+				notes_dir.modify.bind(notes_dir),
+				notes_dir.cachedRead.bind(notes_dir),
 			);
 			new Notice(
 				"Latex content written to " +
-					output_file.path +
+					out_file.path +
 					" by using the template file " +
 					template_file.path,
 			);
 		} else {
 			await write_without_template(
 				parsed_contents,
-				output_file,
-				notes_dir.modify,
+				out_file,
+				notes_dir.modify.bind(notes_dir),
 				preamble_file,
 			);
 			new Notice(
 				"Latex content written to " +
-					output_file.path +
+					out_file.path +
 					" by using the default template",
 			);
 		}
@@ -187,8 +184,8 @@ export default class ExportPaperPlugin extends Plugin {
 	async export_with_selection(active_file: TFile, selection: string) {
 		try {
 			return export_selection(
-				this.app.vault.cachedRead,
-				async (address: string) => find_file(this.app.vault, address),
+				this.app.vault.cachedRead.bind(this.app.vault),
+				(address: string) => find_file(this.app.vault, address),
 				active_file,
 				selection,
 			);

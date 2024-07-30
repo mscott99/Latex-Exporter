@@ -1,14 +1,19 @@
 import { node, metadata_for_unroll } from "./interfaces";
-import { Wikilink, Citation } from "./wikilinks";
+import { Wikilink, Citation, MultiCitation } from "./wikilinks";
 import { explicit_label } from "./labels";
 import {format_label} from "./labels";
 
 export function parse_inline(inline_arr: node[]): node[] {
+	inline_arr = split_inline<MultiCitation>(
+		inline_arr,
+		MultiCitation.regexp,
+		MultiCitation.build_from_match,
+	);
 	inline_arr = split_inline<Citation>(
 		inline_arr,
 		Citation.regexp,
 		Citation.build_from_match,
-	); // must be before inline math so as to include math in displayed text.
+	);
 	inline_arr = split_inline<Wikilink>(
 		inline_arr,
 		Wikilink.regexp,
