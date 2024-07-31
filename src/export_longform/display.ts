@@ -198,7 +198,21 @@ export class DisplayMath implements node {
 			env_name = "equation";
 		}
 		if (this.explicit_env_name !== undefined) {
-			env_name = this.explicit_env_name;
+			if (
+				env_name in ["equation", "equation*", "align", "align*", "multline", "multline*", "gather", "gather*"]
+			) {
+				env_name = this.explicit_env_name;
+			} else {
+				// env was stripped by regex, so add it back.
+				this.content =
+					"\\begin{" +
+					this.explicit_env_name +
+					"}\n" +
+					this.content +
+					"\n\\end{" +
+					this.explicit_env_name +
+					"}";
+			}
 		}
 		buffer_offset += buffer.write(
 			"\\begin{" + env_name + "}\n",
@@ -283,10 +297,7 @@ export class DisplayCode implements node {
 	}
 	async latex(buffer: Buffer, buffer_offset: number) {
 		// notice_and_warn("Code to latex not implemented");
-		buffer_offset += buffer.write(
-			"\\begin{lstlisting}\n",
-			buffer_offset,
-		);
+		buffer_offset += buffer.write("\\begin{lstlisting}\n", buffer_offset);
 		// if (this.label !== undefined) {
 		// 	buffer_offset += buffer.write(
 		// 		"\\label{" + format_label(this.label) + "}\n",
@@ -294,10 +305,7 @@ export class DisplayCode implements node {
 		// 	);
 		// }
 		buffer_offset += buffer.write(this.code + "\n", buffer_offset);
-		buffer_offset += buffer.write(
-			"\\end{lstlisting}\n",
-			buffer_offset,
-		);
+		buffer_offset += buffer.write("\\end{lstlisting}\n", buffer_offset);
 		return buffer_offset;
 	}
 }
