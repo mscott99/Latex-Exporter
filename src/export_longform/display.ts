@@ -1,5 +1,5 @@
 import { node, metadata_for_unroll, unroll_array } from "./interfaces";
-import { strip_newlines } from "./utils";
+import { notice_and_warn, strip_newlines } from "./utils";
 import { Text } from "./inline";
 import { format_label } from "./labels";
 import { EmbedWikilink, Environment } from "./wikilinks";
@@ -196,10 +196,44 @@ export class DisplayMath implements node {
 		let env_name = "equation*";
 		if (this.label !== undefined) {
 			env_name = "equation";
+			if(this.explicit_env_name !== undefined && ["equation*", "align*"].includes(this.explicit_env_name)) {
+				notice_and_warn(`Environment ${this.explicit_env_name} does not support labels. Ignoring label ${this.label}`);
+			}
+			if (
+				this.explicit_env_name !== undefined &&
+				["align"].includes(this.explicit_env_name)
+			) {
+				const label = format_label(this.label);
+				const lines = this.content.split("\\\\");
+				const labeled_lines: string[] = [];
+				lines.forEach((line, index) => {
+					if (line.trim() !== "") {
+						labeled_lines.push(
+							line + ` \\label{${label}:${index + 1}}\\\\`,
+						);
+					}
+				});
+				this.content = labeled_lines.join("");
+			} else {
+				this.content =
+					"\\label{" +
+					format_label(this.label) +
+					"}\n" +
+					this.content;
+			}
 		}
 		if (this.explicit_env_name !== undefined) {
 			if (
-				env_name in ["equation", "equation*", "align", "align*", "multline", "multline*", "gather", "gather*"]
+				[
+					"equation",
+					"equation*",
+					"align",
+					"align*",
+					"multline",
+					"multline*",
+					"gather",
+					"gather*",
+				].includes(this.explicit_env_name)
 			) {
 				env_name = this.explicit_env_name;
 			} else {
@@ -218,12 +252,6 @@ export class DisplayMath implements node {
 			"\\begin{" + env_name + "}\n",
 			buffer_offset,
 		);
-		if (this.label !== undefined) {
-			buffer_offset += buffer.write(
-				"\\label{" + format_label(this.label) + "}\n",
-				buffer_offset,
-			);
-		}
 		buffer_offset += buffer.write(this.content + "\n", buffer_offset);
 		buffer_offset += buffer.write(
 			"\\end{" + env_name + "}\n",
@@ -323,7 +351,10 @@ export class Quote implements node {
 		return [this];
 	}
 	async latex(buffer: Buffer, buffer_offset: number) {
-		return buffer_offset;
+		return (
+			buffer_offset +
+			buffer.write("%" + this.content + "\n", buffer_offset)
+		);
 	}
 }
 

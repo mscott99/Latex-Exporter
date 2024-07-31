@@ -3,3 +3,17 @@ $$
 \sum_{i = 1}^n
 \end{aligned}
 $$
+$$
+\begin{align}
+\varepsilon\\
+\varepsilon\\
+\varepsilon\\
+\end{align}
+$${#eq-label}
+$$
+\begin{aligned}
+\varepsilon\\
+\varepsilon\\
+\varepsilon\\
+\end{aligned}
+$${#eq-other}

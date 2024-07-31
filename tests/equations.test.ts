@@ -9,6 +9,23 @@ describe("my plugin", () => {
 \\sum_{i = 1}^n
 \\end{aligned}
 \\end{equation*}
+\\begin{align}
+\\varepsilon \\label{eq:label:1}\\\\
+\\varepsilon \\label{eq:label:2}\\\\
+\\varepsilon \\label{eq:label:3}\\\\
+\\end{align}
+\\begin{equation}
+\\begin{aligned}
+\\label{eq:other}
+\\varepsilon\\\\
+\\varepsilon\\\\
+\\varepsilon\\\\
+\\end{aligned}
+\\end{equation}
 `)
+	})
+	test("inline", async () => {
+		const result = await get_latex_file_contents("inline")
+		expect(result).toEqual(`A \\emph{emph} \\textbf{strong} \`\`quotes"\nAnd \`\`other".\n`)
 	})
 });

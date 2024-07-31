@@ -29,6 +29,11 @@ export function parse_inline(inline_arr: node[]): node[] {
 		ExplicitRef.regexp,
 		ExplicitRef.build_from_match,
 	);
+	inline_arr = split_inline<Quotes>(
+		inline_arr,
+		Quotes.regexp,
+		Quotes.build_from_match,
+	);
 	inline_arr = split_inline<Strong>(
 		inline_arr,
 		Strong.regexp,
@@ -60,14 +65,14 @@ export function split_inline<ClassObj extends node>(
 					start_index,
 					current_match.index,
 				);
-				if (prev_chunk.trim() !== "") {
+				if (prev_chunk !== "") {
 					new_inline.push(new Text(prev_chunk));
 				}
 				new_inline.push(make_obj(current_match));
 				start_index = current_match.index + current_match[0].length;
 			}
 			const last_string = text.content.slice(start_index);
-			if (last_string.trim() !== "") {
+			if (last_string !== "") {
 				new_inline.push(new Text(last_string));
 			}
 		} else {
@@ -138,6 +143,27 @@ export class Emphasis implements node {
 		return (
 			buffer_offset +
 			buffer.write("\\emph{" + this.content + "}", buffer_offset)
+		);
+	}
+}
+
+export class Quotes implements node {
+	static regexp = /(?:"(\S.*?)")/gs;
+	content: string;
+	label: string | undefined;
+	static build_from_match(regexmatch: RegExpMatchArray): Emphasis {
+		return new Quotes(regexmatch[1]);
+	}
+	constructor(content: string) {
+		this.content = content;
+	}
+	async unroll(): Promise<node[]> {
+		return [this];
+	}
+	async latex(buffer: Buffer, buffer_offset: number) {
+		return (
+			buffer_offset +
+			buffer.write("\`\`" + this.content + "\"", buffer_offset)
 		);
 	}
 }
