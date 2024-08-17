@@ -4,11 +4,20 @@ import { parse_note, init_data, parse_longform } from "../src/export_longform";
 import { TFile } from "obsidian";
 import * as fs from "fs";
 import * as path from "path";
-import { address_is_image_file } from "../src/export_longform/interfaces";
+import { address_is_image_file, ExportPluginSettings } from "../src/export_longform/interfaces";
 
 export async function read_tfile(file: TFile): Promise<string> {
 	return fs.readFileSync(file.path, "utf-8");
 }
+
+export const TEST_DEFAULT_SETTINGS: ExportPluginSettings = {
+	mySetting: "default",
+	template_path: "",
+	base_output_folder: "/",
+	preamble_file: "preamble.sty",
+	bib_file: "bibliography.bib",
+};
+
 
 export async function get_parsed_file_contents(
 	address: string,
@@ -25,6 +34,7 @@ export async function get_parsed_file_contents(
 
 export async function get_unrolled_file_contents(
 	address: string,
+	settings: ExportPluginSettings,
 	notes_dir = "./tests/files/",
 ) {
 	const find_file = get_find_file_fn(notes_dir);
@@ -35,11 +45,12 @@ export async function get_unrolled_file_contents(
 	const file_contents = await read_tfile(longform_file);
 	const parsed_contents = parse_note(file_contents).body;
 	const data = init_data(longform_file, read_tfile, find_file);
-	return await parsed_contents[0].unroll(data);
+	return await parsed_contents[0].unroll(data, settings);
 }
 
 export async function get_latex_file_contents(
 	address: string,
+	settings: ExportPluginSettings,
 	notes_dir = "./tests/files/",
 ) {
 	const find_file = get_find_file_fn(notes_dir);
@@ -51,6 +62,7 @@ export async function get_latex_file_contents(
 		read_tfile,
 		find_file,
 		longform_file,
+		settings
 	);
 	return parsed_content.body;
 }

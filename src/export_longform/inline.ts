@@ -1,4 +1,4 @@
-import { node, metadata_for_unroll } from "./interfaces";
+import { node, metadata_for_unroll, ExportPluginSettings } from "./interfaces";
 import { Wikilink, Citation, MultiCitation } from "./wikilinks";
 import { explicit_label } from "./labels";
 import {format_label} from "./labels";
@@ -91,7 +91,7 @@ class ExplicitRef implements node {
 	static build_from_match(regexmatch: RegExpMatchArray): ExplicitRef {
 		return new ExplicitRef(regexmatch[1]);
 	}
-	async unroll(data: metadata_for_unroll): Promise<node[]> {
+	async unroll(data: metadata_for_unroll, settings:ExportPluginSettings): Promise<node[]> {
 		this.label = explicit_label(
 			data.longform_file,
 			data.current_file,
@@ -99,7 +99,7 @@ class ExplicitRef implements node {
 		);
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
 		return (
 			buffer_offset +
 			buffer.write("\\autoref{" + format_label(this.label) + "}", buffer_offset)
@@ -115,7 +115,7 @@ export class Text implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
 		return buffer_offset + buffer.write(this.content, buffer_offset);
 	}
 }
@@ -139,7 +139,7 @@ export class Emphasis implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
 		return (
 			buffer_offset +
 			buffer.write("\\emph{" + this.content + "}", buffer_offset)
@@ -160,7 +160,7 @@ export class Quotes implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
 		return (
 			buffer_offset +
 			buffer.write("\`\`" + this.content + "\"", buffer_offset)
@@ -188,7 +188,7 @@ export class Strong implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
 		return (
 			buffer_offset +
 			buffer.write("\\textbf{" + this.content + "}", buffer_offset)
@@ -210,7 +210,7 @@ export class InlineMath implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
 		return (
 			buffer_offset +
 			buffer.write("$" + this.content + "$", buffer_offset)
@@ -230,7 +230,7 @@ export class InlineCode implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
 		return (
 			buffer_offset + buffer.write("`" + this.code + "`", buffer_offset)
 		);

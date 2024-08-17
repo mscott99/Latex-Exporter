@@ -1,4 +1,4 @@
-import { node, metadata_for_unroll } from "./interfaces";
+import { node, metadata_for_unroll, ExportPluginSettings } from "./interfaces";
 import { label_from_location } from "./labels";
 import { Paragraph } from "./display";
 import { Text } from "./inline";
@@ -12,7 +12,7 @@ export class ProofHeader implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number): Promise<number> {
+	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings): Promise<number> {
 		const header_string = "\n\\textbf{" + this.title + "}\n\n";
 		buffer_offset += buffer.write(header_string, buffer_offset);
 		return buffer_offset;
@@ -40,13 +40,13 @@ export class Header implements node {
 			this.data = data;
 		}
 	}
-	async unroll(data: metadata_for_unroll): Promise<node[]> {
+	async unroll(data: metadata_for_unroll, settings:ExportPluginSettings): Promise<node[]> {
 		if (data.in_thm_env) {
 			const new_children: node[] = [];
 			for (const elt of this.children) {
-				new_children.push(...(await elt.unroll(data)));
+				new_children.push(...(await elt.unroll(data, settings)));
 			}
-			return [new ProofHeader(await this.latex_title()), ...new_children];
+			return [new ProofHeader(await this.latex_title(settings)), ...new_children];
 		}
 		this.level += data.headers_level_offset;
 		for (let i = 0; i < data.header_stack.length; i++) {
@@ -75,7 +75,7 @@ export class Header implements node {
 
 		const new_title: node[] = [];
 		for (const elt of this.title) {
-			new_title.push(...(await elt.unroll(data)));
+			new_title.push(...(await elt.unroll(data, settings)));
 		}
 		this.title = new_title;
 
@@ -87,21 +87,21 @@ export class Header implements node {
 
 		const new_children: node[] = [];
 		for (const elt of this.children) {
-			new_children.push(...(await elt.unroll(data)));
+			new_children.push(...(await elt.unroll(data, settings)));
 		}
 		this.children = new_children;
 		return [this];
 	}
-	async latex_title(): Promise<string> {
+	async latex_title(settings: ExportPluginSettings): Promise<string> {
 		const buffer = Buffer.alloc(1000);
 		let buffer_offset = 0;
 		for (const e of this.title) {
-			buffer_offset = await e.latex(buffer, buffer_offset);
+			buffer_offset = await e.latex(buffer, buffer_offset, settings);
 		}
 		return buffer.toString("utf8", 0, buffer_offset);
 	}
-	async latex(buffer: Buffer, buffer_offset: number): Promise<number> {
-		const header_title = await this.latex_title();
+	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings): Promise<number> {
+		const header_title = await this.latex_title(settings);
 		let header_string = "";
 		if (this.level === 1) {
 			header_string = "\\section{" + header_title + "}\n";
@@ -114,12 +114,13 @@ export class Header implements node {
 		}
 
 		buffer_offset += buffer.write(header_string, buffer_offset);
-		const promises = this.data.header_stack.map(async (e) => await e.latex_title())
+		const promises = this.data.header_stack.map(async (e) => await e.latex_title(settings))
 		buffer_offset += buffer.write(
 			"\\label{" +
 				await label_from_location(
 					this.data,
 					this.data.current_file.basename,
+					settings,
 					await Promise.all(promises),
 				) +
 				"}\n",
@@ -127,7 +128,7 @@ export class Header implements node {
 		);
 
 		for (const e of this.children) {
-			buffer_offset = await e.latex(buffer, buffer_offset);
+			buffer_offset = await e.latex(buffer, buffer_offset, settings);
 		}
 		return buffer_offset;
 	}
@@ -136,15 +137,18 @@ export class Header implements node {
 export async function find_header(
 	header: string[],
 	current_content: node[][],
+	settings: ExportPluginSettings,
 ): Promise<Header | undefined>;
 export async function find_header(
 	header: string,
 	current_content: node[][],
+	settings: ExportPluginSettings,
 ): Promise<Header | undefined>;
 
 export async function find_header(
 	header: string | string[],
 	current_content: node[][],
+	settings: ExportPluginSettings,
 ): Promise<Header | undefined> {
 	let header_stack: string[];
 	if (typeof header === "string") {
@@ -164,7 +168,7 @@ export async function find_header(
 				}
 				if (
 					header_stack.length > 0 &&
-					(await elt.latex_title()).toLowerCase().trim() ==
+					(await elt.latex_title(settings)).toLowerCase().trim() ==
 						current_check.toLowerCase().trim()
 				) {
 					if (header_stack.length == 1) {
@@ -179,24 +183,27 @@ export async function find_header(
 	if (next_checks.length == 0) {
 		return undefined;
 	}
-	return await find_header(header_stack, next_checks);
+	return await find_header(header_stack, next_checks, settings);
 }
 
 // This will not prioritize low depth but oh well
 export async function get_header_address(
 	header: string[],
 	current_content: node[],
+	settings: ExportPluginSettings,
 	built_address?: string,
 ): Promise<string | undefined>;
 export async function get_header_address(
 	header: string,
 	current_content: node[],
+	settings: ExportPluginSettings,
 	built_address?: string,
 ): Promise<string | undefined>;
 
 export async function get_header_address(
 	header: string | string[],
 	current_content: node[],
+	settings: ExportPluginSettings,
 	built_address?: string,
 ): Promise<string | undefined> {
 	let header_stack: string[];
@@ -214,11 +221,11 @@ export async function get_header_address(
 			);
 			const new_address =
 				built_address === undefined
-					? (await elt.latex_title())
-					: built_address + "." + (await elt.latex_title());
+					? (await elt.latex_title(settings))
+					: built_address + "." + (await elt.latex_title(settings));
 			if (
 				header_stack.length > 0 &&
-				(await elt.latex_title()).toLowerCase().trim() ==
+				(await elt.latex_title(settings)).toLowerCase().trim() ==
 					current_check.toLowerCase().trim()
 			) {
 				if (header_stack.length == 1) {
@@ -230,6 +237,7 @@ export async function get_header_address(
 			const attempt = await get_header_address(
 				header_stack,
 				elt.children,
+				settings,
 				new_address,
 			);
 			if (attempt !== undefined) {

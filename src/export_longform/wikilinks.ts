@@ -1,11 +1,10 @@
 import * as path from "path";
-import type { ExportPluginSettings } from "../main";
-import { address_is_image_file, node } from "./interfaces";
+import { address_is_image_file, node, ExportPluginSettings, unroll_array } from "./interfaces";
 import { Notice, TFile } from "obsidian";
 import { metadata_for_unroll } from "./interfaces";
 import { Text } from "./inline";
-import { parse_embed_content, parse_note } from "./parseMarkdown";
-import { Paragraph, BlankLine, parse_inside_env } from "./display";
+import { parse_embed_content, traverse_tree_and_parse_inline} from "./parseMarkdown";
+import { Paragraph, BlankLine, parse_after_headers, parse_display } from "./display";
 import {
 	escape_latex,
 	strip_newlines,
@@ -38,7 +37,7 @@ export class EmbedWikilink implements node {
 		this.display = displayed;
 	}
 
-	async unroll(data: metadata_for_unroll): Promise<node[]> {
+	async unroll(data: metadata_for_unroll, settings:ExportPluginSettings): Promise<node[]> {
 		if (address_is_image_file(this.content)) {
 			const file = find_image_file(data.find_file, this.content);
 			if (file === undefined) {
@@ -55,7 +54,7 @@ export class EmbedWikilink implements node {
 			} else {
 				data.media_files.push(file);
 				const p = new Plot(file, this.display);
-				p.label = await label_from_location(data, file.name);
+				p.label = await label_from_location(data, file.name, settings);
 				// Resolve the label early. We can do this because label_from_location will not need to resolve headers.
 				return [p];
 			}
@@ -70,6 +69,7 @@ export class EmbedWikilink implements node {
 			data.find_file,
 			data.read_tfile,
 			data.parsed_file_bundle,
+			settings,
 			header_val,
 		);
 		if (return_data === undefined) {
@@ -102,7 +102,7 @@ export class EmbedWikilink implements node {
 			data.in_thm_env = true;
 		}
 		for (const elt of parsed_contents) {
-			unrolled_contents.push(...(await elt.unroll(data)));
+			unrolled_contents.push(...(await elt.unroll(data, settings)));
 		}
 		if (!was_in_thm_env) {
 			data.in_thm_env = false;
@@ -117,14 +117,14 @@ export class EmbedWikilink implements node {
 				new Environment(
 					unrolled_contents,
 					this.attribute,
-					await label_from_location(data, address, this.header),
+					await label_from_location(data, address, settings, this.header),
 				),
 			];
 		}
-		this.label = await label_from_location(data, address, this.header);
+		this.label = await label_from_location(data, address, settings, this.header);
 		return unrolled_contents;
 	}
-	async latex(buffer: Buffer, buffer_offset: number): Promise<number> {
+	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings): Promise<number> {
 		return (
 			buffer_offset +
 			buffer.write("\\autoref{" + this.label + "}\n", buffer_offset)
@@ -143,7 +143,7 @@ export class Plot implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
 		buffer_offset += buffer.write(
 			`\\begin{figure}[h]
 \\centering
@@ -193,7 +193,7 @@ export class Wikilink implements node {
 		this.header = header;
 		this.displayed = displayed;
 	}
-	async unroll(data: metadata_for_unroll): Promise<node[]> {
+	async unroll(data: metadata_for_unroll, settings:ExportPluginSettings): Promise<node[]> {
 		return [
 			new UnrolledWikilink(
 				data,
@@ -204,7 +204,7 @@ export class Wikilink implements node {
 			),
 		];
 	}
-	async latex(buffer: Buffer, buffer_offset: number) {
+	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
 		if (this.header === undefined) {
 			this.header = "";
 		}
@@ -232,15 +232,19 @@ export class Environment implements node {
 		// this.address_of_origin = address_of_origin;
 	}
 	static build_from_match(match: RegExpMatchArray): Environment {
+		// TODO: Creates an infinite loop; this is a problem.
+		const [_, body] = parse_display(strip_newlines(match[3]));
+		parse_after_headers(body)
+		traverse_tree_and_parse_inline(body);
 		return new Environment(
 			// Here we must run a full parsing on the contents instead of inserting a string.
 			// parse_note(strip_newlines(match[3])).body,
-			parse_inside_env(strip_newlines(match[3])),
+			body,
 			match[1],
 			match[2],
 		);
 	}
-	async unroll(data: metadata_for_unroll): Promise<node[]> {
+	async unroll(data: metadata_for_unroll, settings:ExportPluginSettings): Promise<node[]> {
 		// If it is unrolled, it is likely an explicit env.
 		if (this.label !== undefined) {
 			this.label = explicit_label(
@@ -249,11 +253,12 @@ export class Environment implements node {
 				this.label,
 			);
 		}
+		this.children = await unroll_array(data, this.children, settings)
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number): Promise<number> {
+	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings): Promise<number> {
 		buffer_offset += buffer.write(
-			"\\begin{" + this.type + "}",
+			"\\begin{" + this.type + "}\n",
 			buffer_offset,
 		);
 		if (this.label !== undefined) {
@@ -274,7 +279,7 @@ export class Environment implements node {
 			}
 		}
 		for (const e of this.children) {
-			buffer_offset = await e.latex(buffer, buffer_offset);
+			buffer_offset = await e.latex(buffer, buffer_offset, settings);
 		}
 		buffer_offset += buffer.write(
 			"\\end{" + this.type + "}\n",
@@ -287,7 +292,7 @@ export class Environment implements node {
 export class Hyperlink implements node {
 	address: string;
 	label: string;
-	async latex(buffer: Buffer, buffer_offset: number): Promise<number> {
+	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings): Promise<number> {
 		return (
 			buffer_offset +
 			buffer.write(
@@ -344,7 +349,7 @@ export class UnrolledWikilink implements node {
 		this.header = header;
 		this.displayed = displayed;
 	}
-	async latex(buffer: Buffer, buffer_offset: number): Promise<number> {
+	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings): Promise<number> {
 		const address =
 			this.address === ""
 				? this.unroll_data.longform_file.basename
@@ -352,6 +357,7 @@ export class UnrolledWikilink implements node {
 		const label = await label_from_location(
 			this.unroll_data,
 			address,
+			settings,
 			this.header,
 		);
 		if (this.displayed !== undefined) {
@@ -411,7 +417,7 @@ export class Citation implements node {
 	async latex(
 		buffer: Buffer,
 		buffer_offset: number,
-		settings?: ExportPluginSettings,
+		settings: ExportPluginSettings,
 	): Promise<number> {
 		const citeword = "textcite";
 		// TODO: change the use of textcite to an option in settings
@@ -465,7 +471,7 @@ export class MultiCitation implements node {
 	async latex(
 		buffer: Buffer,
 		buffer_offset: number,
-		settings?: ExportPluginSettings,
+		settings: ExportPluginSettings,
 	): Promise<number> {
 		buffer_offset += buffer.write("\\cite{", buffer_offset);
 		for (const id of this.ids.slice(0, -1)) {

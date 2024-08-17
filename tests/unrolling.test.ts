@@ -1,5 +1,6 @@
 jest.mock("obsidian");
 import { TFile } from "obsidian";
+import { TEST_DEFAULT_SETTINGS } from "./test_utils";
 import { get_find_file_fn, read_tfile, get_unrolled_file_contents, get_latex_file_contents, get_parsed_file_contents } from "./test_utils";
 import {
 	UnrolledWikilink,
@@ -10,7 +11,6 @@ import {
 	DisplayMath,
 	Paragraph,
 	Text,
-	Header,
 	parse_note,
 } from "../src/export_longform";
 
@@ -24,7 +24,7 @@ describe("split_display_blocks", () => {
 		expect(out_embed.path).toEqual("tests/files/simple_embed.md");
 	});
 	test("test environment unrolling", async () => {
-		const unrolled_content = await get_unrolled_file_contents("simple_embed");
+		const unrolled_content = await get_unrolled_file_contents("simple_embed", TEST_DEFAULT_SETTINGS);
 		const expected_content = [
 			new Environment(
 				[new Paragraph([new Text("Content of lemma2")])],
@@ -43,7 +43,7 @@ describe("split_display_blocks", () => {
 		const file_contents = await read_tfile(longform_file);
 		const parsed_contents = parse_note(file_contents).body;
 		const data = init_data(longform_file, read_tfile, find_file);
-		const unrolled_content = await unroll_array(data, parsed_contents);
+		const unrolled_content = await unroll_array(data, parsed_contents, TEST_DEFAULT_SETTINGS);
 
 		const expected_content = [
 			new Environment(
@@ -118,6 +118,7 @@ describe("split_display_blocks", () => {
 			read_tfile,
 			find_file,
 			longform_file,
+			TEST_DEFAULT_SETTINGS
 		);
 		const expected_content = `\\begin{lemma}\n\\label{lem:label_1}\nsome stuff\n\\begin{equation*}\n\\varepsilon\n\\end{equation*}\n\\end{lemma}\n\\begin{theorem}\n\\label{loc:other_lem.statement}\nContent of the other lemma.\n\\end{theorem}\nreference:\\autoref{loc:other_lem.statement}\n`;
 		expect(parsed_content.body).toEqual(expected_content);

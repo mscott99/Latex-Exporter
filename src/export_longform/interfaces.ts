@@ -2,8 +2,16 @@ import type { TFile } from "obsidian";
 import { Header } from "./headers";
 
 export interface node {
-	unroll(data?: metadata_for_unroll): Promise<node[]>;
-	latex(buffer: Buffer, buffer_offset: number): Promise<number>;
+	unroll(data: metadata_for_unroll, settings:ExportPluginSettings): Promise<node[]>;
+	latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings): Promise<number>;
+}
+
+export interface ExportPluginSettings {
+	mySetting: string;
+	template_path: string;
+	base_output_folder: string;
+	preamble_file: string;
+	bib_file: string;
 }
 
 export interface file_content {
@@ -67,10 +75,11 @@ export function address_is_image_file(address: string) {
 export async function unroll_array(
 	data: metadata_for_unroll,
 	content_array: node[],
+	settings: ExportPluginSettings
 ) {
 	const new_children: node[] = [];
 	for (const elt of content_array) {
-		new_children.push(...(await elt.unroll(data)));
+		new_children.push(...(await elt.unroll(data, settings)));
 	}
 	return new_children;
 }

@@ -6,6 +6,7 @@ import {
 	init_data,
 	parsed_note,
 	note_cache,
+    ExportPluginSettings,
 } from "./interfaces";
 import {
 	Paragraph,
@@ -38,6 +39,7 @@ export async function parse_longform(
 	read_tfile: (file: TFile) => Promise<string>,
 	find_file: (address: string) => TFile | undefined,
 	longform_file: TFile,
+	settings: ExportPluginSettings,
 	selection?: string,
 ): Promise<parsed_longform> {
 	if (longform_file === undefined) {
@@ -57,7 +59,7 @@ export async function parse_longform(
 	for (const e of parsed_content) {
 		if (
 			e instanceof Header &&
-			(await e.latex_title()).toLowerCase().trim() === "abstract"
+			(await e.latex_title(settings)).toLowerCase().trim() === "abstract"
 		) {
 			abstract_header = e;
 			parsed_content = parsed_content.filter((x) => x !== e);
@@ -67,7 +69,7 @@ export async function parse_longform(
 	for (const e of parsed_content) {
 		if (
 			e instanceof Header &&
-			(await e.latex_title()).toLowerCase().trim() === "appendix"
+			(await e.latex_title(settings)).toLowerCase().trim() === "appendix"
 		) {
 			appendix_header = e;
 			parsed_content = parsed_content.filter((x) => x !== e);
@@ -78,7 +80,7 @@ export async function parse_longform(
 	for (const e of parsed_content) {
 		if (
 			e instanceof Header &&
-			(await e.latex_title()).toLowerCase().trim() === "body"
+			(await e.latex_title(settings)).toLowerCase().trim() === "body"
 		) {
 			body_header = e;
 			lower_headers([body_header]);
@@ -97,12 +99,12 @@ export async function parse_longform(
 	const abstract_unrolled_content =
 		abstract_header === undefined
 			? undefined
-			: await unroll_array(data, abstract_header.children);
+			: await unroll_array(data, abstract_header.children, settings);
 
 	if (body_header !== undefined) {
 		data.header_stack = [body_header];
 	}
-	const body_unrolled_content = await unroll_array(data, body_header_content);
+	const body_unrolled_content = await unroll_array(data, body_header_content, settings);
 
 	if (appendix_header !== undefined) {
 		data.header_stack = [appendix_header];
@@ -110,16 +112,16 @@ export async function parse_longform(
 	const appendix_unrolled_content =
 		appendix_header === undefined
 			? undefined
-			: await unroll_array(data, appendix_header.children);
+			: await unroll_array(data, appendix_header.children, settings);
 	const abstract_string =
 		abstract_unrolled_content === undefined
 			? undefined
-			: await render_content(data, abstract_unrolled_content);
-	const body_string = await render_content(data, body_unrolled_content);
+			: await render_content(data, abstract_unrolled_content, settings);
+	const body_string = await render_content(data, body_unrolled_content, settings);
 	const appendix_string =
 		appendix_unrolled_content === undefined
 			? undefined
-			: await render_content(data, appendix_unrolled_content);
+			: await render_content(data, appendix_unrolled_content, settings);
 	return {
 		yaml: parsed_longform.yaml,
 		abstract: abstract_string,
@@ -142,11 +144,12 @@ function lower_headers(content: node[]): void {
 async function render_content(
 	data: metadata_for_unroll,
 	content: node[],
+	settings: ExportPluginSettings,
 ): Promise<string> {
 	const buffer = Buffer.alloc(10000000); // made this very big. Too big? For my paper I run out with two orders of magnitude smaller.
 	let offset = 0;
 	for (const elt of content) {
-		offset = await elt.latex(buffer, offset);
+		offset = await elt.latex(buffer, offset, settings);
 	}
 	return buffer.toString("utf8", 0, offset);
 }
@@ -156,11 +159,13 @@ export async function export_selection(
 	find_file: (address: string) => TFile | undefined,
 	longform_file: TFile,
 	selection: string,
+	settings: ExportPluginSettings,
 ) {
 	const parsed_contents = await parse_longform(
 		read_tfile,
 		find_file,
 		longform_file,
+		settings,
 		selection,
 	);
 	if (selection !== undefined) {
@@ -280,7 +285,7 @@ function traverse_tree_and_parse_display(md: node[]): node[] {
 	return new_md;
 }
 
-function traverse_tree_and_parse_inline(md: node[]): void {
+export function traverse_tree_and_parse_inline(md: node[]): void {
 	for (const elt of md) {
 		if (elt instanceof Header) {
 			traverse_tree_and_parse_inline(elt.children);
@@ -299,6 +304,7 @@ function traverse_tree_and_parse_inline(md: node[]): void {
 	}
 }
 
+// TODO: make the underlying structure cleaner
 export function parse_note(file_contents: string): parsed_note {
 	const [yaml, body] = parse_display(file_contents);
 	let parsed_contents = make_heading_tree(body);
@@ -312,6 +318,7 @@ export async function parse_embed_content(
 	find_file: (address: string) => TFile | undefined,
 	read_tfile: (file: TFile) => Promise<string>,
 	parsed_cache: note_cache,
+	settings: ExportPluginSettings,
 	header?: string,
 ): Promise<[node[], number] | undefined> {
 	const file_found = find_file(address);
@@ -330,7 +337,7 @@ export async function parse_embed_content(
 	if (header === undefined) {
 		return [content.body, 0];
 	}
-	const header_elt = await find_header(header, [content.body]);
+	const header_elt = await find_header(header, [content.body], settings);
 	if (header_elt === undefined) {
 		notice_and_warn(
 			"Header not found: "+

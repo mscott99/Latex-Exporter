@@ -1,4 +1,5 @@
 import { TFile} from "obsidian";
+import { ExportPluginSettings } from "./interfaces";
 import { get_header_address } from "./headers";
 import { notice_and_warn } from "./utils";
 import {
@@ -44,6 +45,7 @@ function explicit_label_with_address(label: string, address: string) {
 export async function label_from_location(
 	data: metadata_for_unroll,
 	address: string,
+	settings: ExportPluginSettings,
 	header?: string | string[],
 ): Promise<string> {
 	if (address_is_image_file(address)) {
@@ -57,6 +59,7 @@ export async function label_from_location(
 		header,
 		data.parsed_file_bundle,
 		data.find_file,
+		settings
 	);
 	if (resolved_header === undefined) {
 		notice_and_warn(
@@ -80,6 +83,7 @@ async function resolve_header_label(
 	header: string | string[],
 	file_cache: note_cache,
 	find_file: (address: string) => TFile | undefined,
+	settings: ExportPluginSettings
 ): Promise<string | undefined> {
 	let file_content: node[];
 	const cached_content = file_cache[address];
@@ -111,9 +115,9 @@ async function resolve_header_label(
 	let new_label: string | undefined;
 	if (typeof header === "string") {
 		// to make typescript happy
-		new_label = await get_header_address(header, file_content);
+		new_label = await get_header_address(header, file_content, settings);
 	} else {
-		new_label = await get_header_address([...header].reverse(), file_content);
+		new_label = await get_header_address([...header].reverse(), file_content, settings);
 	}
 
 	if (new_label === undefined) {

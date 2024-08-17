@@ -17,18 +17,11 @@ import {
 	write_without_template,
 	write_with_template,
 	get_header_tex,
+	ExportPluginSettings,
 } from "./export_longform";
 import { find_file } from "./export_longform/utils";
 
-export interface ExportPluginSettings {
-	mySetting: string;
-	template_path: string;
-	base_output_folder: string;
-	preamble_file: string;
-	bib_file: string;
-}
-
-const DEFAULT_SETTINGS: ExportPluginSettings = {
+export const DEFAULT_SETTINGS: ExportPluginSettings = {
 	mySetting: "default",
 	template_path: "",
 	base_output_folder: "/",
@@ -39,7 +32,7 @@ const DEFAULT_SETTINGS: ExportPluginSettings = {
 export default class ExportPaperPlugin extends Plugin {
 	settings: ExportPluginSettings;
 
-	async find_files_and_export(active_file: TFile) {
+	async find_files_and_export(active_file: TFile, settings: ExportPluginSettings) {
 		if (this.settings.base_output_folder === "") {
 			this.settings.base_output_folder = "/";
 		}
@@ -128,6 +121,7 @@ export default class ExportPaperPlugin extends Plugin {
 			notes_dir.cachedRead.bind(notes_dir),
 			(address: string) => find_file(notes_dir, address),
 			active_file,
+			settings
 		);
 
 		if (parsed_contents.media_files.length > 0) {
@@ -181,13 +175,14 @@ export default class ExportPaperPlugin extends Plugin {
 		// }
 	}
 
-	async export_with_selection(active_file: TFile, selection: string) {
+	async export_with_selection(active_file: TFile, selection: string, settings: ExportPluginSettings){
 		try {
 			return export_selection(
 				this.app.vault.cachedRead.bind(this.app.vault),
 				(address: string) => find_file(this.app.vault, address),
 				active_file,
 				selection,
+				settings,
 			);
 		} catch (e) {
 			console.error(e);
@@ -209,7 +204,7 @@ export default class ExportPaperPlugin extends Plugin {
 					new Notice("No active file found.");
 					throw new Error("No active file found.");
 				}
-				this.find_files_and_export(active_file);
+				this.find_files_and_export(active_file, this.settings);
 			},
 		});
 		this.addCommand({
@@ -228,7 +223,7 @@ export default class ExportPaperPlugin extends Plugin {
 					throw new Error("No active file found.");
 				}
 				const selection = editor.getSelection();
-				this.export_with_selection(active_file, selection);
+				this.export_with_selection(active_file, selection, this.settings);
 			},
 		});
 		this.addSettingTab(new SampleSettingTab(this.app, this));
