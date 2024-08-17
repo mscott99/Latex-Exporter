@@ -4,7 +4,7 @@ import { address_is_image_file, node } from "./interfaces";
 import { Notice, TFile } from "obsidian";
 import { metadata_for_unroll } from "./interfaces";
 import { Text } from "./inline";
-import { parse_embed_content } from "./parseMarkdown";
+import { parse_embed_content, parse_note } from "./parseMarkdown";
 import { Paragraph, BlankLine, parse_inside_env } from "./display";
 import {
 	escape_latex,
@@ -234,6 +234,7 @@ export class Environment implements node {
 	static build_from_match(match: RegExpMatchArray): Environment {
 		return new Environment(
 			// Here we must run a full parsing on the contents instead of inserting a string.
+			// parse_note(strip_newlines(match[3])).body,
 			parse_inside_env(strip_newlines(match[3])),
 			match[1],
 			match[2],

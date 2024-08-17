@@ -2,7 +2,7 @@ import { node, metadata_for_unroll, unroll_array } from "./interfaces";
 import { notice_and_warn, strip_newlines } from "./utils";
 import { Text } from "./inline";
 import { format_label } from "./labels";
-import { EmbedWikilink, Environment } from "./wikilinks";
+import { EmbedWikilink, Environment} from "./wikilinks";
 // The custom part is a regex and a constructor. So a regex, and function to get the object from the regex
 export function split_display<T extends node>(
 	display_elts: node[],

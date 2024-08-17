@@ -10,4 +10,16 @@ describe("my plugin", () => {
 I speak more
 `)
 	})
+	test("Env", async () => {
+		const result = await get_latex_file_contents("explicit_env")
+		expect(result).toEqual(`\\begin{lemma}
+\\begin{equation}
+\\varepsilon
+\\end{equation}
+and $\varepsilon$
+\\autoref{simple_lem.statement}
+\\end{lemma}
+
+		`)
+	})
 });
