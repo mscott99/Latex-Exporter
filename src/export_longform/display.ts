@@ -205,12 +205,15 @@ export class DisplayMath implements node {
 			) {
 				const label = format_label(this.label);
 				const lines = this.content.split("\\\\");
+				const numlines = lines.length;
 				const labeled_lines: string[] = [];
 				lines.forEach((line, index) => {
 					if (line.trim() !== "") {
-						labeled_lines.push(
-							line + ` \\label{${label}:${index + 1}}\\\\`,
-						);
+						let new_text = line + ` \\label{${label}:${index + 1}}`
+						if(index < numlines - 1) {
+							new_text += "\\\\";
+						}
+						labeled_lines.push(new_text);
 					}
 				});
 				this.content = labeled_lines.join("");
