@@ -119,7 +119,7 @@ export default class ExportPaperPlugin extends Plugin {
 
 		if (!template_file) {
 			console.log(
-				"Template file not found, exporting with default template.",
+				"Exporting with the default template.",
 			);
 		}
 
