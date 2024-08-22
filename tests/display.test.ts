@@ -12,7 +12,7 @@ I speak more
 `)
 	})
 	test("Env", async () => {
-		const result = await get_unrolled_file_contents("explicit_env", TEST_DEFAULT_SETTINGS)
+		const result = await get_latex_file_contents("explicit_env", TEST_DEFAULT_SETTINGS)
 		expect(result).toEqual(`\\begin{lemma}
 \\begin{equation*}
 \\varepsilon

@@ -1,8 +1,13 @@
-import { node, metadata_for_unroll, unroll_array, ExportPluginSettings} from "./interfaces";
+import {
+	node,
+	metadata_for_unroll,
+	unroll_array,
+	ExportPluginSettings,
+} from "./interfaces";
 import { notice_and_warn, strip_newlines } from "./utils";
 import { Text } from "./inline";
 import { format_label } from "./labels";
-import { EmbedWikilink, Environment, Wikilink} from "./wikilinks";
+import { EmbedWikilink, Environment, Wikilink } from "./wikilinks";
 // The custom part is a regex and a constructor. So a regex, and function to get the object from the regex
 export function split_display<T extends node>(
 	display_elts: node[],
@@ -56,125 +61,14 @@ export function split_display<T extends node>(
 	return new_display;
 }
 
-export function parse_display(
-	input: string,
-): [{ [key: string]: string }, node[]] {
-	const parsed_yaml = parse_yaml_header(input);
-	let new_display = [new Paragraph([new Text(parsed_yaml[1])])] as node[];
-	new_display = split_display<Comment>(
-		new_display,
-		Comment.build_from_match,
-		Comment.regexp,
-	);
-	new_display = split_display<Quote>(
-		new_display,
-		Quote.build_from_match,
-		Quote.regexp,
-	);
-	new_display = split_display<EmbedWikilink>(
-		new_display,
-		EmbedWikilink.build_from_match,
-		EmbedWikilink.regexp,
-	); //must come before explicit environment
-	return [parsed_yaml[0], new_display];
-}
-
-export function parse_after_headers(new_display: node[]): node[] {
-	// let new_display = [new Paragraph([new Text(input)])] as node[];
-	new_display = split_display<Environment>(
-		new_display,
-		Environment.build_from_match,
-		Environment.regexp,
-	);
-	new_display = split_display<DisplayMath>(
-		new_display,
-		DisplayMath.build_from_match,
-		DisplayMath.regexp,
-	);
-	new_display = split_display<NumberedList>(
-		new_display,
-		NumberedList.build_from_match,
-		NumberedList.regexp,
-	);
-	for (const elt of new_display) {
-		if (elt instanceof NumberedList) {
-			const new_content: node[][] = [];
-			for (const e of elt.content) {
-				new_content.push(parse_after_headers(e));
-			}
-			elt.content = new_content;
-		}
-	}
-	new_display = split_display<UnorderedList>(
-		new_display,
-		UnorderedList.build_from_match,
-		UnorderedList.regexp,
-	);
-	for (const elt of new_display) {
-		if (elt instanceof UnorderedList) {
-			const new_content: node[][] = [];
-			for (const e of elt.content) {
-				new_content.push(parse_after_headers(e));
-			}
-			elt.content = new_content;
-		}
-	}
-	new_display = split_display<BlankLine>(
-		new_display,
-		BlankLine.build_from_match,
-		BlankLine.regexp,
-	);
-	return new_display;
-}
-
-export function parse_inside_env(input: string): node[] {
-	let new_display = [new Paragraph([new Text(input)])] as node[];
-	new_display = split_display<EmbedWikilink>(
-		new_display,
-		EmbedWikilink.build_from_match,
-		EmbedWikilink.regexp,
-	);
-	new_display = split_display<DisplayMath>(
-		new_display,
-		DisplayMath.build_from_match,
-		DisplayMath.regexp,
-	);
-	new_display = split_display<DisplayCode>(
-		new_display,
-		DisplayCode.build_from_match,
-		DisplayCode.regexp,
-	);
-	new_display = split_display<BlankLine>(
-		new_display,
-		BlankLine.build_from_match,
-		BlankLine.regexp,
-	);
-	return new_display;
-}
-
-function parse_yaml_header(input: string): [{ [key: string]: string }, string] {
-	const match = /^---\n(.*?)---\n(.*)$/s.exec(input);
-	if (!match) {
-		return [{}, input];
-	}
-	const yaml_content = match[1];
-	const remainder = match[2];
-	const field_regex = /^(['"]?)(\S+?)\1\s*?:\s+(['"]?)(.+?)\3$/gm;
-	let field_match: RegExpMatchArray | null;
-	const field_dict: { [key: string]: string } = {};
-	while ((field_match = field_regex.exec(yaml_content)) !== null) {
-		field_dict[field_match[2]] = field_match[4];
-	}
-	return [field_dict, remainder];
-}
-
 export class DisplayMath implements node {
 	// parent: node;
 	content: string;
 	label: string | undefined;
 	explicit_env_name: string | undefined;
-	static regexp =
-		/\$\$\s*(?:\\begin{(\S*?)}\s*([\S\s]*?)\s*\\end{\1}|([\S\s]*?))\s*?\$\$(?:\s*?{#(\S*?)})?/gs;
+	static get_regexp(): RegExp {
+		return /\$\$\s*(?:\\begin{(\S*?)}\s*([\S\s]*?)\s*\\end{\1}|([\S\s]*?))\s*?\$\$(?:\s*?{#(\S*?)})?/gs;
+	}
 	static build_from_match(match: RegExpMatchArray): DisplayMath {
 		const latex = match[2] === undefined ? match[3] : match[2];
 		const label_match = /eq-(\w+)/.exec(match[1]);
@@ -192,12 +86,21 @@ export class DisplayMath implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	) {
 		let env_name = "equation*";
 		if (this.label !== undefined) {
 			env_name = "equation";
-			if(this.explicit_env_name !== undefined && ["equation*", "align*"].includes(this.explicit_env_name)) {
-				notice_and_warn(`Environment ${this.explicit_env_name} does not support labels. Ignoring label ${this.label}`);
+			if (
+				this.explicit_env_name !== undefined &&
+				["equation*", "align*"].includes(this.explicit_env_name)
+			) {
+				notice_and_warn(
+					`Environment ${this.explicit_env_name} does not support labels. Ignoring label ${this.label}`,
+				);
 			}
 			if (
 				this.explicit_env_name !== undefined &&
@@ -269,7 +172,10 @@ export class Paragraph implements node {
 	constructor(elements: node[]) {
 		this.elements = elements;
 	}
-	async unroll(data: metadata_for_unroll, settings:ExportPluginSettings): Promise<node[]> {
+	async unroll(
+		data: metadata_for_unroll,
+		settings: ExportPluginSettings,
+	): Promise<node[]> {
 		const new_elements: node[] = [];
 		for (const elt of this.elements) {
 			new_elements.push(...(await elt.unroll(data, settings)));
@@ -277,7 +183,11 @@ export class Paragraph implements node {
 		this.elements = new_elements;
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	) {
 		let new_offset = buffer_offset;
 		for (const elt of this.elements) {
 			new_offset = await elt.latex(buffer, new_offset, settings);
@@ -288,14 +198,20 @@ export class Paragraph implements node {
 }
 
 export class BlankLine implements node {
-	static regexp = /\n\s*\n/g;
+	static get_regexp(): RegExp {
+		return /\n\s*\n/g;
+	}
 	static build_from_match(): BlankLine {
 		return new BlankLine();
 	}
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	) {
 		return buffer_offset + buffer.write("\n", buffer_offset);
 		// the other \n should be done at the end of the previous display object.
 	}
@@ -305,8 +221,9 @@ export class DisplayCode implements node {
 	language: string | undefined;
 	executable: boolean;
 	code: string;
-	static regexp =
-		/```(?:\s*({?)([a-zA-Z]+)(}?)\s*\n([\s\S]*?)|([\s\S]*?))```/g;
+	static get_regexp(): RegExp {
+		return /```(?:\s*({?)([a-zA-Z]+)(}?)\s*\n([\s\S]*?)|([\s\S]*?))```/g;
+	}
 	static build_from_match(match: RegExpMatchArray): DisplayCode {
 		if (match[4] !== undefined) {
 			const code = match[4];
@@ -326,7 +243,11 @@ export class DisplayCode implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	) {
 		// notice_and_warn("Code to latex not implemented");
 		buffer_offset += buffer.write("\\begin{lstlisting}\n", buffer_offset);
 		// if (this.label !== undefined) {
@@ -343,7 +264,10 @@ export class DisplayCode implements node {
 
 export class Quote implements node {
 	content: string;
-	static regexp = /^>(.*)$/gm;
+
+	static get_regexp(): RegExp {
+		return /^>(.*)$/gm;
+	}
 	constructor(content: string) {
 		this.content = content;
 	}
@@ -353,7 +277,11 @@ export class Quote implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	) {
 		return (
 			buffer_offset +
 			buffer.write("%" + this.content + "\n", buffer_offset)
@@ -363,8 +291,10 @@ export class Quote implements node {
 
 export class NumberedList implements node {
 	content: node[][];
-	static regexp =
-		/(?<=^|\n)\s*?1\. (.*?)(?:2\. (.*?))?(?:3\. (.*?))?(?:4\. (.*?))?(?:5\. (.*?))?(?:6\. (.*?))?(?:7\. (.*?))?(?:8\. (.*?))?(?:9\. (.*?))?(?:10\. (.*?))?(?:11\. (.*?))?(?:12\. (.*?))?(?:13\. (.*?))?(?:14\. (.*?))?(?:15\. (.*?))?(?:16\. (.*?))?(?:17\. (.*?))?(?:18\. (.*?))?(?:19\. (.*?))?(?:20\. (.*?))?(?=\n\s*?\n|$)/gs;
+
+	static get_regexp(): RegExp {
+		return /(?<=^|\n)\s*?1\. (.*?)(?:2\. (.*?))?(?:3\. (.*?))?(?:4\. (.*?))?(?:5\. (.*?))?(?:6\. (.*?))?(?:7\. (.*?))?(?:8\. (.*?))?(?:9\. (.*?))?(?:10\. (.*?))?(?:11\. (.*?))?(?:12\. (.*?))?(?:13\. (.*?))?(?:14\. (.*?))?(?:15\. (.*?))?(?:16\. (.*?))?(?:17\. (.*?))?(?:18\. (.*?))?(?:19\. (.*?))?(?:20\. (.*?))?(?=\n\s*?\n|$)/gs;
+	}
 	constructor(content: node[][]) {
 		this.content = content;
 	}
@@ -380,14 +310,21 @@ export class NumberedList implements node {
 			list_contents.map((e) => [new Paragraph([new Text(e)])]),
 		);
 	}
-	async unroll(data: metadata_for_unroll, settings:ExportPluginSettings): Promise<node[]> {
+	async unroll(
+		data: metadata_for_unroll,
+		settings: ExportPluginSettings,
+	): Promise<node[]> {
 		const new_content: node[][] = [];
 		for (const e of this.content) {
 			new_content.push(await unroll_array(data, e, settings));
 		}
 		return [new NumberedList(new_content)];
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	) {
 		buffer_offset += buffer.write("\\begin{enumerate}\n", buffer_offset);
 		for (const e of this.content) {
 			buffer_offset += buffer.write("\\item ", buffer_offset);
@@ -402,9 +339,9 @@ export class NumberedList implements node {
 
 export class UnorderedList implements node {
 	content: node[][];
-	static regexp =
-		//gs;
-		/(?<=^|\n)\s*?(?:-|\+|\*) (.*?)(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?=\n\s*?\n|$)/gs;
+	static get_regexp(): RegExp {
+		return /(?<=^|\n)\s*?(?:-|\+|\*) (.*?)(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?=\n\s*?\n|$)/gs;
+	}
 
 	constructor(content: node[][]) {
 		this.content = content;
@@ -421,14 +358,21 @@ export class UnorderedList implements node {
 			list_contents.map((e) => [new Paragraph([new Text(e)])]),
 		);
 	}
-	async unroll(data: metadata_for_unroll, settings:ExportPluginSettings): Promise<node[]> {
+	async unroll(
+		data: metadata_for_unroll,
+		settings: ExportPluginSettings,
+	): Promise<node[]> {
 		const new_content: node[][] = [];
 		for (const e of this.content) {
 			new_content.push(await unroll_array(data, e, settings));
 		}
 		return [new UnorderedList(new_content)];
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	) {
 		buffer_offset += buffer.write("\\begin{itemize}\n", buffer_offset);
 		for (const e of this.content) {
 			buffer_offset += buffer.write("\\item ", buffer_offset);
@@ -443,7 +387,9 @@ export class UnorderedList implements node {
 
 export class Comment implements node {
 	content: string;
-	static regexp = /\%\%(.*?)\%\%/gs;
+	static get_regexp(): RegExp {
+		return /\%\%(.*?)\%\%/gs;
+	}
 	constructor(content: string) {
 		this.content = content;
 	}
@@ -453,7 +399,11 @@ export class Comment implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	) {
 		return buffer_offset;
 	}
 }

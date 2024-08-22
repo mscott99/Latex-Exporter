@@ -39,7 +39,7 @@ describe("split_display_blocks", () => {
 		const new_markdown = split_display<BlankLine>(
 			markdown,
 			BlankLine.build_from_match,
-			BlankLine.regexp,
+			BlankLine.get_regexp(),
 		);
 
 		expect(new_markdown).toEqual(expected);
@@ -64,7 +64,7 @@ describe("split_display_blocks", () => {
 		const new_markdown = split_display<DisplayMath>(
 			markdown,
 			DisplayMath.build_from_match,
-			DisplayMath.regexp,
+			DisplayMath.get_regexp(),
 		);
 
 		expect(new_markdown).toEqual(expected);
@@ -90,7 +90,7 @@ describe("split_display_blocks", () => {
 		const new_markdown = split_display<DisplayCode>(
 			markdown,
 			DisplayCode.build_from_match,
-			DisplayCode.regexp,
+			DisplayCode.get_regexp(),
 		);
 
 		expect(new_markdown).toEqual(expected);
@@ -108,7 +108,7 @@ describe("split_display_blocks", () => {
 		const new_markdown = split_display<EmbedWikilink>(
 			markdown,
 			EmbedWikilink.build_from_match,
-			EmbedWikilink.regexp,
+			EmbedWikilink.get_regexp(),
 		);
 		expect(new_markdown).toEqual(expected);
 	});
@@ -147,7 +147,7 @@ describe("split_display_blocks", () => {
 		expect(
 			split_inline<InlineMath>(
 				[text_to_parse],
-				InlineMath.regexp,
+				InlineMath.get_regexp(),
 				InlineMath.build_from_match,
 			),
 		).toEqual(expected);
@@ -166,7 +166,7 @@ describe("split_display_blocks", () => {
 		expect(
 			split_inline<Emphasis>(
 				[text_to_parse],
-				Emphasis.regexp,
+				Emphasis.get_regexp(),
 				Emphasis.build_from_match,
 			),
 		).toEqual(expected);
@@ -185,7 +185,7 @@ describe("split_display_blocks", () => {
 		expect(
 			split_inline<Strong>(
 				[text_to_parse],
-				Strong.regexp,
+				Strong.get_regexp(),
 				Strong.build_from_match,
 			),
 		).toEqual(expected);
@@ -202,7 +202,7 @@ describe("split_display_blocks", () => {
 		expect(
 			split_inline<Wikilink>(
 				[text_to_parse],
-				Wikilink.regexp,
+				Wikilink.get_regexp(),
 				Wikilink.build_from_match,
 			),
 		).toEqual(expected);
@@ -221,6 +221,7 @@ describe("split_display_blocks", () => {
 		];
 		expect(parse_inline([text_to_parse])).toEqual(expected);
 	});
+	// infinite loop
 	test("test explicit environment", () => {
 		const markdown = [
 			new Paragraph([
@@ -240,7 +241,7 @@ describe("split_display_blocks", () => {
 		const new_markdown = split_display<Environment>(
 			markdown,
 			Environment.build_from_match,
-			Environment.regexp,
+			Environment.get_regexp(),
 		);
 
 		expect(new_markdown).toEqual(expected);

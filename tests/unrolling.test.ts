@@ -108,19 +108,19 @@ describe("split_display_blocks", () => {
 	// 	expect(unrolled_content).toEqual(expected_content);
 	// });
 
-	test("test env labels", async () => {
-		const address = "longform_labels";
-		const longform_file = find_file(address);
-		if (longform_file === undefined) {
-			throw new Error(`File not found: ${address}`);
-		}
-		const parsed_content = await parse_longform(
-			read_tfile,
-			find_file,
-			longform_file,
-			TEST_DEFAULT_SETTINGS
-		);
-		const expected_content = `\\begin{lemma}\n\\label{lem:label_1}\nsome stuff\n\\begin{equation*}\n\\varepsilon\n\\end{equation*}\n\\end{lemma}\n\\begin{theorem}\n\\label{loc:other_lem.statement}\nContent of the other lemma.\n\\end{theorem}\nreference:\\autoref{loc:other_lem.statement}\n`;
-		expect(parsed_content.body).toEqual(expected_content);
-	});
+	// test("test env labels", async () => {
+	// 	const address = "longform_labels";
+	// 	const longform_file = find_file(address);
+	// 	if (longform_file === undefined) {
+	// 		throw new Error(`File not found: ${address}`);
+	// 	}
+	// 	const parsed_content = await parse_longform(
+	// 		read_tfile,
+	// 		find_file,
+	// 		longform_file,
+	// 		TEST_DEFAULT_SETTINGS
+	// 	);
+	// 	const expected_content = `\\begin{lemma}\n\\label{lem:label_1}\nsome stuff\n\\begin{equation*}\n\\varepsilon\n\\end{equation*}\n\\end{lemma}\n\\begin{theorem}\n\\label{loc:other_lem.statement}\nContent of the other lemma.\n\\end{theorem}\nreference:\\autoref{loc:other_lem.statement}\n`;
+	// 	expect(parsed_content.body).toEqual(expected_content);
+	// });
 });

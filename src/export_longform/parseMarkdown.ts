@@ -1,4 +1,4 @@
-import { notice_and_warn } from "./utils";
+import { notice_and_warn, strip_newlines } from "./utils";
 import {
 	node,
 	metadata_for_unroll,
@@ -6,17 +6,36 @@ import {
 	init_data,
 	parsed_note,
 	note_cache,
-    ExportPluginSettings,
+	ExportPluginSettings,
 } from "./interfaces";
 import {
-	Paragraph,
 	NumberedList,
 	UnorderedList,
-	parse_display,
-	parse_after_headers,
+	DisplayMath,
+	Paragraph,
+	BlankLine,
+	DisplayCode,
+	Comment,
+	Quote,
+	split_display,
 } from "./display";
-import { parse_inline } from "./inline";
-import { Header, make_heading_tree, find_header } from "./headers";
+import {
+	Wikilink,
+	Citation,
+	MultiCitation,
+	EmbedWikilink,
+	Environment,
+} from "./wikilinks";
+import {
+	split_inline,
+	ExplicitRef,
+	Text,
+	Emphasis,
+	Quotes,
+	Strong,
+	InlineMath,
+} from "./inline";
+import { Header, find_header } from "./headers";
 import { TFile, Notice } from "obsidian";
 
 // Describe label system
@@ -35,6 +54,9 @@ export type parsed_longform = {
 	bib_keys: string[];
 };
 
+/**
+ * Exports a full file by dealing with each core section of a longform.
+ */
 export async function parse_longform(
 	read_tfile: (file: TFile) => Promise<string>,
 	find_file: (address: string) => TFile | undefined,
@@ -104,7 +126,11 @@ export async function parse_longform(
 	if (body_header !== undefined) {
 		data.header_stack = [body_header];
 	}
-	const body_unrolled_content = await unroll_array(data, body_header_content, settings);
+	const body_unrolled_content = await unroll_array(
+		data,
+		body_header_content,
+		settings,
+	);
 
 	if (appendix_header !== undefined) {
 		data.header_stack = [appendix_header];
@@ -117,7 +143,11 @@ export async function parse_longform(
 		abstract_unrolled_content === undefined
 			? undefined
 			: await render_content(data, abstract_unrolled_content, settings);
-	const body_string = await render_content(data, body_unrolled_content, settings);
+	const body_string = await render_content(
+		data,
+		body_unrolled_content,
+		settings,
+	);
 	const appendix_string =
 		appendix_unrolled_content === undefined
 			? undefined
@@ -226,7 +256,8 @@ function join_sections(parsed_contents: parsed_longform) {
 	content += parsed_contents["body"];
 	if (parsed_contents["appendix"] !== undefined) {
 		content += `\\printbibliography\n`;
-		content += `\\appendix\n\\section{Appendix}\n` + parsed_contents["appendix"];
+		content +=
+			`\\appendix\n\\section{Appendix}\n` + parsed_contents["appendix"];
 	}
 	return content;
 }
@@ -243,9 +274,9 @@ export async function write_without_template(
 		content += "\\input{" + preamble_file.name + "}\n";
 	}
 	content += `\\addbibresource{bibliography.bib}\n`;
-	content += `\\title{`
+	content += `\\title{`;
 	if (parsed_contents["yaml"]["title"] !== undefined) {
-		 content += parsed_contents["yaml"]["title"] 
+		content += parsed_contents["yaml"]["title"];
 	}
 	content += `}\n`;
 	if (parsed_contents["yaml"]["author"] !== undefined) {
@@ -263,7 +294,8 @@ export async function write_without_template(
 	}
 	content += parsed_contents["body"] + `\\printbibliography\n`;
 	if (parsed_contents["appendix"] !== undefined) {
-		content += `\\appendix\n\\section{Appendix}\n` + parsed_contents["appendix"];
+		content +=
+			`\\appendix\n\\section{Appendix}\n` + parsed_contents["appendix"];
 	}
 	content += "\\end{document}";
 	await modify(output_file, content);
@@ -305,6 +337,7 @@ export function traverse_tree_and_parse_inline(md: node[]): void {
 }
 
 // TODO: make the underlying structure cleaner
+// Parses markdown text but does not unroll
 export function parse_note(file_contents: string): parsed_note {
 	const [yaml, body] = parse_display(file_contents);
 	let parsed_contents = make_heading_tree(body);
@@ -330,7 +363,7 @@ export async function parse_embed_content(
 		const file_contents = await read_tfile(file_found);
 		parsed_cache[file_found.basename] = parse_note(file_contents);
 	}
-	const content =	parsed_cache[file_found.basename];
+	const content = parsed_cache[file_found.basename];
 	if (content === undefined) {
 		return undefined;
 	}
@@ -340,14 +373,218 @@ export async function parse_embed_content(
 	const header_elt = await find_header(header, [content.body], settings);
 	if (header_elt === undefined) {
 		notice_and_warn(
-			"Header not found: "+
-			header+
-			" in file with address "+
-			address
+			"Header not found: " + header + " in file with address " + address,
 		);
 		return undefined;
 	}
 	return [header_elt.children, header_elt.level];
 }
 
+export function parse_display(
+	input: string,
+): [{ [key: string]: string }, node[]] {
+	const parsed_yaml = parse_yaml_header(input);
+	let new_display = [new Paragraph([new Text(parsed_yaml[1])])] as node[];
+	new_display = split_display<Comment>(
+		new_display,
+		Comment.build_from_match,
+		Comment.get_regexp(),
+	);
+	new_display = split_display<Quote>(
+		new_display,
+		Quote.build_from_match,
+		Quote.get_regexp(),
+	);
+	new_display = split_display<EmbedWikilink>(
+		new_display,
+		EmbedWikilink.build_from_match,
+		EmbedWikilink.get_regexp(),
+	); //must come before explicit environment
+	return [parsed_yaml[0], new_display];
+}
+
+class ZeroHeader {
+	children: node[];
+	level = 0;
+	constructor(content: node[]) {
+		this.children = content;
+	}
+}
+
+export function make_heading_tree(markdown: node[]): node[] {
+	let headingRegex = /^(#+) (.*)$/gm;
+	const new_md = new ZeroHeader([]);
+	let header_stack: (Header | ZeroHeader)[] = [];
+	header_stack.push(new_md);
+	let new_display: node[] = new_md.children;
+	let current_match: RegExpMatchArray | null;
+	for (const elt of markdown) {
+		if (elt instanceof Paragraph) {
+			console.assert(
+				elt.elements.length == 1,
+				"Paragraph should have only one element at this stage of parsing",
+			);
+			console.assert(
+				elt.elements[0] instanceof Text,
+				"Paragraph should have only one text element at this stage of parsing",
+			);
+			const inline_element = elt.elements[0] as Text;
+			let start_index = 0;
+			while (
+				(current_match = headingRegex.exec(inline_element.content)) !==
+				null
+			) {
+				if (current_match.index == undefined) {
+					throw new Error("current_match.index is undefined");
+				}
+				const prev_chunk = inline_element.content.slice(
+					start_index,
+					current_match.index,
+				);
+				if (prev_chunk.trim() !== "") {
+					new_display.push(
+						new Paragraph([new Text(strip_newlines(prev_chunk))]),
+					);
+				}
+				for (let i = header_stack.length - 1; i >= 0; i--) {
+					const new_header = new Header(
+						current_match[1].length,
+						[new Text(current_match[2])],
+						[],
+					);
+					const level = new_header.level;
+					if (level > header_stack[i].level) {
+						header_stack.splice(
+							i + 1,
+							header_stack.length - (i + 1),
+						);
+						header_stack[i].children.push(new_header);
+						header_stack.push(new_header);
+						new_display = new_header.children;
+						break;
+					}
+				}
+				start_index = current_match.index + current_match[0].length;
+			}
+			// possibility of a final piece of text after matches
+			const return_string = inline_element.content.slice(start_index);
+			if (return_string.trim() !== "") {
+				new_display.push(
+					new Paragraph([new Text(strip_newlines(return_string))]),
+				);
+			}
+		} else {
+			new_display.push(elt);
+		}
+	}
+	return new_md.children;
+}
+
+export function parse_after_headers(new_display: node[]): node[] {
+	// let new_display = [new Paragraph([new Text(input)])] as node[];
+	new_display = split_display<Environment>(
+		new_display,
+		Environment.build_from_match,
+		Environment.get_regexp(),
+	);
+	new_display = split_display<DisplayMath>(
+		new_display,
+		DisplayMath.build_from_match,
+		DisplayMath.get_regexp(),
+	);
+	new_display = split_display<NumberedList>(
+		new_display,
+		NumberedList.build_from_match,
+		NumberedList.get_regexp(),
+	);
+	for (const elt of new_display) {
+		if (elt instanceof NumberedList) {
+			const new_content: node[][] = [];
+			for (const e of elt.content) {
+				new_content.push(parse_after_headers(e));
+			}
+			elt.content = new_content;
+		}
+	}
+	new_display = split_display<UnorderedList>(
+		new_display,
+		UnorderedList.build_from_match,
+		UnorderedList.get_regexp(),
+	);
+	for (const elt of new_display) {
+		if (elt instanceof UnorderedList) {
+			const new_content: node[][] = [];
+			for (const e of elt.content) {
+				new_content.push(parse_after_headers(e));
+			}
+			elt.content = new_content;
+		}
+	}
+	new_display = split_display<BlankLine>(
+		new_display,
+		BlankLine.build_from_match,
+		BlankLine.get_regexp(),
+	);
+	return new_display;
+}
+
+function parse_yaml_header(input: string): [{ [key: string]: string }, string] {
+	const match = /^---\n(.*?)---\n(.*)$/s.exec(input);
+	if (!match) {
+		return [{}, input];
+	}
+	const yaml_content = match[1];
+	const remainder = match[2];
+	const field_regex = /^(['"]?)(\S+?)\1\s*?:\s+(['"]?)(.+?)\3$/gm;
+	let field_match: RegExpMatchArray | null;
+	const field_dict: { [key: string]: string } = {};
+	while ((field_match = field_regex.exec(yaml_content)) !== null) {
+		field_dict[field_match[2]] = field_match[4];
+	}
+	return [field_dict, remainder];
+}
+
+export function parse_inline(inline_arr: node[]): node[] {
+	inline_arr = split_inline<MultiCitation>(
+		inline_arr,
+		MultiCitation.get_regexp(),
+		MultiCitation.build_from_match,
+	);
+	inline_arr = split_inline<Citation>(
+		inline_arr,
+		Citation.get_regexp(),
+		Citation.build_from_match,
+	);
+	inline_arr = split_inline<Wikilink>(
+		inline_arr,
+		Wikilink.get_regexp(),
+		Wikilink.build_from_match,
+	); // must be before inline math so as to include math in displayed text.
+	inline_arr = split_inline<InlineMath>(
+		inline_arr,
+		InlineMath.get_regexp(),
+		InlineMath.build_from_match,
+	);
+	inline_arr = split_inline<ExplicitRef>(
+		inline_arr,
+		ExplicitRef.get_regexp(),
+		ExplicitRef.build_from_match,
+	);
+	inline_arr = split_inline<Quotes>(
+		inline_arr,
+		Quotes.get_regexp(),
+		Quotes.build_from_match,
+	);
+	inline_arr = split_inline<Strong>(
+		inline_arr,
+		Strong.get_regexp(),
+		Strong.build_from_match,
+	);
+	inline_arr = split_inline<Emphasis>(
+		inline_arr,
+		Emphasis.get_regexp(),
+		Emphasis.build_from_match,
+	);
+	return inline_arr;
+}
 // There seems to be too many elements here, some should be inline.

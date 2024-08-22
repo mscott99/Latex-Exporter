@@ -1,51 +1,7 @@
 import { node, metadata_for_unroll, ExportPluginSettings } from "./interfaces";
 import { Wikilink, Citation, MultiCitation } from "./wikilinks";
 import { explicit_label } from "./labels";
-import {format_label} from "./labels";
-
-export function parse_inline(inline_arr: node[]): node[] {
-	inline_arr = split_inline<MultiCitation>(
-		inline_arr,
-		MultiCitation.regexp,
-		MultiCitation.build_from_match,
-	);
-	inline_arr = split_inline<Citation>(
-		inline_arr,
-		Citation.regexp,
-		Citation.build_from_match,
-	);
-	inline_arr = split_inline<Wikilink>(
-		inline_arr,
-		Wikilink.regexp,
-		Wikilink.build_from_match,
-	); // must be before inline math so as to include math in displayed text.
-	inline_arr = split_inline<InlineMath>(
-		inline_arr,
-		InlineMath.regexp,
-		InlineMath.build_from_match,
-	);
-	inline_arr = split_inline<ExplicitRef>(
-		inline_arr,
-		ExplicitRef.regexp,
-		ExplicitRef.build_from_match,
-	);
-	inline_arr = split_inline<Quotes>(
-		inline_arr,
-		Quotes.regexp,
-		Quotes.build_from_match,
-	);
-	inline_arr = split_inline<Strong>(
-		inline_arr,
-		Strong.regexp,
-		Strong.build_from_match,
-	);
-	inline_arr = split_inline<Emphasis>(
-		inline_arr,
-		Emphasis.regexp,
-		Emphasis.build_from_match,
-	);
-	return inline_arr;
-}
+import { format_label } from "./labels";
 
 export function split_inline<ClassObj extends node>(
 	inline_arr: node[],
@@ -82,16 +38,21 @@ export function split_inline<ClassObj extends node>(
 	return new_inline;
 }
 
-class ExplicitRef implements node {
+export class ExplicitRef implements node {
 	label: string;
 	constructor(content: string) {
 		this.label = content;
 	}
-	static regexp = /@([\w-_:]+)/g; // parse only after parsing for citations.
+	static get_regexp(): RegExp {
+		return /@([\w-_:]+)/g; // parse only after parsing for citations.
+	}
 	static build_from_match(regexmatch: RegExpMatchArray): ExplicitRef {
 		return new ExplicitRef(regexmatch[1]);
 	}
-	async unroll(data: metadata_for_unroll, settings:ExportPluginSettings): Promise<node[]> {
+	async unroll(
+		data: metadata_for_unroll,
+		settings: ExportPluginSettings,
+	): Promise<node[]> {
 		this.label = explicit_label(
 			data.longform_file,
 			data.current_file,
@@ -99,10 +60,17 @@ class ExplicitRef implements node {
 		);
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	) {
 		return (
 			buffer_offset +
-			buffer.write("\\autoref{" + format_label(this.label) + "}", buffer_offset)
+			buffer.write(
+				"\\autoref{" + format_label(this.label) + "}",
+				buffer_offset,
+			)
 		);
 	}
 }
@@ -115,13 +83,19 @@ export class Text implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	) {
 		return buffer_offset + buffer.write(this.content, buffer_offset);
 	}
 }
 
 export class Emphasis implements node {
-	static regexp = /(?:\*(\S.*?)\*)|(?:_(\S.*?)_)/gs;
+	static get_regexp(): RegExp {
+		return /(?:\*(\S.*?)\*)|(?:_(\S.*?)_)/gs;
+	}
 	content: string;
 	label: string | undefined;
 	static build_from_match(regexmatch: RegExpMatchArray): Emphasis {
@@ -139,7 +113,11 @@ export class Emphasis implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	) {
 		return (
 			buffer_offset +
 			buffer.write("\\emph{" + this.content + "}", buffer_offset)
@@ -148,7 +126,9 @@ export class Emphasis implements node {
 }
 
 export class Quotes implements node {
-	static regexp = /(?:"(\S.*?)")/gs;
+	static get_regexp(): RegExp {
+		return /(?:"(\S.*?)")/gs;
+	}
 	content: string;
 	label: string | undefined;
 	static build_from_match(regexmatch: RegExpMatchArray): Emphasis {
@@ -160,17 +140,23 @@ export class Quotes implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	) {
 		return (
 			buffer_offset +
-			buffer.write("\`\`" + this.content + "\"", buffer_offset)
+			buffer.write("``" + this.content + '"', buffer_offset)
 		);
 	}
 }
 
 export class Strong implements node {
 	// similar to emphasis but with double asterisks
-	static regexp = /(?:\*\*(\S.*?)\*\*)|(?:__(\S.*?)__)/gs;
+	static get_regexp(): RegExp {
+		return /(?:\*\*(\S.*?)\*\*)|(?:__(\S.*?)__)/gs;
+	}
 	content: string;
 	label: string | undefined;
 	static build_from_match(regexmatch: RegExpMatchArray): Strong {
@@ -188,7 +174,11 @@ export class Strong implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	) {
 		return (
 			buffer_offset +
 			buffer.write("\\textbf{" + this.content + "}", buffer_offset)
@@ -197,7 +187,9 @@ export class Strong implements node {
 }
 
 export class InlineMath implements node {
-	static regexp = /\$([^\$]+)\$(?:{(.*?)})?/g;
+	static get_regexp(): RegExp {
+		return /\$([^\$]+)\$(?:{(.*?)})?/g;
+	}
 	content: string;
 	label: string | undefined;
 	static build_from_match(regexmatch: RegExpMatchArray): InlineMath {
@@ -210,7 +202,11 @@ export class InlineMath implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	) {
 		return (
 			buffer_offset +
 			buffer.write("$" + this.content + "$", buffer_offset)
@@ -220,7 +216,9 @@ export class InlineMath implements node {
 
 export class InlineCode implements node {
 	code: string;
-	static regexp = /`(.*?)`/gs;
+	static get_regexp(): RegExp {
+		return /`(.*?)`/gs;
+	}
 	static build_from_match(match: RegExpMatchArray): InlineCode {
 		return new InlineCode(match[1]);
 	}
@@ -230,7 +228,11 @@ export class InlineCode implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings) {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	) {
 		return (
 			buffer_offset + buffer.write("`" + this.code + "`", buffer_offset)
 		);
