@@ -238,8 +238,8 @@ export class Environment implements node {
 	}
 	static build_from_match(match: RegExpMatchArray): Environment {
 		// TODO: Creates an infinite loop; this is a problem.
-		const [_, body] = parse_display(strip_newlines(match[3]));
-		parse_after_headers(body)
+		let [_, body] = parse_display(strip_newlines(match[3]));
+		body = parse_after_headers(body)
 		traverse_tree_and_parse_inline(body);
 		// if(match.index !== undefined){
 		// 	match.index += match[0].length
