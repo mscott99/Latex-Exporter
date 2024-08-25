@@ -1,11 +1,16 @@
 jest.mock("obsidian");
 import { TFile } from "obsidian";
 import { TEST_DEFAULT_SETTINGS } from "./test_utils";
-import { get_find_file_fn, read_tfile, get_unrolled_file_contents, get_latex_file_contents, get_parsed_file_contents } from "./test_utils";
+import {
+	get_find_file_fn,
+	read_tfile,
+	get_unrolled_file_contents,
+	get_latex_file_contents,
+	get_parsed_file_contents,
+} from "./test_utils";
 import {
 	UnrolledWikilink,
 	unroll_array,
-	parse_longform,
 	init_data,
 	Environment,
 	DisplayMath,
@@ -24,7 +29,10 @@ describe("split_display_blocks", () => {
 		expect(out_embed.path).toEqual("tests/files/simple_embed.md");
 	});
 	test("test environment unrolling", async () => {
-		const unrolled_content = await get_unrolled_file_contents("simple_embed", TEST_DEFAULT_SETTINGS);
+		const unrolled_content = await get_unrolled_file_contents(
+			"simple_embed",
+			TEST_DEFAULT_SETTINGS,
+		);
 		const expected_content = [
 			new Environment(
 				[new Paragraph([new Text("Content of lemma2")])],
@@ -43,32 +51,36 @@ describe("split_display_blocks", () => {
 		const file_contents = await read_tfile(longform_file);
 		const parsed_contents = parse_note(file_contents).body;
 		const data = init_data(longform_file, read_tfile, find_file);
-		const unrolled_content = await unroll_array(data, parsed_contents, TEST_DEFAULT_SETTINGS);
+		const unrolled_content = await unroll_array(
+			data,
+			parsed_contents,
+			TEST_DEFAULT_SETTINGS,
+		);
 
 		const expected_content = [
-			new Environment(
-				[
-					new Paragraph([new Text("some stuff")]),
-					new DisplayMath("\\varepsilon", undefined),
-				],
-				"lemma",
-				"lem-label_1",
-			),
 			new Environment(
 				[new Paragraph([new Text("Content of the other lemma.")])],
 				"theorem",
 				"loc:other_lem.statement",
 			),
-			new Paragraph([
-				new Text("reference:"),
-				new UnrolledWikilink(
-					data,
-					undefined,
-					"other_lem",
-					undefined,
-					undefined,
-				),
-			]),
+			new Environment(
+				[
+					new Paragraph([new Text("some stuff")]),
+					new DisplayMath("\\varepsilon", undefined),
+					new Paragraph([
+						new Text("reference:"),
+						new UnrolledWikilink(
+							data,
+							undefined,
+							"other_lem",
+							undefined,
+							undefined,
+						),
+					]),
+				],
+				"lemma",
+				"lem-label_1",
+			),
 		];
 
 		expect(unrolled_content).toEqual(expected_content);
