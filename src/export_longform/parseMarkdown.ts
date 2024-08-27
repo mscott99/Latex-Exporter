@@ -487,11 +487,6 @@ export function parse_after_headers(new_display: node[]): node[] {
 		Environment.build_from_match,
 		Environment.get_regexp(),
 	);
-	new_display = split_display<DisplayMath>(
-		new_display,
-		DisplayMath.build_from_match,
-		DisplayMath.get_regexp(),
-	);
 	new_display = split_display<NumberedList>(
 		new_display,
 		NumberedList.build_from_match,
@@ -525,35 +520,14 @@ export function parse_after_headers(new_display: node[]): node[] {
 		BlankLine.build_from_match,
 		BlankLine.get_regexp(),
 	);
+	new_display = split_display<DisplayMath>(
+		new_display,
+		DisplayMath.build_from_match,
+		DisplayMath.get_regexp(),
+	);
 	return new_display;
 }
 
-// I dislike this one
-// export function parse_inside_env(input: string): node[] {
-// 	let new_display = [new Paragraph([new Text(input)])] as node[];
-// 	new_display = split_display<EmbedWikilink>(
-// 		new_display,
-// 		EmbedWikilink.build_from_match,
-// 		EmbedWikilink.get_regexp(),
-// 	);
-// 	new_display = split_display<DisplayMath>(
-// 		new_display,
-// 		DisplayMath.build_from_match,
-// 		DisplayMath.get_regexp(),
-// 	);
-// 	new_display = split_display<DisplayCode>(
-// 		new_display,
-// 		DisplayCode.build_from_match,
-// 		DisplayCode.get_regexp(),
-// 	);
-// 	new_display = split_display<BlankLine>(
-// 		new_display,
-// 		BlankLine.build_from_match,
-// 		BlankLine.get_regexp(),
-// 	);
-// 	return new_display;
-// }
-//
 function parse_yaml_header(input: string): [{ [key: string]: string }, string] {
 	const match = /^---\n(.*?)---\n(.*)$/s.exec(input);
 	if (!match) {
@@ -613,4 +587,3 @@ export function parse_inline(inline_arr: node[]): node[] {
 	);
 	return inline_arr;
 }
-// There seems to be too many elements here, some should be inline.

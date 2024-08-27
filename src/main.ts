@@ -114,6 +114,8 @@ export default class ExportPaperPlugin extends Plugin {
 			console.log(
 				"Exporting with the default template.",
 			);
+		}else{
+			console.log("Exporting with template.")
 		}
 
 		const notes_dir = this.app.vault;
@@ -162,17 +164,6 @@ export default class ExportPaperPlugin extends Plugin {
 					" by using the default template",
 			);
 		}
-		// try {
-		// 	return await export_longform(
-		// 		this.app.vault,
-		// 		active_file,
-		// 		out_file,
-		// 		template_file,
-		// 		preamble_file,
-		// 	);
-		// } catch (e) {
-		// 	console.error(e);
-		// }
 	}
 
 	async export_with_selection(active_file: TFile, selection: string, settings: ExportPluginSettings){
@@ -194,7 +185,7 @@ export default class ExportPaperPlugin extends Plugin {
 
 		this.addCommand({
 			id: "export-paper",
-			name: "Export to paper",
+			name: "Export",
 			editorCallback: async (
 				editor: Editor,
 				ctx: MarkdownView | MarkdownFileInfo,
@@ -209,7 +200,7 @@ export default class ExportPaperPlugin extends Plugin {
 		});
 		this.addCommand({
 			id: "selection-export-paper",
-			name: "Export selection to paper",
+			name: "Export selection",
 			editorCheckCallback: (
 				checking: boolean,
 				editor: Editor,
