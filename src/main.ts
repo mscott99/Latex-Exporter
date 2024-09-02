@@ -17,14 +17,17 @@ import {
 	write_with_template,
 	get_header_tex,
 	ExportPluginSettings,
-	DEFAULT_SETTINGS
+	DEFAULT_SETTINGS,
 } from "./export_longform";
 import { find_file } from "./export_longform/utils";
 
 export default class ExportPaperPlugin extends Plugin {
 	settings: ExportPluginSettings;
 
-	async find_files_and_export(active_file: TFile, settings: ExportPluginSettings) {
+	async find_files_and_export(
+		active_file: TFile,
+		settings: ExportPluginSettings,
+	) {
 		if (this.settings.base_output_folder === "") {
 			this.settings.base_output_folder = "/";
 		}
@@ -103,11 +106,9 @@ export default class ExportPaperPlugin extends Plugin {
 			the_template_file !== null ? the_template_file : undefined;
 
 		if (!template_file) {
-			console.log(
-				"Exporting with the default template.",
-			);
-		}else{
-			console.log("Exporting with template.")
+			console.log("Exporting with the default template.");
+		} else {
+			console.log("Exporting with template.");
 		}
 
 		const notes_dir = this.app.vault;
@@ -115,7 +116,7 @@ export default class ExportPaperPlugin extends Plugin {
 			notes_dir.cachedRead.bind(notes_dir),
 			(address: string) => find_file(notes_dir, address),
 			active_file,
-			settings
+			settings,
 		);
 
 		if (parsed_contents.media_files.length > 0) {
@@ -158,7 +159,11 @@ export default class ExportPaperPlugin extends Plugin {
 		}
 	}
 
-	async export_with_selection(active_file: TFile, selection: string, settings: ExportPluginSettings){
+	async export_with_selection(
+		active_file: TFile,
+		selection: string,
+		settings: ExportPluginSettings,
+	) {
 		try {
 			return export_selection(
 				this.app.vault.cachedRead.bind(this.app.vault),
@@ -206,7 +211,11 @@ export default class ExportPaperPlugin extends Plugin {
 					throw new Error("No active file found.");
 				}
 				const selection = editor.getSelection();
-				this.export_with_selection(active_file, selection, this.settings);
+				this.export_with_selection(
+					active_file,
+					selection,
+					this.settings,
+				);
 			},
 		});
 		this.addSettingTab(new SampleSettingTab(this.app, this));
@@ -310,12 +319,15 @@ class SampleSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}),
 		);
-		new Setting(containerEl).setName("Prioritize lists over equations").addToggle((cb) =>
-			cb.setValue(this.plugin.settings.prioritize_lists)
-				.onChange(async (value) => {
-					this.plugin.settings.prioritize_lists = value;
-					await this.plugin.saveSettings();
-				}),
-		);
+		new Setting(containerEl)
+			.setName("Prioritize lists over equations")
+			.addToggle((cb) =>
+				cb
+					.setValue(this.plugin.settings.prioritize_lists)
+					.onChange(async (value) => {
+						this.plugin.settings.prioritize_lists = value;
+						await this.plugin.saveSettings();
+					}),
+			);
 	}
 }

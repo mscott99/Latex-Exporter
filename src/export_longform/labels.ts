@@ -1,4 +1,4 @@
-import { TFile} from "obsidian";
+import { TFile } from "obsidian";
 import { ExportPluginSettings } from "./interfaces";
 import { get_header_address } from "./headers";
 import { notice_and_warn } from "./utils";
@@ -64,10 +64,10 @@ export async function label_from_location(
 	if (resolved_header === undefined) {
 		notice_and_warn(
 			"could not resolve header at " +
-				address +
-				": " +
-				header +
-				" keeping the header label as-is",
+			address +
+			": " +
+			header +
+			" keeping the header label as-is",
 		);
 		resolved_header =
 			typeof header === "string" ? header : header.join(".");
@@ -93,18 +93,18 @@ async function resolve_header_label(
 			if (file !== undefined && file_cache[file.basename] === undefined) {
 				notice_and_warn(
 					"address of reference '" +
-						address +
-						"' is referenced but was not embedded.",
+					address +
+					"' is referenced but was not embedded.",
 				);
 			}
 			const header_string =
 				typeof header === "string" ? header : header.join(".");
 			notice_and_warn(
 				"keeping the header address of " +
-					address +
-					": " +
-					header_string +
-					" as-is",
+				address +
+				": " +
+				header_string +
+				" as-is",
 			);
 			return header_string;
 		}
@@ -125,10 +125,10 @@ async function resolve_header_label(
 			typeof header === "string" ? header : header.join(".");
 		notice_and_warn(
 			"Could not resolve header name '" +
-				header_string +
-				"' in file with address '" +
-				address +
-				"', keeping the header label as-is",
+			header_string +
+			"' in file with address '" +
+			address +
+			"', keeping the header label as-is",
 		);
 		return header_string;
 	}

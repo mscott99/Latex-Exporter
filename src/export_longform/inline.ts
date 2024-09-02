@@ -6,8 +6,8 @@ import { format_label } from "./labels";
 export function split_inline<ClassObj extends node>(
 	inline_arr: node[],
 	class_regexp: RegExp,
-	make_obj: (args: RegExpMatchArray, settings:ExportPluginSettings) => ClassObj,
-	settings:ExportPluginSettings
+	make_obj: (args: RegExpMatchArray, settings: ExportPluginSettings) => ClassObj,
+	settings: ExportPluginSettings
 ): node[] {
 	const new_inline: node[] = [];
 	for (const text of inline_arr) {
@@ -47,7 +47,7 @@ export class ExplicitRef implements node {
 	static get_regexp(): RegExp {
 		return /@([\w-_:]+)/g; // parse only after parsing for citations.
 	}
-	static build_from_match(regexmatch: RegExpMatchArray, settings:ExportPluginSettings): ExplicitRef {
+	static build_from_match(regexmatch: RegExpMatchArray, settings: ExportPluginSettings): ExplicitRef {
 		return new ExplicitRef(regexmatch[1]);
 	}
 	async unroll(
@@ -99,7 +99,7 @@ export class Emphasis implements node {
 	}
 	content: string;
 	label: string | undefined;
-	static build_from_match(regexmatch: RegExpMatchArray, settings:ExportPluginSettings): Emphasis {
+	static build_from_match(regexmatch: RegExpMatchArray, settings: ExportPluginSettings): Emphasis {
 		if (regexmatch[1] !== undefined) {
 			return new Emphasis(regexmatch[1]);
 		} else if (regexmatch[2] !== undefined) {
@@ -132,7 +132,7 @@ export class Quotes implements node {
 	}
 	content: string;
 	label: string | undefined;
-	static build_from_match(regexmatch: RegExpMatchArray, settings:ExportPluginSettings): Emphasis {
+	static build_from_match(regexmatch: RegExpMatchArray, settings: ExportPluginSettings): Emphasis {
 		return new Quotes(regexmatch[1]);
 	}
 	constructor(content: string) {
@@ -160,7 +160,7 @@ export class Strong implements node {
 	}
 	content: string;
 	label: string | undefined;
-	static build_from_match(regexmatch: RegExpMatchArray, settings:ExportPluginSettings): Strong {
+	static build_from_match(regexmatch: RegExpMatchArray, settings: ExportPluginSettings): Strong {
 		if (regexmatch[1] !== undefined) {
 			return new Strong(regexmatch[1]);
 		} else if (regexmatch[2] !== undefined) {
@@ -193,7 +193,7 @@ export class InlineMath implements node {
 	}
 	content: string;
 	label: string | undefined;
-	static build_from_match(regexmatch: RegExpMatchArray, settings:ExportPluginSettings): InlineMath {
+	static build_from_match(regexmatch: RegExpMatchArray, settings: ExportPluginSettings): InlineMath {
 		return new InlineMath(regexmatch[1], regexmatch[2]);
 	}
 	constructor(content: string, label?: string) {
@@ -220,7 +220,7 @@ export class InlineCode implements node {
 	static get_regexp(): RegExp {
 		return /`(.*?)`/gs;
 	}
-	static build_from_match(match: RegExpMatchArray, settings:ExportPluginSettings): InlineCode {
+	static build_from_match(match: RegExpMatchArray, settings: ExportPluginSettings): InlineCode {
 		return new InlineCode(match[1]);
 	}
 	constructor(content: string) {

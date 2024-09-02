@@ -12,7 +12,7 @@ export class ProofHeader implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings): Promise<number> {
+	async latex(buffer: Buffer, buffer_offset: number, settings: ExportPluginSettings): Promise<number> {
 		const header_string = "\n\\textbf{" + this.title + "}\n\n";
 		buffer_offset += buffer.write(header_string, buffer_offset);
 		return buffer_offset;
@@ -36,11 +36,11 @@ export class Header implements node {
 		this.title = title;
 		this.children = children;
 		this.label = label;
-		if(data !== undefined) {
+		if (data !== undefined) {
 			this.data = data;
 		}
 	}
-	async unroll(data: metadata_for_unroll, settings:ExportPluginSettings): Promise<node[]> {
+	async unroll(data: metadata_for_unroll, settings: ExportPluginSettings): Promise<node[]> {
 		if (data.in_thm_env) {
 			const new_children: node[] = [];
 			for (const elt of this.children) {
@@ -100,7 +100,7 @@ export class Header implements node {
 		}
 		return buffer.toString("utf8", 0, buffer_offset);
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings): Promise<number> {
+	async latex(buffer: Buffer, buffer_offset: number, settings: ExportPluginSettings): Promise<number> {
 		const header_title = await this.latex_title(settings);
 		let header_string = "";
 		if (this.level === 1) {
@@ -117,13 +117,13 @@ export class Header implements node {
 		const promises = this.data.header_stack.map(async (e) => await e.latex_title(settings))
 		buffer_offset += buffer.write(
 			"\\label{" +
-				await label_from_location(
-					this.data,
-					this.data.current_file.basename,
-					settings,
-					await Promise.all(promises),
-				) +
-				"}\n",
+			await label_from_location(
+				this.data,
+				this.data.current_file.basename,
+				settings,
+				await Promise.all(promises),
+			) +
+			"}\n",
 			buffer_offset,
 		);
 
@@ -169,7 +169,7 @@ export async function find_header(
 				if (
 					header_stack.length > 0 &&
 					(await elt.latex_title(settings)).toLowerCase().trim() ==
-						current_check.toLowerCase().trim()
+					current_check.toLowerCase().trim()
 				) {
 					if (header_stack.length == 1) {
 						return elt;
@@ -226,7 +226,7 @@ export async function get_header_address(
 			if (
 				header_stack.length > 0 &&
 				(await elt.latex_title(settings)).toLowerCase().trim() ==
-					current_check.toLowerCase().trim()
+				current_check.toLowerCase().trim()
 			) {
 				if (header_stack.length == 1) {
 					return new_address;

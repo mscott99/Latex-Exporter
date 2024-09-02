@@ -42,9 +42,9 @@ export function find_file(
 			if (file_found !== undefined) {
 				notice_and_warn(
 					"Multiple files found with the same name '" +
-						address +
-						"'. Returning the first one found. Additional file found has path: "+
-						file.path,
+					address +
+					"'. Returning the first one found. Additional file found has path: " +
+					file.path,
 				);
 			} else {
 				file_found = file;

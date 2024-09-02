@@ -1,6 +1,6 @@
 jest.mock("obsidian");
 import { get_latex_file_contents, get_unrolled_file_contents } from "./test_utils";
-import {DEFAULT_SETTINGS } from "../src/export_longform/interfaces";
+import { DEFAULT_SETTINGS } from "../src/export_longform/interfaces";
 
 describe("my plugin", () => {
 	test("aligned env", async () => {

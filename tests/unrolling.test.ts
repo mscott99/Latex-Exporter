@@ -30,7 +30,7 @@ describe("split_display_blocks", () => {
 		expect(out_embed.path).toEqual("tests/files/simple_embed.md");
 	});
 	test("test environment unrolling", async () => {
-		const unrolled_content = await get_unrolled_file_contents( "simple_embed" );
+		const unrolled_content = await get_unrolled_file_contents("simple_embed");
 		const expected_content = [
 			new Environment(
 				[new Paragraph([new Text("Content of lemma2")])],
