@@ -108,14 +108,14 @@ export default class ExportPaperPlugin extends Plugin {
 		if (out_file === null) {
 			console.log("Creating new output file");
 			out_file = await this.app.vault.create(output_path, "");
-				await this.proceed_with_export(
-					active_file,
-					settings,
-					output_folder_path,
-					template_file,
-					out_file,
-					preamble_file,
-				);
+			await this.proceed_with_export(
+				active_file,
+				settings,
+				output_folder_path,
+				template_file,
+				out_file,
+				preamble_file,
+			);
 		} else {
 			const out_file_other = out_file;
 			if (this.settings.warn_before_overwrite) {
@@ -123,16 +123,18 @@ export default class ExportPaperPlugin extends Plugin {
 				new WarningModal(
 					this.app,
 					this,
-					() => this.proceed_with_export(
-						active_file,
-						settings,
-						output_folder_path,
-						template_file,
-						out_file_other,
-						preamble_file,
-					),
-				"It seems there is a previously exported file. Overwrite it?").open();
-			}else{
+					() =>
+						this.proceed_with_export(
+							active_file,
+							settings,
+							output_folder_path,
+							template_file,
+							out_file_other,
+							preamble_file,
+						),
+					"It seems there is a previously exported file. Overwrite it?",
+				).open();
+			} else {
 				console.log("Overwriting without warning");
 				await this.proceed_with_export(
 					active_file,
@@ -152,7 +154,7 @@ export default class ExportPaperPlugin extends Plugin {
 		output_folder_path: string,
 		template_file: TFile | undefined,
 		out_file: TFile,
-		preamble_file: TFile|undefined,
+		preamble_file: TFile | undefined,
 	) {
 		const notes_dir = this.app.vault;
 		const parsed_contents = await parse_longform(
@@ -183,9 +185,9 @@ export default class ExportPaperPlugin extends Plugin {
 			);
 			new Notice(
 				"Latex content written to " +
-					out_file.path +
-					" by using the template file " +
-					template_file.path,
+				out_file.path +
+				" by using the template file " +
+				template_file.path,
 			);
 		} else {
 			await write_without_template(
@@ -196,8 +198,8 @@ export default class ExportPaperPlugin extends Plugin {
 			);
 			new Notice(
 				"Latex content written to " +
-					out_file.path +
-					" by using the default template",
+				out_file.path +
+				" by using the default template",
 			);
 		}
 	}
@@ -264,7 +266,7 @@ export default class ExportPaperPlugin extends Plugin {
 		this.addSettingTab(new SampleSettingTab(this.app, this));
 	}
 
-	onunload() {}
+	onunload() { }
 
 	async loadSettings() {
 		this.settings = Object.assign(
@@ -285,7 +287,12 @@ class WarningModal extends Modal {
 	private callback: any;
 	private message: string;
 
-	constructor(app: App, plugin: ExportPaperPlugin, callback: any, message:string) {
+	constructor(
+		app: App,
+		plugin: ExportPaperPlugin,
+		callback: any,
+		message: string,
+	) {
 		super(app);
 		this.plugin = plugin;
 		this.rememberChoice = false;
@@ -428,6 +435,16 @@ class SampleSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.warn_before_overwrite)
 					.onChange(async (value) => {
 						this.plugin.settings.warn_before_overwrite = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+		new Setting(containerEl)
+			.setName("Default cite command")
+			.addText((txt) =>
+				txt
+					.setValue(this.plugin.settings.default_citation_command)
+					.onChange(async (value) => {
+						this.plugin.settings.default_citation_command = value;
 						await this.plugin.saveSettings();
 					}),
 			);

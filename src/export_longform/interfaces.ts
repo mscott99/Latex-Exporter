@@ -21,6 +21,7 @@ export interface ExportPluginSettings {
 	bib_file: string;
 	prioritize_lists: boolean;
 	warn_before_overwrite: boolean;
+	default_citation_command: string;
 }
 
 export const DEFAULT_SETTINGS: ExportPluginSettings = {
@@ -30,7 +31,8 @@ export const DEFAULT_SETTINGS: ExportPluginSettings = {
 	preamble_file: "preamble.sty",
 	bib_file: "bibliography.bib",
 	prioritize_lists: false, // Whether to parse lists or equations first. Lists first allows lists containing display equations, but yields bugs because lines within an equation can easily start with '-'.
-	warn_before_overwrite: true
+	warn_before_overwrite: true,
+	default_citation_command: "cite",
 };
 
 export interface file_content {

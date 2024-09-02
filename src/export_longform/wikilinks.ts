@@ -428,7 +428,6 @@ export class Citation implements node {
 		buffer_offset: number,
 		settings: ExportPluginSettings,
 	): Promise<number> {
-		const citeword = "textcite";
 		// TODO: change the use of textcite to an option in settings
 		if (this.result !== undefined) {
 			if (this.result === "std") {
@@ -452,7 +451,7 @@ export class Citation implements node {
 		}
 		return (
 			buffer_offset +
-			buffer.write("\\" + citeword + "{" + this.id + "}", buffer_offset)
+			buffer.write("\\" + settings.default_citation_command + "{" + this.id + "}", buffer_offset)
 		);
 	}
 }

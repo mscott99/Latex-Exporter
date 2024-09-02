@@ -7,6 +7,8 @@ import { DEFAULT_SETTINGS } from "../src/export_longform/interfaces";
 
 describe("my plugin", () => {
 	test("parse citation", async () => {
+		let settings = DEFAULT_SETTINGS;
+		settings.default_citation_command = "textcite";
 		const result = await get_latex_file_contents(
 			"simple_citation",
 			DEFAULT_SETTINGS,
