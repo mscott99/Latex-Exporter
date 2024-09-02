@@ -1,7 +1,7 @@
 {
 	"id": "paper-latex-export",
-	"name": "Paper Latex Export",
-	"version": "0.0.5",
+	"name": "Latex Publisher",
+	"version": "0.0.13",
 	"minAppVersion": "0.15.0",
 	"description": "Export latex content from a recursive parsing of your obsidian vault",
 	"author": "Matthew S. Scott",
