@@ -1,10 +1,10 @@
 jest.mock("obsidian");
 import { get_latex_file_contents, get_unrolled_file_contents } from "./test_utils";
-import {TEST_DEFAULT_SETTINGS} from "./test_utils";
+import {DEFAULT_SETTINGS } from "../src/export_longform/interfaces";
 
 describe("my plugin", () => {
 	test("aligned env", async () => {
-		const result = await get_latex_file_contents("weird_equations", TEST_DEFAULT_SETTINGS)
+		const result = await get_latex_file_contents("weird_equations", DEFAULT_SETTINGS)
 		expect(result).toEqual(`\\begin{equation*}
 \\begin{aligned}
 \\sum_{i = 1}^n
@@ -26,7 +26,7 @@ describe("my plugin", () => {
 `)
 	})
 	test("inline", async () => {
-		const result = await get_latex_file_contents("inline", TEST_DEFAULT_SETTINGS)
+		const result = await get_latex_file_contents("inline", DEFAULT_SETTINGS)
 		expect(result).toEqual(`A \\emph{emph} \\textbf{strong} \`\`quotes"\nAnd \`\`other".\n`)
 	})
 });

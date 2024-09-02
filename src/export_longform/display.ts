@@ -11,8 +11,9 @@ import { EmbedWikilink, Environment, Wikilink } from "./wikilinks";
 // The custom part is a regex and a constructor. So a regex, and function to get the object from the regex
 export function split_display<T extends node>(
 	display_elts: node[],
-	make_obj: (args: RegExpMatchArray) => T,
+	make_obj: (args: RegExpMatchArray, settings:ExportPluginSettings) => T,
 	class_regexp: RegExp,
+	settings: ExportPluginSettings,
 ): node[] {
 	const new_display = [] as node[];
 	for (const elt of display_elts) {
@@ -44,7 +45,7 @@ export function split_display<T extends node>(
 						new Paragraph([new Text(strip_newlines(prev_chunk))]),
 					);
 				}
-				new_display.push(make_obj(current_match));
+				new_display.push(make_obj(current_match, settings));
 				start_index = current_match.index + current_match[0].length;
 			}
 			// Last part of the text, or all of it if no match
@@ -69,7 +70,7 @@ export class DisplayMath implements node {
 	static get_regexp(): RegExp {
 		return /\$\$\s*(?:\\begin{(\S*?)}\s*([\S\s]*?)\s*\\end{\1}|([\S\s]*?))\s*?\$\$(?:\s*?{#(\S*?)})?/gs;
 	}
-	static build_from_match(match: RegExpMatchArray): DisplayMath {
+	static build_from_match(match: RegExpMatchArray, settings:ExportPluginSettings): DisplayMath {
 		const latex = match[2] === undefined ? match[3] : match[2];
 		const label_match = /eq-(\w+)/.exec(match[1]);
 		let label_val = match[1];
@@ -224,7 +225,7 @@ export class DisplayCode implements node {
 	static get_regexp(): RegExp {
 		return /```(?:\s*({?)([a-zA-Z]+)(}?)\s*\n([\s\S]*?)|([\s\S]*?))```/g;
 	}
-	static build_from_match(match: RegExpMatchArray): DisplayCode {
+	static build_from_match(match: RegExpMatchArray, settings:ExportPluginSettings): DisplayCode {
 		if (match[4] !== undefined) {
 			const code = match[4];
 			const executable = match[1] == "{" && match[3] == "}";
@@ -271,7 +272,7 @@ export class Quote implements node {
 	constructor(content: string) {
 		this.content = content;
 	}
-	static build_from_match(regexmatch: RegExpMatchArray): Quote {
+	static build_from_match(regexmatch: RegExpMatchArray, settings:ExportPluginSettings): Quote {
 		return new Quote(regexmatch[1]);
 	}
 	async unroll(): Promise<node[]> {
@@ -293,12 +294,12 @@ export class NumberedList implements node {
 	content: node[][];
 
 	static get_regexp(): RegExp {
-		return /(?<=^|\n)\s*?1\. (.*?)(?:2\. (.*?))?(?:3\. (.*?))?(?:4\. (.*?))?(?:5\. (.*?))?(?:6\. (.*?))?(?:7\. (.*?))?(?:8\. (.*?))?(?:9\. (.*?))?(?:10\. (.*?))?(?:11\. (.*?))?(?:12\. (.*?))?(?:13\. (.*?))?(?:14\. (.*?))?(?:15\. (.*?))?(?:16\. (.*?))?(?:17\. (.*?))?(?:18\. (.*?))?(?:19\. (.*?))?(?:20\. (.*?))?(?=\n\s*?\n|$)/gs;
+		return /(?<=^|\n)[ \t]*?1\. (.*?)(?:2\. (.*?))?(?:3\. (.*?))?(?:4\. (.*?))?(?:5\. (.*?))?(?:6\. (.*?))?(?:7\. (.*?))?(?:8\. (.*?))?(?:9\. (.*?))?(?:10\. (.*?))?(?:11\. (.*?))?(?:12\. (.*?))?(?:13\. (.*?))?(?:14\. (.*?))?(?:15\. (.*?))?(?:16\. (.*?))?(?:17\. (.*?))?(?:18\. (.*?))?(?:19\. (.*?))?(?:20\. (.*?))?$/gs;
 	}
 	constructor(content: node[][]) {
 		this.content = content;
 	}
-	static build_from_match(regexmatch: RegExpMatchArray): NumberedList {
+	static build_from_match(regexmatch: RegExpMatchArray, settings:ExportPluginSettings): NumberedList {
 		const list_contents: string[] = [];
 		for (const e of regexmatch.slice(1)) {
 			if (e === undefined) {
@@ -340,13 +341,13 @@ export class NumberedList implements node {
 export class UnorderedList implements node {
 	content: node[][];
 	static get_regexp(): RegExp {
-		return /(?<=^|\n)\s*?(?:-|\+|\*) (.*?)(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?=\n\s*?\n|$)/gs;
+		return /(?<=^|\n)[ \t]*?(?:-|\+|\*) (.*?)(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?(?:\n\s*?(?:-|\+|\*) (.*?))?$/gs;
 	}
 
 	constructor(content: node[][]) {
 		this.content = content;
 	}
-	static build_from_match(regexmatch: RegExpMatchArray): UnorderedList {
+	static build_from_match(regexmatch: RegExpMatchArray, settings:ExportPluginSettings): UnorderedList {
 		const list_contents: string[] = [];
 		for (const e of regexmatch.slice(1)) {
 			if (e === undefined) {
@@ -393,7 +394,7 @@ export class Comment implements node {
 	constructor(content: string) {
 		this.content = content;
 	}
-	static build_from_match(regexmatch: RegExpMatchArray): Quote {
+	static build_from_match(regexmatch: RegExpMatchArray, settings:ExportPluginSettings): Quote {
 		return new Comment(regexmatch[1]);
 	}
 	async unroll(): Promise<node[]> {

@@ -73,7 +73,7 @@ export async function parse_longform(
 	} else {
 		file_contents = selection;
 	}
-	const parsed_longform = parse_note(file_contents);
+	const parsed_longform = parse_note(file_contents, settings);
 	const cache = {} as note_cache;
 	cache[longform_file.basename] = parsed_longform;
 	let parsed_content = parsed_longform.body;
@@ -301,14 +301,20 @@ export async function write_without_template(
 	await modify(output_file, content);
 }
 
-function traverse_tree_and_parse_display(md: node[]): node[] {
+function traverse_tree_and_parse_display(
+	md: node[],
+	settings: ExportPluginSettings,
+): node[] {
 	const new_md: node[] = [];
 	for (const elt of md) {
 		if (elt instanceof Paragraph) {
-			const parsed_objects = parse_after_headers([elt]);
+			const parsed_objects = parse_after_headers([elt], settings);
 			new_md.push(...parsed_objects);
 		} else if (elt instanceof Header) {
-			elt.children = traverse_tree_and_parse_display(elt.children);
+			elt.children = traverse_tree_and_parse_display(
+				elt.children,
+				settings,
+			);
 			new_md.push(elt);
 		} else {
 			new_md.push(elt);
@@ -317,32 +323,41 @@ function traverse_tree_and_parse_display(md: node[]): node[] {
 	return new_md;
 }
 
-export function traverse_tree_and_parse_inline(md: node[]): void {
+export function traverse_tree_and_parse_inline(
+	md: node[],
+	settings: ExportPluginSettings,
+): void {
 	for (const elt of md) {
 		if (elt instanceof Header) {
-			traverse_tree_and_parse_inline(elt.children);
-			elt.title = parse_inline(elt.title);
+			traverse_tree_and_parse_inline(elt.children, settings);
+			elt.title = parse_inline(elt.title, settings);
 		} else if (elt instanceof NumberedList) {
 			for (const e of elt.content) {
-				traverse_tree_and_parse_inline(e);
+				traverse_tree_and_parse_inline(e, settings);
 			}
 		} else if (elt instanceof UnorderedList) {
 			for (const e of elt.content) {
-				traverse_tree_and_parse_inline(e);
+				traverse_tree_and_parse_inline(e, settings);
 			}
 		} else if (elt instanceof Paragraph) {
-			elt.elements = parse_inline(elt.elements);
+			elt.elements = parse_inline(elt.elements, settings);
 		}
 	}
 }
 
 // TODO: make the underlying structure cleaner
 // Parses markdown text but does not unroll
-export function parse_note(file_contents: string): parsed_note {
-	const [yaml, body] = parse_display(file_contents);
+export function parse_note(
+	file_contents: string,
+	settings: ExportPluginSettings,
+): parsed_note {
+	const [yaml, body] = parse_display(file_contents, settings);
 	let parsed_contents = make_heading_tree(body);
-	parsed_contents = traverse_tree_and_parse_display(parsed_contents);
-	traverse_tree_and_parse_inline(parsed_contents);
+	parsed_contents = traverse_tree_and_parse_display(
+		parsed_contents,
+		settings,
+	);
+	traverse_tree_and_parse_inline(parsed_contents, settings);
 	return { yaml: yaml, body: parsed_contents };
 }
 
@@ -361,7 +376,7 @@ export async function parse_embed_content(
 	}
 	if (!(file_found.basename in Object.keys(parsed_cache))) {
 		const file_contents = await read_tfile(file_found);
-		parsed_cache[file_found.basename] = parse_note(file_contents);
+		parsed_cache[file_found.basename] = parse_note(file_contents, settings);
 	}
 	const content = parsed_cache[file_found.basename];
 	if (content === undefined) {
@@ -382,6 +397,7 @@ export async function parse_embed_content(
 
 export function parse_display(
 	input: string,
+	settings: ExportPluginSettings,
 ): [{ [key: string]: string }, node[]] {
 	const parsed_yaml = parse_yaml_header(input);
 	let new_display = [new Paragraph([new Text(parsed_yaml[1])])] as node[];
@@ -389,16 +405,19 @@ export function parse_display(
 		new_display,
 		Comment.build_from_match,
 		Comment.get_regexp(),
+		settings,
 	);
 	new_display = split_display<Quote>(
 		new_display,
 		Quote.build_from_match,
 		Quote.get_regexp(),
+		settings,
 	);
 	new_display = split_display<EmbedWikilink>(
 		new_display,
 		EmbedWikilink.build_from_match,
 		EmbedWikilink.get_regexp(),
+		settings,
 	); //must come before explicit environment
 	return [parsed_yaml[0], new_display];
 }
@@ -480,23 +499,42 @@ export function make_heading_tree(markdown: node[]): node[] {
 	return new_md.children;
 }
 
-export function parse_after_headers(new_display: node[]): node[] {
+export function parse_after_headers(
+	new_display: node[],
+	settings: ExportPluginSettings,
+): node[] {
 	// let new_display = [new Paragraph([new Text(input)])] as node[];
 	new_display = split_display<Environment>(
 		new_display,
 		Environment.build_from_match,
 		Environment.get_regexp(),
+		settings,
 	);
-	new_display = split_display<NumberedList>(
+	new_display = split_display<BlankLine>(
+		new_display,
+		BlankLine.build_from_match,
+		BlankLine.get_regexp(),
+		settings,
+	); // BlankLine must be before the lists. They deliminate the lists.
+	if (!settings.prioritize_lists) {
+		new_display = split_display<DisplayMath>(
+			new_display,
+			DisplayMath.build_from_match,
+			DisplayMath.get_regexp(),
+			settings,
+		);
+	}
+	new_display = split_display<NumberedList>( // Lists parse until the end of the string. What limits them is the presence of other elements in front of them.
 		new_display,
 		NumberedList.build_from_match,
 		NumberedList.get_regexp(),
+		settings,
 	);
 	for (const elt of new_display) {
 		if (elt instanceof NumberedList) {
 			const new_content: node[][] = [];
 			for (const e of elt.content) {
-				new_content.push(parse_after_headers(e));
+				new_content.push(parse_after_headers(e, settings));
 			}
 			elt.content = new_content;
 		}
@@ -505,26 +543,25 @@ export function parse_after_headers(new_display: node[]): node[] {
 		new_display,
 		UnorderedList.build_from_match,
 		UnorderedList.get_regexp(),
+		settings,
 	);
 	for (const elt of new_display) {
 		if (elt instanceof UnorderedList) {
 			const new_content: node[][] = [];
 			for (const e of elt.content) {
-				new_content.push(parse_after_headers(e));
+				new_content.push(parse_after_headers(e, settings));
 			}
 			elt.content = new_content;
 		}
 	}
-	new_display = split_display<BlankLine>(
-		new_display,
-		BlankLine.build_from_match,
-		BlankLine.get_regexp(),
-	);
-	new_display = split_display<DisplayMath>(
-		new_display,
-		DisplayMath.build_from_match,
-		DisplayMath.get_regexp(),
-	);
+	if (settings.prioritize_lists) {
+		new_display = split_display<DisplayMath>(
+			new_display,
+			DisplayMath.build_from_match,
+			DisplayMath.get_regexp(),
+			settings,
+		);
+	}
 	return new_display;
 }
 
@@ -544,46 +581,57 @@ function parse_yaml_header(input: string): [{ [key: string]: string }, string] {
 	return [field_dict, remainder];
 }
 
-export function parse_inline(inline_arr: node[]): node[] {
+export function parse_inline(
+	inline_arr: node[],
+	settings: ExportPluginSettings,
+): node[] {
 	inline_arr = split_inline<MultiCitation>(
 		inline_arr,
 		MultiCitation.get_regexp(),
 		MultiCitation.build_from_match,
+		settings,
 	);
 	inline_arr = split_inline<Citation>(
 		inline_arr,
 		Citation.get_regexp(),
 		Citation.build_from_match,
+		settings,
 	);
 	inline_arr = split_inline<Wikilink>(
 		inline_arr,
 		Wikilink.get_regexp(),
 		Wikilink.build_from_match,
+		settings,
 	); // must be before inline math so as to include math in displayed text.
 	inline_arr = split_inline<InlineMath>(
 		inline_arr,
 		InlineMath.get_regexp(),
 		InlineMath.build_from_match,
+		settings,
 	);
 	inline_arr = split_inline<ExplicitRef>(
 		inline_arr,
 		ExplicitRef.get_regexp(),
 		ExplicitRef.build_from_match,
+		settings,
 	);
 	inline_arr = split_inline<Quotes>(
 		inline_arr,
 		Quotes.get_regexp(),
 		Quotes.build_from_match,
+		settings,
 	);
 	inline_arr = split_inline<Strong>(
 		inline_arr,
 		Strong.get_regexp(),
 		Strong.build_from_match,
+		settings,
 	);
 	inline_arr = split_inline<Emphasis>(
 		inline_arr,
 		Emphasis.get_regexp(),
 		Emphasis.build_from_match,
+		settings,
 	);
 	return inline_arr;
 }

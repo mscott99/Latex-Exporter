@@ -1,5 +1,11 @@
 jest.mock("obsidian");
 import {
+	get_latex_file_contents,
+	get_unrolled_file_contents,
+} from "./test_utils";
+import { DEFAULT_SETTINGS } from "../src/export_longform/interfaces";
+
+import {
 	Environment,
 	DisplayMath,
 	Emphasis,
@@ -40,6 +46,7 @@ describe("split_display_blocks", () => {
 			markdown,
 			BlankLine.build_from_match,
 			BlankLine.get_regexp(),
+			DEFAULT_SETTINGS
 		);
 
 		expect(new_markdown).toEqual(expected);
@@ -65,6 +72,7 @@ describe("split_display_blocks", () => {
 			markdown,
 			DisplayMath.build_from_match,
 			DisplayMath.get_regexp(),
+			DEFAULT_SETTINGS
 		);
 
 		expect(new_markdown).toEqual(expected);
@@ -91,6 +99,7 @@ describe("split_display_blocks", () => {
 			markdown,
 			DisplayCode.build_from_match,
 			DisplayCode.get_regexp(),
+			DEFAULT_SETTINGS
 		);
 
 		expect(new_markdown).toEqual(expected);
@@ -109,6 +118,7 @@ describe("split_display_blocks", () => {
 			markdown,
 			EmbedWikilink.build_from_match,
 			EmbedWikilink.get_regexp(),
+			DEFAULT_SETTINGS
 		);
 		expect(new_markdown).toEqual(expected);
 	});
@@ -149,6 +159,7 @@ describe("split_display_blocks", () => {
 				[text_to_parse],
 				InlineMath.get_regexp(),
 				InlineMath.build_from_match,
+				DEFAULT_SETTINGS
 			),
 		).toEqual(expected);
 	});
@@ -168,6 +179,7 @@ describe("split_display_blocks", () => {
 				[text_to_parse],
 				Emphasis.get_regexp(),
 				Emphasis.build_from_match,
+				DEFAULT_SETTINGS
 			),
 		).toEqual(expected);
 	});
@@ -187,6 +199,7 @@ describe("split_display_blocks", () => {
 				[text_to_parse],
 				Strong.get_regexp(),
 				Strong.build_from_match,
+				DEFAULT_SETTINGS
 			),
 		).toEqual(expected);
 	});
@@ -204,6 +217,7 @@ describe("split_display_blocks", () => {
 				[text_to_parse],
 				Wikilink.get_regexp(),
 				Wikilink.build_from_match,
+				DEFAULT_SETTINGS
 			),
 		).toEqual(expected);
 	});
@@ -219,7 +233,7 @@ describe("split_display_blocks", () => {
 			new Text(" for the "),
 			new InlineMath("\\sum"),
 		];
-		expect(parse_inline([text_to_parse])).toEqual(expected);
+		expect(parse_inline([text_to_parse], DEFAULT_SETTINGS)).toEqual(expected);
 	});
 	// infinite loop
 	test("test explicit environment", () => {
@@ -229,19 +243,19 @@ describe("split_display_blocks", () => {
 			]),
 		];
 
-		const expected = 
-			[
-				new Paragraph([new Text("This is the")]),
-				new Environment(
-					[new Paragraph([new Text("I say things")])],
-					"lemma",
-				),
-			];
+		const expected = [
+			new Paragraph([new Text("This is the")]),
+			new Environment(
+				[new Paragraph([new Text("I say things")])],
+				"lemma",
+			),
+		];
 
 		const new_markdown = split_display<Environment>(
 			markdown,
 			Environment.build_from_match,
 			Environment.get_regexp(),
+			DEFAULT_SETTINGS
 		);
 
 		expect(new_markdown).toEqual(expected);
@@ -256,51 +270,72 @@ $$\\epsilon$$
 content _emphasis_
 ## Header 2 again
 $$\\sum$$ hi there.`;
-		const expected = 
-			[
-				new Paragraph([
-					new Text(`This is a text with `),
-					new Strong("strong"),
-					new Text(` and `),
-					new Emphasis("emphasis"),
-					new Text(` for the `),
-					new InlineMath("\\sum"),
-				]),
-				new Header(
-					1,
-					[new Text("Header 1")],
-					[
-						new DisplayMath("\\epsilon"),
-						new Header(
-							2,
-							[new Text("Header 2")],
-							[
-								new Header(
-									3,
-									[new Text("Header 3")],
-									[
-										new Paragraph([
-											new Text("content "),
-											new Emphasis("emphasis"),
-										]),
-									],
-								),
-							],
-						),
-						new Header(
-							2,
-							[new Text("Header 2 again")],
-							[
-								new DisplayMath("\\sum"),
-								new Paragraph([new Text(" hi there.")]),
-							],
-						),
-					],
-				),
-			]
-		expect(parse_note(markdown).body).toEqual(expected);
+		const expected = [
+			new Paragraph([
+				new Text(`This is a text with `),
+				new Strong("strong"),
+				new Text(` and `),
+				new Emphasis("emphasis"),
+				new Text(` for the `),
+				new InlineMath("\\sum"),
+			]),
+			new Header(
+				1,
+				[new Text("Header 1")],
+				[
+					new DisplayMath("\\epsilon"),
+					new Header(
+						2,
+						[new Text("Header 2")],
+						[
+							new Header(
+								3,
+								[new Text("Header 3")],
+								[
+									new Paragraph([
+										new Text("content "),
+										new Emphasis("emphasis"),
+									]),
+								],
+							),
+						],
+					),
+					new Header(
+						2,
+						[new Text("Header 2 again")],
+						[
+							new DisplayMath("\\sum"),
+							new Paragraph([new Text(" hi there.")]),
+						],
+					),
+				],
+			),
+		];
+		expect(parse_note(markdown, DEFAULT_SETTINGS).body).toEqual(expected);
 	});
-	// test('test parsing lists', () => {
-	// To make tests we need to generalize the logic, because we need a loop to match lists.
-	// })
+	test("test parsing lists", async () => {
+		let settings = DEFAULT_SETTINGS;
+		settings.prioritize_lists = true;
+		const result = await get_latex_file_contents(
+			"lists",
+			settings,
+		);
+		expect(result).toEqual(`\\begin{itemize}
+\\item simple
+\\item unordered
+\\begin{equation*}
+\\sum
+\\end{equation*}
+\\end{itemize}
+
+\\begin{enumerate}
+\\item Other
+\\item Thing
+\\begin{itemize}
+\\item Nested
+\\item Other
+\\end{itemize}
+\\end{enumerate}
+`);
+	});
 });

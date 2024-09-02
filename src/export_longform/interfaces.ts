@@ -2,8 +2,15 @@ import type { TFile } from "obsidian";
 import { Header } from "./headers";
 
 export interface node {
-	unroll(data: metadata_for_unroll, settings:ExportPluginSettings): Promise<node[]>;
-	latex(buffer: Buffer, buffer_offset: number, settings:ExportPluginSettings): Promise<number>;
+	unroll(
+		data: metadata_for_unroll,
+		settings: ExportPluginSettings,
+	): Promise<node[]>;
+	latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	): Promise<number>;
 }
 
 export interface ExportPluginSettings {
@@ -12,7 +19,17 @@ export interface ExportPluginSettings {
 	base_output_folder: string;
 	preamble_file: string;
 	bib_file: string;
+	prioritize_lists: boolean;
 }
+
+export const DEFAULT_SETTINGS: ExportPluginSettings = {
+	mySetting: "default",
+	template_path: "",
+	base_output_folder: "/",
+	preamble_file: "preamble.sty",
+	bib_file: "bibliography.bib",
+	prioritize_lists: false, // Whether to parse lists or equations first. Lists first allows lists containing display equations, but yields bugs because lines within an equation can easily start with '-'.
+};
 
 export interface file_content {
 	yaml: { [key: string]: string };
@@ -28,7 +45,7 @@ export type parsed_note = {
 export type note_cache = { [key: string]: parsed_note };
 
 export type metadata_for_unroll = {
-	in_thm_env: boolean,
+	in_thm_env: boolean;
 	depth: number;
 	env_hash_list: string[];
 	parsed_file_bundle: note_cache; // use the path of the files as keys.
@@ -66,7 +83,9 @@ export function init_data(
 }
 
 export function address_is_image_file(address: string) {
-	if (/\.(?:jpeg|svg|pdf|png|jpg|gif|svg|pdf|tiff|excalidraw?)$/.exec(address)) {
+	if (
+		/\.(?:jpeg|svg|pdf|png|jpg|gif|svg|pdf|tiff|excalidraw?)$/.exec(address)
+	) {
 		return true;
 	}
 	return false;
@@ -75,7 +94,7 @@ export function address_is_image_file(address: string) {
 export async function unroll_array(
 	data: metadata_for_unroll,
 	content_array: node[],
-	settings: ExportPluginSettings
+	settings: ExportPluginSettings,
 ) {
 	const new_children: node[] = [];
 	for (const elt of content_array) {

@@ -10,7 +10,6 @@ import {
 	Setting,
 	TFile,
 } from "obsidian";
-
 import {
 	parse_longform,
 	export_selection,
@@ -18,16 +17,9 @@ import {
 	write_with_template,
 	get_header_tex,
 	ExportPluginSettings,
+	DEFAULT_SETTINGS
 } from "./export_longform";
 import { find_file } from "./export_longform/utils";
-
-export const DEFAULT_SETTINGS: ExportPluginSettings = {
-	mySetting: "default",
-	template_path: "",
-	base_output_folder: "/",
-	preamble_file: "preamble.sty",
-	bib_file: "bibliography.bib",
-};
 
 export default class ExportPaperPlugin extends Plugin {
 	settings: ExportPluginSettings;
@@ -315,6 +307,13 @@ class SampleSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.bib_file)
 				.onChange(async (value) => {
 					this.plugin.settings.bib_file = value;
+					await this.plugin.saveSettings();
+				}),
+		);
+		new Setting(containerEl).setName("Prioritize lists over equations").addToggle((cb) =>
+			cb.setValue(this.plugin.settings.prioritize_lists)
+				.onChange(async (value) => {
+					this.plugin.settings.prioritize_lists = value;
 					await this.plugin.saveSettings();
 				}),
 		);

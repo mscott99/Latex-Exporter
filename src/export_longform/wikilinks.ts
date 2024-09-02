@@ -24,7 +24,7 @@ export class EmbedWikilink implements node {
 	static get_regexp(): RegExp {
 		return /(?:(\S*?)::)?!\[\[([\s\S]*?)(?:#([\s\S]+?))?(?:\|([\s\S]*?))?\]\]/g;
 	}
-	static build_from_match(args: RegExpMatchArray): EmbedWikilink {
+	static build_from_match(args: RegExpMatchArray, settings:ExportPluginSettings): EmbedWikilink {
 		return new EmbedWikilink(args[1], args[2], args[3], args[4]);
 	}
 	constructor(
@@ -182,7 +182,7 @@ export class Wikilink implements node {
 	static get_regexp(): RegExp {
 		return /(?:(\S*?)::)?\[\[([\s\S]*?)(?:\#([\s\S]*?))?(?:\|([\s\S]*?))?\]\]/g;
 	}
-	static build_from_match(args: RegExpMatchArray): Wikilink {
+	static build_from_match(args: RegExpMatchArray, settings:ExportPluginSettings): Wikilink {
 		return new Wikilink(args[1], args[2], args[3], args[4]);
 	}
 	constructor(
@@ -236,11 +236,11 @@ export class Environment implements node {
 		this.label = label;
 		// this.address_of_origin = address_of_origin;
 	}
-	static build_from_match(match: RegExpMatchArray): Environment {
+	static build_from_match(match: RegExpMatchArray, settings:ExportPluginSettings): Environment {
 		// TODO: Creates an infinite loop; this is a problem.
-		let [_, body] = parse_display(strip_newlines(match[3]));
-		body = parse_after_headers(body)
-		traverse_tree_and_parse_inline(body);
+		let [_, body] = parse_display(strip_newlines(match[3]), settings);
+		body = parse_after_headers(body, settings)
+		traverse_tree_and_parse_inline(body, settings);
 		// if(match.index !== undefined){
 		// 	match.index += match[0].length
 		// }
@@ -406,7 +406,7 @@ export class Citation implements node {
 	static get_regexp(): RegExp {
 		return /(?:\[([^\[]*?)\])?\[\[@([^\]:\|]*?)(?:\#([^\]\|]*?))?(?:\|([^\]]*?))?\]\]/g;
 	}
-	static build_from_match(args: RegExpMatchArray): Citation {
+	static build_from_match(args: RegExpMatchArray, settings:ExportPluginSettings): Citation {
 		return new Citation(args[2], args[1], args[3], args[4]);
 	}
 	constructor(
@@ -463,7 +463,7 @@ export class MultiCitation implements node {
 	static get_regexp(): RegExp {
 		return /(?:\[std\])?\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\]\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\](?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?/g;
 	}
-	static build_from_match(args: RegExpMatchArray): MultiCitation {
+	static build_from_match(args: RegExpMatchArray, settings:ExportPluginSettings): MultiCitation {
 		return new MultiCitation(args);
 	}
 	constructor(args: string[]) {
