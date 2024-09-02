@@ -9,6 +9,7 @@ import {
 	PluginSettingTab,
 	Setting,
 	TFile,
+	Modal,
 } from "obsidian";
 import {
 	parse_longform,
@@ -28,6 +29,7 @@ export default class ExportPaperPlugin extends Plugin {
 		active_file: TFile,
 		settings: ExportPluginSettings,
 	) {
+		console.log("Exporting paper");
 		if (this.settings.base_output_folder === "") {
 			this.settings.base_output_folder = "/";
 		}
@@ -56,15 +58,6 @@ export default class ExportPaperPlugin extends Plugin {
 		let output_path = path.join(output_folder_path, output_file_name);
 		await this.app.vault.createFolder(output_folder_path).catch((e) => e);
 		// await this.create_folder_if_not(output_folder_path);
-
-		let out_file = this.app.vault.getFileByPath(output_path);
-		if (out_file !== null) {
-			console.log("Overwritting the main tex file.");
-		} else {
-			console.log("Creating new output file");
-			out_file = await this.app.vault.create(output_path, "");
-		}
-
 		const the_preamble_file = this.app.vault.getFileByPath(
 			this.settings.preamble_file,
 		);
@@ -111,6 +104,56 @@ export default class ExportPaperPlugin extends Plugin {
 			console.log("Exporting with template.");
 		}
 
+		let out_file = this.app.vault.getFileByPath(output_path);
+		if (out_file === null) {
+			console.log("Creating new output file");
+			out_file = await this.app.vault.create(output_path, "");
+				await this.proceed_with_export(
+					active_file,
+					settings,
+					output_folder_path,
+					template_file,
+					out_file,
+					preamble_file,
+				);
+		} else {
+			const out_file_other = out_file;
+			if (this.settings.warn_before_overwrite) {
+				console.log("Warning before overwriting file");
+				new WarningModal(
+					this.app,
+					this,
+					() => this.proceed_with_export(
+						active_file,
+						settings,
+						output_folder_path,
+						template_file,
+						out_file_other,
+						preamble_file,
+					),
+				"It seems there is a previously exported file. Overwrite it?").open();
+			}else{
+				console.log("Overwriting without warning");
+				await this.proceed_with_export(
+					active_file,
+					settings,
+					output_folder_path,
+					template_file,
+					out_file,
+					preamble_file,
+				);
+			}
+		}
+	}
+
+	async proceed_with_export(
+		active_file: TFile,
+		settings: ExportPluginSettings,
+		output_folder_path: string,
+		template_file: TFile | undefined,
+		out_file: TFile,
+		preamble_file: TFile|undefined,
+	) {
 		const notes_dir = this.app.vault;
 		const parsed_contents = await parse_longform(
 			notes_dir.cachedRead.bind(notes_dir),
@@ -236,6 +279,55 @@ export default class ExportPaperPlugin extends Plugin {
 	}
 }
 
+class WarningModal extends Modal {
+	private plugin: ExportPaperPlugin;
+	private rememberChoice: boolean;
+	private callback: any;
+	private message: string;
+
+	constructor(app: App, plugin: ExportPaperPlugin, callback: any, message:string) {
+		super(app);
+		this.plugin = plugin;
+		this.rememberChoice = false;
+		this.callback = callback;
+		this.message = message;
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.setText(this.message);
+
+		new Setting(contentEl)
+			.addButton((btn) =>
+				btn.setButtonText("OK").onClick(async () => {
+					if (this.rememberChoice) {
+						this.plugin.settings.warn_before_overwrite = false;
+					}
+					await this.callback();
+					this.close();
+				}),
+			)
+			.addButton((btn) =>
+				btn.setButtonText("Cancel").onClick(() => {
+					this.close();
+				}),
+			);
+
+		const toggleContainer = contentEl.createDiv();
+		toggleContainer.createDiv({ text: "Remember my choice:" });
+		new Setting(toggleContainer).addToggle((toggle) =>
+			toggle
+				.setValue(false)
+				.onChange((value) => (this.rememberChoice = value)),
+		);
+	}
+
+	onClose() {
+		const { contentEl } = this;
+		contentEl.empty();
+	}
+}
+
 class SampleSettingTab extends PluginSettingTab {
 	plugin: ExportPaperPlugin;
 
@@ -326,6 +418,16 @@ class SampleSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.prioritize_lists)
 					.onChange(async (value) => {
 						this.plugin.settings.prioritize_lists = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+		new Setting(containerEl)
+			.setName("Warn before overwriting on export")
+			.addToggle((cb) =>
+				cb
+					.setValue(this.plugin.settings.warn_before_overwrite)
+					.onChange(async (value) => {
+						this.plugin.settings.warn_before_overwrite = value;
 						await this.plugin.saveSettings();
 					}),
 			);
