@@ -32,6 +32,13 @@ For example, say you have a theorem which you would like to include in your pape
 you may want to include the statement of the theorem in the introduction, which is done with the syntax `theorem::![[theorem_note#Statement]]`. Yet you may defer the proof to a later section. In that later section, you embed the proof with `proof::![[theorem_note#Proof]]`. Hyperlinks between the theorem and the proof will be automatically generated on export. Then what if you want to reference this theorem? You only need a standard wikilink, `[[theorem_note]]`. Note that each one of these embedding statements do not need to be in the longform note, or even in the same note! They merely need to be in a place which is visible in Obsidian from your longform note.
 
 This plugin to uses the information found in the graphical organisation of notes to create a sensible LaTeX document. It is not attempting to match the obsidian note visually, only its content. The LaTeX in the export is meant to be minimal so that the author can later edit it if necessary.
+## Example
+See the sub-directory `example/vault` of the repository hosting this plugin for an example of an export. The corresponding pdf can be found [here](example/export/longform_note_output.pdf).
+| first | second |
+| ---- | ----- |
+| ![first page](example/export/longform_note_output-0.png) | ![second page](example/export/longform_note_output-1.png) |
+| ![third page](example/export/longform_note_output-2.png) |   |
+
 ## How to use: the commands
 ### `Latex publisher:Export`
 Navigate to the "longform" note which is to be exported, and run the command `Export to paper`. The plugin will create a folder in the root of your vault (or in the appropriate location, if specified in the settings of the plugin), and will write all required files to this folder. The entire content inside the longform note will be exported, except if there is an h1 header named `Body` in the note, in which case only the content under `Body` will be exported. Additionally, content h1 headers `Abstract` and `Appendix` will be exported appropriately.

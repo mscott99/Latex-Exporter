@@ -1,0 +1,41 @@
+@book{vershyninHighDimensionalProbabilityIntroduction2018,
+  title = {High-{{Dimensional Probability}}: {{An Introduction}} with {{Applications}} in {{Data Science}}},
+  shorttitle = {High-{{Dimensional Probability}}},
+  author = {Vershynin, Roman},
+  year = {2018},
+  month = sep,
+  publisher = {Cambridge University Press},
+  abstract = {High-dimensional probability offers insight into the behavior of random vectors, random matrices, random subspaces, and objects used to quantify uncertainty in high dimensions. Drawing on ideas from probability, analysis, and geometry, it lends itself to applications in mathematics, statistics, theoretical computer science, signal processing, optimization, and more. It is the first to integrate theory, key tools, and modern applications of high-dimensional probability. Concentration inequalities form the core, and it covers both classical results such as Hoeffding's and Chernoff's inequalities and modern developments such as the matrix Bernstein's inequality. It then introduces the powerful methods based on stochastic processes, including such tools as Slepian's, Sudakov's, and Dudley's inequalities, as well as generic chaining and bounds based on VC dimension. A broad range of illustrations is embedded throughout, including classical and modern results for covariance estimation, clustering, networks, semidefinite programming, coding, dimension reduction, matrix completion, machine learning, compressed sensing, and sparse regression.},
+  googlebooks = {TahxDwAAQBAJ},
+  isbn = {978-1-108-24454-1},
+  langid = {english},
+  keywords = {Business & Economics / Econometrics,Computers / Optical Data Processing,Language Arts & Disciplines / Library & Information Science / General,Mathematics / Probability & Statistics / General,Technology & Engineering / Signals & Signal Processing},
+  file = {/Users/matthewscott/Zotero/storage/EJFK8JUU/Vershynin - 2018 - High-Dimensional Probability An Introduction with.pdf}
+}
+
+@article{berkCoherenceParameterCharacterizing2022,
+  title = {A Coherence Parameter Characterizing Generative Compressed Sensing with {{Fourier}} Measurements},
+  author = {Berk, Aaron and Brugiapaglia, Simone and Joshi, Babhru and Plan, Yaniv and Scott, Matthew and Yilmaz, {\"O}zg{\"u}r},
+  year = {2022},
+  journal = {IEEE Journal on Selected Areas in Information Theory},
+  pages = {1--1},
+  issn = {2641-8770},
+  doi = {10.1109/JSAIT.2022.3220196},
+  abstract = {In 1, a mathematical framework was developed for compressed sensing guarantees in the setting where the measurement matrix is Gaussian and the signal structure is the range of a generative neural network (GNN). The problem of compressed sensing with GNNs has since been extensively analyzed when the measurement matrix and/or network weights follow a subgaussian distribution. We move beyond the subgaussian assumption, to measurement matrices that are derived by sampling uniformly at random rows of a unitary matrix (including subsampled Fourier measurements as a special case). Specifically, we prove the first known restricted isometry guarantee for generative compressed sensing (GCS) with subsampled isometries, and provide recovery bounds with nearly order-optimal sample complexity, addressing an open problem of 2, p. 10. Recovery efficacy is characterized by the coherence, a new parameter, which measures the interplay between the range of the network and the measurement matrix. Our approach relies on subspace counting arguments and ideas central to high-dimensional probability. Furthermore, we propose a regularization strategy for training GNNs to have favourable coherence with the measurement operator. We provide compelling numerical simulations that support this regularized training strategy: our strategy yields low coherence networks that require fewer measurements for signal recovery. This, together with our theoretical results, supports coherence as a natural quantity for characterizing GCS with subsampled isometries.},
+  copyright = {All rights reserved},
+  keywords = {68T07 60F10 68P30 94A08 94A16,coherence,Coherence,Complexity theory,compressed sensing,Compressed sensing,Computer Science - Information Theory,Computer Science - Machine Learning,Electrical Engineering and Systems Science - Signal Processing,Fourier measurements,Generative neural network,Geophysical measurements,Mathematics - Probability,Neural networks,Sensors,Statistics - Machine Learning,subsampled isometry,Weight measurement},
+  file = {/Users/matthewscott/Zotero/storage/IXGCPQGU/Berk et al. - 2022 - A coherence parameter characterizing generative co.pdf;/Users/matthewscott/Zotero/storage/UT7FCY9F/Berk et al. - 2022 - A coherence parameter characterizing generative co.pdf;/Users/matthewscott/Zotero/storage/MK6JZXE7/9941342.html;/Users/matthewscott/Zotero/storage/XZWNB9AZ/2207.html}
+}
+
+@inproceedings{berkModeladaptedFourierSampling2023,
+  title = {Model-Adapted {{Fourier}} Sampling for Generative Compressed Sensing},
+  booktitle = {{{NeurIPS}} 2023 {{Workshop}} on {{Deep Learning}} and {{Inverse Problems}}},
+  author = {Berk, Aaron and Brugiapaglia, Simone and Plan, Yaniv and Scott, Matthew and Sheng, Xia and Yilmaz, Ozgur},
+  year = {2023},
+  month = nov,
+  urldate = {2024-05-11},
+  abstract = {We study generative compressed sensing when the measurement matrix is randomly subsampled from a unitary matrix (with the DFT as an important special case). It was recently shown that \$O(kdn{\textbackslash}lVert {\textbackslash}boldsymbol\{{\textbackslash}alpha\}{\textbackslash}rVert\_\{{\textbackslash}infty\}{\textasciicircum}\{2\})\$ uniformly random Fourier measurements are sufficient to recover signals in the range of a neural network \$G:{\textbackslash}mathbb\{R\}{\textasciicircum}k {\textbackslash}to {\textbackslash}mathbb\{R\}{\textasciicircum}n\$ of depth \$d\$, where each component of the so-called local coherence vector \${\textbackslash}boldsymbol\{{\textbackslash}alpha\}\$ quantifies the alignment of a corresponding Fourier vector with the range of \$G\$. We construct a model-adapted sampling strategy with an improved sample complexity of \${\textbackslash}mathcal\{O\}(kd{\textbackslash}lVert {\textbackslash}boldsymbol\{{\textbackslash}alpha\}{\textbackslash}rVert\_\{2\}{\textasciicircum}\{2\})\$ measurements. This is enabled by: (1) new theoretical recovery guarantees that we develop for nonuniformly random sampling distributions and then (2) optimizing the sampling distribution to minimize the number of measurements needed for these guarantees. This development offers a sample complexity applicable to natural signal classes, which are often almost maximally coherent with low Fourier frequencies. Finally, we consider a surrogate sampling scheme, and validate its performance in recovery experiments using the CelebA dataset.},
+  copyright = {All rights reserved},
+  langid = {english},
+  file = {/Users/matthewscott/Zotero/storage/5ZHPNG9Z/Berk et al. - 2023 - Model-adapted Fourier sampling for generative comp.pdf}
+}
