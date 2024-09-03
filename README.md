@@ -1,6 +1,5 @@
 # Latex Publisher
 Write a paper directly in Obsidian! Export an Obsidian note to a full-fledged LaTeX paper, including embedded content, LaTeX environments, citations, references, LaTeX sections, figures and more. All content that is visible in obsidian will be included in the export!
-
 ## Features
 This plugin supports:
 - Embedded content, including from embedded content from headers.
@@ -104,6 +103,8 @@ Both ordered and unordered lists are supported. Lines following a number will be
 # Known limitations
 - Tables are not supported.
 - Limited parsing of lists; they are indent-blind.
+# Support
+If you would like to support me, I appreciate it!        <a href='https://ko-fi.com/I2I712UFPK' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi2.png?v=3' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>  
 # Similar projects
 - Obsidian-to-latex: python export tool alternative implementation with a different focus.
 - Plugin: Latex-like Theorem & Equation Referencer. It has improved visual appeal withing Obsidian. Compatibility with that plugin is a possible improvement of this plugin.
