@@ -227,7 +227,7 @@ export default class ExportPaperPlugin extends Plugin {
 
 		this.addCommand({
 			id: "export-paper",
-			name: "Export",
+			name: "Export current note",
 			editorCallback: async (
 				editor: Editor,
 				ctx: MarkdownView | MarkdownFileInfo,
