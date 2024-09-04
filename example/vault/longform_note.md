@@ -12,7 +12,7 @@ We cite [[@vershyninHighDimensionalProbabilityIntroduction2018]] because it is a
 ## Main results
 Here is an equation that we can reference.
 $$1+1 = 2$${#eq-main}
-lemma::
+lemma::{#lem-explicit}
 We could say that
 $$1+1  = 2$$
 as in @eq-main, but we will not.
@@ -24,7 +24,7 @@ $$
 $${#eq-aligned_eq}
 Notice that @eq-aligned_eq-1 and @eq-aligned_eq-2 follows from arithmetic.
 
-::lemma{#lem-explicit}
+::lemma
 Since @lem-explicit failed to help us, we employ the following result.
 theorem::![[theorem_1#Statement]]
 See [[theorem_1#Proof]]. To prove [[theorem_1]], we need the following two results.

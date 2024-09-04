@@ -1,9 +1,17 @@
 import * as path from "path";
-import { address_is_image_file, node, ExportPluginSettings, unroll_array } from "./interfaces";
+import {
+	address_is_image_file,
+	node,
+	ExportPluginSettings,
+	unroll_array,
+} from "./interfaces";
 import { Notice, TFile } from "obsidian";
 import { metadata_for_unroll } from "./interfaces";
 import { Text } from "./inline";
-import { parse_embed_content, traverse_tree_and_parse_inline } from "./parseMarkdown";
+import {
+	parse_embed_content,
+	traverse_tree_and_parse_inline,
+} from "./parseMarkdown";
 import { parse_display, parse_after_headers } from "./parseMarkdown";
 import { Paragraph, BlankLine } from "./display";
 import {
@@ -24,7 +32,10 @@ export class EmbedWikilink implements node {
 	static get_regexp(): RegExp {
 		return /(?:(\S*?)::)?!\[\[([\s\S]*?)(?:#([\s\S]+?))?(?:\|([\s\S]*?))?\]\]/g;
 	}
-	static build_from_match(args: RegExpMatchArray, settings: ExportPluginSettings): EmbedWikilink {
+	static build_from_match(
+		args: RegExpMatchArray,
+		settings: ExportPluginSettings,
+	): EmbedWikilink {
 		return new EmbedWikilink(args[1], args[2], args[3], args[4]);
 	}
 	constructor(
@@ -39,7 +50,10 @@ export class EmbedWikilink implements node {
 		this.display = displayed;
 	}
 
-	async unroll(data: metadata_for_unroll, settings: ExportPluginSettings): Promise<node[]> {
+	async unroll(
+		data: metadata_for_unroll,
+		settings: ExportPluginSettings,
+	): Promise<node[]> {
 		if (address_is_image_file(this.content)) {
 			const file = find_image_file(data.find_file, this.content);
 			if (file === undefined) {
@@ -119,14 +133,28 @@ export class EmbedWikilink implements node {
 				new Environment(
 					unrolled_contents,
 					this.attribute,
-					await label_from_location(data, address, settings, this.header),
+					await label_from_location(
+						data,
+						address,
+						settings,
+						this.header,
+					),
 				),
 			];
 		}
-		this.label = await label_from_location(data, address, settings, this.header);
+		this.label = await label_from_location(
+			data,
+			address,
+			settings,
+			this.header,
+		);
 		return unrolled_contents;
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings: ExportPluginSettings): Promise<number> {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	): Promise<number> {
 		return (
 			buffer_offset +
 			buffer.write("\\autoref{" + this.label + "}\n", buffer_offset)
@@ -145,13 +173,17 @@ export class Plot implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings: ExportPluginSettings) {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	) {
 		buffer_offset += buffer.write(
 			`\\begin{figure}[h]
 \\centering
 \\includegraphics[width=0.5\\textwidth]{` +
-			path.join("Files", this.image.name) +
-			"}\n",
+				path.join("Files", this.image.name) +
+				"}\n",
 			buffer_offset,
 		);
 		let caption_text: string;
@@ -182,7 +214,10 @@ export class Wikilink implements node {
 	static get_regexp(): RegExp {
 		return /(?:(\S*?)::)?\[\[([\s\S]*?)(?:\#([\s\S]*?))?(?:\|([\s\S]*?))?\]\]/g;
 	}
-	static build_from_match(args: RegExpMatchArray, settings: ExportPluginSettings): Wikilink {
+	static build_from_match(
+		args: RegExpMatchArray,
+		settings: ExportPluginSettings,
+	): Wikilink {
 		return new Wikilink(args[1], args[2], args[3], args[4]);
 	}
 	constructor(
@@ -196,7 +231,10 @@ export class Wikilink implements node {
 		this.header = header;
 		this.displayed = displayed;
 	}
-	async unroll(data: metadata_for_unroll, settings: ExportPluginSettings): Promise<node[]> {
+	async unroll(
+		data: metadata_for_unroll,
+		settings: ExportPluginSettings,
+	): Promise<node[]> {
 		return [
 			new UnrolledWikilink(
 				data,
@@ -207,7 +245,11 @@ export class Wikilink implements node {
 			),
 		];
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings: ExportPluginSettings) {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	) {
 		if (this.header === undefined) {
 			this.header = "";
 		}
@@ -225,7 +267,7 @@ export class Environment implements node {
 	children: node[];
 	// Can parse a label as well
 	static get_regexp(): RegExp {
-		return /^(\w+?)::(?:\s*?{#([\S ]*?)})?(.*?)::\1/gms
+		return /^(\w+?)::(?:\s*?{#([\S ]*?)})?(.*?)::\1/gms;
 	}
 	label: string | undefined;
 	type: string;
@@ -236,10 +278,13 @@ export class Environment implements node {
 		this.label = label;
 		// this.address_of_origin = address_of_origin;
 	}
-	static build_from_match(match: RegExpMatchArray, settings: ExportPluginSettings): Environment {
+	static build_from_match(
+		match: RegExpMatchArray,
+		settings: ExportPluginSettings,
+	): Environment {
 		// TODO: Creates an infinite loop; this is a problem.
 		let [_, body] = parse_display(strip_newlines(match[3]), settings);
-		body = parse_after_headers(body, settings)
+		body = parse_after_headers(body, settings);
 		traverse_tree_and_parse_inline(body, settings);
 		// if(match.index !== undefined){
 		// 	match.index += match[0].length
@@ -252,7 +297,10 @@ export class Environment implements node {
 			match[2],
 		);
 	}
-	async unroll(data: metadata_for_unroll, settings: ExportPluginSettings): Promise<node[]> {
+	async unroll(
+		data: metadata_for_unroll,
+		settings: ExportPluginSettings,
+	): Promise<node[]> {
 		// If it is unrolled, it is likely an explicit env.
 		if (this.label !== undefined) {
 			this.label = explicit_label(
@@ -261,22 +309,26 @@ export class Environment implements node {
 				this.label,
 			);
 		}
-		this.children = await unroll_array(data, this.children, settings)
+		this.children = await unroll_array(data, this.children, settings);
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings: ExportPluginSettings): Promise<number> {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	): Promise<number> {
 		buffer_offset += buffer.write(
-			"\\begin{" + this.type + "}\n",
+			"\\begin{" + this.type + "}",
 			buffer_offset,
 		);
 		if (this.label !== undefined) {
 			if (this.type === "proof") {
 				buffer_offset += buffer.write(
 					"[\\hypertarget{" +
-					this.label +
-					"}Proof of \\autoref{" +
-					this.label.replace("proof", "statement") +
-					"}]",
+						this.label +
+						"}Proof of \\autoref{" +
+						this.label.replace("proof", "statement") +
+						"}]\n",
 					buffer_offset,
 				);
 			} else {
@@ -285,6 +337,8 @@ export class Environment implements node {
 					buffer_offset,
 				);
 			}
+		} else {
+			buffer_offset += buffer.write("\n", buffer_offset);
 		}
 		for (const e of this.children) {
 			buffer_offset = await e.latex(buffer, buffer_offset, settings);
@@ -300,15 +354,19 @@ export class Environment implements node {
 export class Hyperlink implements node {
 	address: string;
 	label: string;
-	async latex(buffer: Buffer, buffer_offset: number, settings: ExportPluginSettings): Promise<number> {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	): Promise<number> {
 		return (
 			buffer_offset +
 			buffer.write(
 				"\\hyperlink{" +
-				this.address +
-				"}{" +
-				format_label(this.label) +
-				"}",
+					this.address +
+					"}{" +
+					format_label(this.label) +
+					"}",
 				buffer_offset,
 			)
 		);
@@ -357,7 +415,11 @@ export class UnrolledWikilink implements node {
 		this.header = header;
 		this.displayed = displayed;
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings: ExportPluginSettings): Promise<number> {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	): Promise<number> {
 		const address =
 			this.address === ""
 				? this.unroll_data.longform_file.basename
@@ -406,7 +468,10 @@ export class Citation implements node {
 	static get_regexp(): RegExp {
 		return /(?:\[([^\[]*?)\])?\[\[@([^\]:\|]*?)(?:\#([^\]\|]*?))?(?:\|([^\]]*?))?\]\]/g;
 	}
-	static build_from_match(args: RegExpMatchArray, settings: ExportPluginSettings): Citation {
+	static build_from_match(
+		args: RegExpMatchArray,
+		settings: ExportPluginSettings,
+	): Citation {
 		return new Citation(args[2], args[1], args[3], args[4]);
 	}
 	constructor(
@@ -451,7 +516,10 @@ export class Citation implements node {
 		}
 		return (
 			buffer_offset +
-			buffer.write("\\" + settings.default_citation_command + "{" + this.id + "}", buffer_offset)
+			buffer.write(
+				"\\" + settings.default_citation_command + "{" + this.id + "}",
+				buffer_offset,
+			)
 		);
 	}
 }
@@ -462,7 +530,10 @@ export class MultiCitation implements node {
 	static get_regexp(): RegExp {
 		return /(?:\[std\])?\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\]\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\](?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?(?:\[\[@([^\]:\|]*?)(?:\#[^\]\|]*?)?(?:\|[^\]]*?)?\]\])?/g;
 	}
-	static build_from_match(args: RegExpMatchArray, settings: ExportPluginSettings): MultiCitation {
+	static build_from_match(
+		args: RegExpMatchArray,
+		settings: ExportPluginSettings,
+	): MultiCitation {
 		return new MultiCitation(args);
 	}
 	constructor(args: string[]) {

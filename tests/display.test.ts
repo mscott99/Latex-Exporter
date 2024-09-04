@@ -14,6 +14,7 @@ I speak more
 	test("Env", async () => {
 		const result = await get_latex_file_contents("explicit_env", DEFAULT_SETTINGS)
 		expect(result).toEqual(`\\begin{lemma}
+\\label{lem:label}
 \\begin{equation*}
 \\varepsilon
 \\end{equation*}
