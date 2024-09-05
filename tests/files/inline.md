@@ -1,2 +1,1 @@
-A *emph* **strong** "quotes"
-And "other".
+A *emph* **strong** "quotes" 'single'

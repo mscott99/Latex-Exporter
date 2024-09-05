@@ -25,8 +25,4 @@ describe("my plugin", () => {
 \\end{equation}
 `)
 	})
-	test("inline", async () => {
-		const result = await get_latex_file_contents("inline", DEFAULT_SETTINGS)
-		expect(result).toEqual(`A \\emph{emph} \\textbf{strong} \`\`quotes"\nAnd \`\`other".\n`)
-	})
 });

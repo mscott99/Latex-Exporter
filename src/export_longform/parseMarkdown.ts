@@ -31,7 +31,8 @@ import {
 	ExplicitRef,
 	Text,
 	Emphasis,
-	Quotes,
+	DoubleQuotes,
+	SingleQuotes,
 	Strong,
 	InlineMath,
 } from "./inline";
@@ -615,10 +616,16 @@ export function parse_inline(
 		ExplicitRef.build_from_match,
 		settings,
 	);
-	inline_arr = split_inline<Quotes>(
+	inline_arr = split_inline<DoubleQuotes>(
 		inline_arr,
-		Quotes.get_regexp(),
-		Quotes.build_from_match,
+		DoubleQuotes.get_regexp(),
+		DoubleQuotes.build_from_match,
+		settings,
+	);
+	inline_arr = split_inline<SingleQuotes>(
+		inline_arr,
+		SingleQuotes.get_regexp(),
+		SingleQuotes.build_from_match,
 		settings,
 	);
 	inline_arr = split_inline<Strong>(

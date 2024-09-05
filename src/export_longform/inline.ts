@@ -126,14 +126,14 @@ export class Emphasis implements node {
 	}
 }
 
-export class Quotes implements node {
+export class DoubleQuotes implements node {
 	static get_regexp(): RegExp {
 		return /(?:"(\S.*?)")/gs;
 	}
 	content: string;
 	label: string | undefined;
 	static build_from_match(regexmatch: RegExpMatchArray, settings: ExportPluginSettings): Emphasis {
-		return new Quotes(regexmatch[1]);
+		return new DoubleQuotes(regexmatch[1]);
 	}
 	constructor(content: string) {
 		this.content = content;
@@ -149,6 +149,33 @@ export class Quotes implements node {
 		return (
 			buffer_offset +
 			buffer.write("``" + this.content + '"', buffer_offset)
+		);
+	}
+}
+
+export class SingleQuotes implements node {
+	static get_regexp(): RegExp {
+		return /(?:'(\S.*?)')/gs;
+	}
+	content: string;
+	label: string | undefined;
+	static build_from_match(regexmatch: RegExpMatchArray, settings: ExportPluginSettings): Emphasis {
+		return new SingleQuotes(regexmatch[1]);
+	}
+	constructor(content: string) {
+		this.content = content;
+	}
+	async unroll(): Promise<node[]> {
+		return [this];
+	}
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	) {
+		return (
+			buffer_offset +
+			buffer.write("`" + this.content + "'", buffer_offset)
 		);
 	}
 }
