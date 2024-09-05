@@ -500,7 +500,7 @@ export class Citation implements node {
 					buffer_offset +
 					buffer.write("\\cite{" + this.id + "}", buffer_offset)
 				);
-			} else if (this.result === "text") {
+			} else if (this.result === "txt") {
 				return (
 					buffer_offset +
 					buffer.write("\\textcite{" + this.id + "}", buffer_offset)

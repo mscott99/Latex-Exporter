@@ -89,7 +89,7 @@ A simple embed `![[Other note]]` without a breadcrumb-like attribute of the styl
 ### Citations
 Citations are wikilinks starting with the '@' character immediately followed by the bibtex key. To use this feature it is strongly encouraged to use either the Zotero integration plugin (recommended) or the Citations plugin. Markdown-style citations are also supported. Citations can also have labels to reference specific results in a source, in which case they look like `[<label>][[@<bibtex_key_1>]][[@<bibtex_key_2>]]` and gives an output of `\cite[<label>]{<bibtex_key_1>, <bibtex_key_2>}`.
 
-The default citation command is `\textcite{}` from the `biblatex` package (which prints the name of the authors in the pdf). Yet a link of the form `[std][[@...]]` will be converted to `\cite{}`. Specifying `[text]` as a label will instead ensure the use of textcite. If many citations are given consecutively without any characters between them, they will be included in a single LaTeX citation command.
+The default citation command is `\cite{}` from the `biblatex` package, although a different default citation command can be set in the settings. If a different default citation command is set, a link of the form `[std][[@...]]` will be converted to `\cite{}`. Specifying `[txt]` as a label will instead ensure the use of `\textcite{}`. If many citations are given consecutively without any characters between them, they will be included in a single LaTeX citation command.
 ### Figures
 Figures are created from embed links of image files, recognized by their file suffix. A caption can be added in the display section of the link: `![[image.jpeg|caption text here]]`. There are some themes in Obsidian which will display captions of this kind.
 
