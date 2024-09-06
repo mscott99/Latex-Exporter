@@ -228,16 +228,17 @@ export default class ExportPaperPlugin extends Plugin {
 		this.addCommand({
 			id: "export-paper",
 			name: "Export current note",
-			editorCallback: async (
-				editor: Editor,
-				ctx: MarkdownView | MarkdownFileInfo,
-			) => {
-				const active_file = ctx.file;
+			callback: async () => {
+				const active_file = this.app.workspace.getActiveFile();
 				if (!(active_file instanceof TFile)) {
-					new Notice("No active file found.");
-					throw new Error("No active file found.");
+					return false;
+					// new Notice("No active file found.");
+					// throw new Error("No active file found.");
+				} else if (checking) {
+					return true;
+				} else {
+					this.find_files_and_export(active_file, this.settings);
 				}
-				this.find_files_and_export(active_file, this.settings);
 			},
 		});
 		this.addCommand({
