@@ -23,6 +23,7 @@ import {
 	Wikilink,
 	Citation,
 	MultiCitation,
+	PandocMultiCitation,
 	EmbedWikilink,
 	Environment,
 } from "./wikilinks";
@@ -590,6 +591,12 @@ export function parse_inline(
 		inline_arr,
 		MultiCitation.get_regexp(),
 		MultiCitation.build_from_match,
+		settings,
+	);
+	inline_arr = split_inline<PandocMultiCitation>(
+		inline_arr,
+		PandocMultiCitation.get_regexp(),
+		PandocMultiCitation.build_from_match,
 		settings,
 	);
 	inline_arr = split_inline<Citation>(

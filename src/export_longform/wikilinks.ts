@@ -463,27 +463,37 @@ export class Citation implements node {
 	// TODO: Make this a full item, not a result of an unroll.
 	id: string;
 	result: string | undefined;
-	display: string | undefined;
-	header: string | undefined;
 	static get_regexp(): RegExp {
-		return /(?:\[([^@\[]*?)\])?\[\[?@([^\]:\|]*?)(?:\#([^\]\|]*?))?(?:\|([^\]]*?))?\]\]?/g;
+		return /(?:\[([^@\[]*?)\])?(?:(?:\[\[@([a-zA-Z0-9\.\-_]*)\]\])|(?:(\[\-)?@([a-zA-Z0-9\.\-_]*)\]?))(?:\[([^@\[]*?)\])?/g;
 	}
 	static build_from_match(
 		args: RegExpMatchArray,
 		settings: ExportPluginSettings,
 	): Citation {
-		return new Citation(args[2], args[1], args[3], args[4]);
+		let captured_id = undefined;
+		if(args[2] !== undefined){
+			captured_id = args[2];
+		}else if(args[4] !== undefined){
+			captured_id = args[4];
+		}else{
+			throw new Error("Unexpected: empty match for citation id.");
+		}
+		let result = undefined;
+		if(args[1] !== undefined && args[5] === undefined){
+			result = args[1];
+		}else if(args[5] !== undefined){
+			result = args[5]
+		}else if(args[3] !== undefined && args[1]===undefined && args[5]===undefined){
+			result = "std";
+		}
+		return new Citation(captured_id, result);
 	}
 	constructor(
 		id: string,
 		result?: string,
-		header?: string,
-		display?: string,
 	) {
 		this.id = id;
 		this.result = result;
-		this.display = display;
-		this.header = header;
 	}
 	async unroll(): Promise<node[]> {
 		return [this];
@@ -535,6 +545,46 @@ export class MultiCitation implements node {
 		settings: ExportPluginSettings,
 	): MultiCitation {
 		return new MultiCitation(args);
+	}
+	constructor(args: string[]) {
+		this.ids = [];
+		for (const id of args.slice(1)) {
+			if (id === undefined) {
+				break;
+			}
+			this.ids.push(id);
+		}
+	}
+	async unroll(): Promise<node[]> {
+		return [this];
+	}
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	): Promise<number> {
+		buffer_offset += buffer.write("\\cite{", buffer_offset);
+		for (const id of this.ids.slice(0, -1)) {
+			buffer_offset += buffer.write(id + ", ", buffer_offset);
+		}
+		buffer_offset += buffer.write(
+			this.ids[this.ids.length - 1] + "}",
+			buffer_offset,
+		);
+		return buffer_offset;
+	}
+}
+
+export class PandocMultiCitation implements node {
+	ids: string[];
+	static get_regexp(): RegExp {
+		return /(?<!\[)\[?@([a-zA-Z\-_\.]+);(?:[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?\]?/g;
+	}
+	static build_from_match(
+		args: RegExpMatchArray,
+		settings: ExportPluginSettings,
+	): PandocMultiCitation {
+		return new PandocMultiCitation(args);
 	}
 	constructor(args: string[]) {
 		this.ids = [];
