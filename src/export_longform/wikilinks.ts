@@ -578,7 +578,7 @@ export class MultiCitation implements node {
 export class PandocMultiCitation implements node {
 	ids: string[];
 	static get_regexp(): RegExp {
-		return /(?<!\[)\[?@([a-zA-Z\-_\.]+);(?:[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?(?:;[ \t]*@([a-zA-Z\-_\.]+))?\]?/g;
+		return /(?<!\[)\[?@([a-zA-Z0-9\-_]+);[ \t]*(?:@([a-zA-Z0-9\-_]+))?\]?/g;
 	}
 	static build_from_match(
 		args: RegExpMatchArray,
