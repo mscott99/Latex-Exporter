@@ -1,9 +1,9 @@
 {
-	"id": "paper-latex-export",
+	"id": "latex-exporter",
 	"name": "Latex Exporter",
 	"version": "0.1.0",
 	"minAppVersion": "0.15.0",
-	"description": "Export latex content from a recursive parsing of your obsidian vault",
+	"description": "Write your LaTeX paper directly in obsidian.",
 	"author": "Matthew S. Scott",
 	"authorUrl": "https://mscott99.github.io/matthew_s_scott_zettel/",
 	"isDesktopOnly": true
