@@ -1,4 +1,4 @@
-# Latex Publisher
+# Latex Exporter
 Write a paper directly in Obsidian! Export an Obsidian note to a full-fledged LaTeX paper, including embedded content, LaTeX environments, citations, references, LaTeX sections, figures and more. All content that is visible in obsidian will be included in the export!
 ## Features
 This plugin supports:
@@ -41,7 +41,7 @@ See the sub-directory `example/vault` of the repository hosting this plugin for 
 |<img src="example/export/Screenshot_Obsidian-4.png" height="450">||
 
 ## How to use: the commands
-### `Latex publisher:Export`
+### `Latex Exporter:Export current note`
 Navigate to the "longform" note that you would like to export, and run the command `Export to paper`. The plugin will create a folder in the root of your vault (or in the appropriate sub-folder inside your vault, if specified in the settings of the plugin), and will write all required files to this folder. The entire content inside the longform note will be exported, except if there is an h1 header named `Body` in the note, in which case only the content under `Body` will be exported. Additionally, content h1 headers `Abstract` and `Appendix` will be exported appropriately.
 
 To use citations, place a bib file named `bibliography.bib` in the root of your vault; it will be copied upon export to the correct location. Also, a you may place a file `preamble.sty` containing a LaTeX preamble in the root of the vault, which will also be copied. The `preamble.sty` file is meant to be used with the Extended MathJax plugin.
@@ -49,8 +49,8 @@ To use citations, place a bib file named `bibliography.bib` in the root of your 
 *Using a template*: In the settings, it is possible to specify the path to a template file. If this field is left blank, then the plugin will generate minimal LaTeX code required for the export to compile well. To use a template, place a template file inside your vault and specify its path in the plugin settings. A template file should contains LaTeX code with a pandoc-style anchor `$body$`, to be replaced by the converted content of the longform note. The anchors `$abstract$` and `$appendix$` can optionally be specified.
 #### Overwriting behaviour
 Before making manual changes to the exported LaTeX file, first copy the newly-generated folder to a different location, because re-running the export command from the same note will overwrite the exported LaTeX file (surrounding files, like the preamble or bib file, will not be overwritten). This behaviour is meant to facilitate editing the obsidian files while seeing the updated LaTeX output quickly.
-### `Latex publisher:Export selection`
-This command exports the selected portion of the current note to the clipboard. To use this command, navigate to the note of interest, go to the editing view (it does not work in reading view), select a portion of the note by dragging your cursor, and while the text is selected run `Cmd+P` and select the command `Latex publisher:Export selection`. Be warned that the LaTeX exported using this method will only compile well if pasted into a document that imports the relevant LaTeX packages.
+### `Latex Exporter:Export selection to clipboard`
+This command exports the selected portion of the current note to the clipboard. To use this command, navigate to the note of interest, go to the editing view (it does not work in reading view), select a portion of the note by dragging your cursor, and while the text is selected run `Cmd+P` and select the command `Latex Exporter:Export selection`. Be warned that the LaTeX exported using this method will only compile well if pasted into a document that imports the relevant LaTeX packages.
 ### Warnings
 Heed the warnings! They are meant to be helpful feedback as to what can be expected to fail based on the structure of the exported content. For example, you may have a wikilink (which is trying to become a reference) to a header which is not visible from the longform note. To get a good output you should fix the cause of the warnings.
 
