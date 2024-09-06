@@ -185,9 +185,9 @@ export default class ExportPaperPlugin extends Plugin {
 			);
 			new Notice(
 				"Latex content written to " +
-				out_file.path +
-				" by using the template file " +
-				template_file.path,
+					out_file.path +
+					" by using the template file " +
+					template_file.path,
 			);
 		} else {
 			await write_without_template(
@@ -198,8 +198,8 @@ export default class ExportPaperPlugin extends Plugin {
 			);
 			new Notice(
 				"Latex content written to " +
-				out_file.path +
-				" by using the default template",
+					out_file.path +
+					" by using the default template",
 			);
 		}
 	}
@@ -228,7 +228,7 @@ export default class ExportPaperPlugin extends Plugin {
 		this.addCommand({
 			id: "export-paper",
 			name: "Export current note",
-			callback: async () => {
+			checkCallback: (checking: boolean) => {
 				const active_file = this.app.workspace.getActiveFile();
 				if (!(active_file instanceof TFile)) {
 					return false;
@@ -267,7 +267,7 @@ export default class ExportPaperPlugin extends Plugin {
 		this.addSettingTab(new SampleSettingTab(this.app, this));
 	}
 
-	onunload() { }
+	onunload() {}
 
 	async loadSettings() {
 		this.settings = Object.assign(

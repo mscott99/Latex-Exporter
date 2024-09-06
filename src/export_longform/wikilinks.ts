@@ -464,7 +464,7 @@ export class Citation implements node {
 	id: string;
 	result: string | undefined;
 	static get_regexp(): RegExp {
-		return /(?:\[([^@\[]*?)\])?(?:(?:\[\[@([a-zA-Z0-9\.\-_]*)\]\])|(?:(\[\-)?@([a-zA-Z0-9\.\-_]*)\]?))(?:\[([^@\[]*?)\])?/g;
+		return /(?:\[([^@\[]*?)\])?(?:(?:\[\[@([a-zA-Z0-9\.\-_]*)\]\])|(?:(\[\-)?@([a-zA-Z0-9\-_]*)\]?))(?:\[([^@\[]*?)\])?/g;
 	}
 	static build_from_match(
 		args: RegExpMatchArray,
@@ -542,7 +542,6 @@ export class MultiCitation implements node {
 	}
 	static build_from_match(
 		args: RegExpMatchArray,
-		settings: ExportPluginSettings,
 	): MultiCitation {
 		return new MultiCitation(args);
 	}
@@ -561,7 +560,6 @@ export class MultiCitation implements node {
 	async latex(
 		buffer: Buffer,
 		buffer_offset: number,
-		settings: ExportPluginSettings,
 	): Promise<number> {
 		buffer_offset += buffer.write("\\cite{", buffer_offset);
 		for (const id of this.ids.slice(0, -1)) {
@@ -578,11 +576,10 @@ export class MultiCitation implements node {
 export class PandocMultiCitation implements node {
 	ids: string[];
 	static get_regexp(): RegExp {
-		return /(?<!\[)\[?@([a-zA-Z0-9\-_]+);[ \t]*(?:@([a-zA-Z0-9\-_]+))?\]?/g;
+		return /(?<!\[)\[?@([a-zA-Z0-9\-_]+);[ \t]*(?:@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?\]?/g;
 	}
 	static build_from_match(
 		args: RegExpMatchArray,
-		settings: ExportPluginSettings,
 	): PandocMultiCitation {
 		return new PandocMultiCitation(args);
 	}
@@ -601,7 +598,6 @@ export class PandocMultiCitation implements node {
 	async latex(
 		buffer: Buffer,
 		buffer_offset: number,
-		settings: ExportPluginSettings,
 	): Promise<number> {
 		buffer_offset += buffer.write("\\cite{", buffer_offset);
 		for (const id of this.ids.slice(0, -1)) {

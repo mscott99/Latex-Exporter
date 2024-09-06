@@ -2,24 +2,29 @@
 \input{header}
 \input{preamble.sty}
 \addbibresource{bibliography.bib}
-\title{An example of how to use this plugin}
+\title{An example of how to use this plugin.}
 \author{Matthew Scott}
 \begin{document}
 \maketitle
 \begin{abstract}
-This is the abstract.
+This is the abstract. The abstract needs only be placed under an header named ``Abstract" in the longform note.
 \end{abstract}
 \section{Introduction}
 \label{loc:body.introduction}
-We \emph{have} \textbf{things} ``to" talk about. We can use macros: $\aff(T)$. Feel free to skip ahead to \autoref{loc:body.main_results}. This is the actual intro. We will show that \autoref{loc:theorem_1.statement} holds by using \autoref{loc:lemma_1.statement}, \autoref{loc:lemma_2.statement}, \autoref{loc:other_small_lemmas.first_other_lemma} and \autoref{loc:other_small_lemmas.second_other_lemma}. We state one here
-\begin{lemma}
+Most of the introduction is in another note. We embed its contents without creating a latex environment.
+We \emph{have} \textbf{things} ``to" talk about. We can use latex macros: $\aff(T)$. We can reference markdown headers, which become references to latex sections: feel free to skip ahead to \autoref{loc:body.main_results}.
 
+Results are referenced by linking notes: we will show that \autoref{loc:theorem_1.statement} holds by using \autoref{loc:lemma_1.statement}, \autoref{loc:lemma_2.statement}, \autoref{loc:other_small_lemmas.first_other_lemma} and \autoref{loc:other_small_lemmas.second_other_lemma}. We can state results through labelled embeds, as follows. 
+\begin{lemma}
 \label{loc:other_small_lemmas.second_other_lemma}
 That the first lemma holds
 \end{lemma}
+Note that the above result was embedded into the note `introduction' which was itself embedded into the longform note, and this still produces a result that can be referenced from anywhere via wikilinks.
 \section{Literature review}
 \label{loc:body.literature_review}
-We cite \textcite{vershyninHighDimensionalProbabilityIntroduction2018} because it is a good book. It is by \cite[txt]{vershyninHighDimensionalProbabilityIntroduction2018}. Specifically, see \cite[Example 5.4]{vershyninHighDimensionalProbabilityIntroduction2018}. Other relevant sources are \cite{berkCoherenceParameterCharacterizing2022, berkModeladaptedFourierSampling2023}.
+We cite as follows: \cite{vershyninHighDimensionalProbabilityIntroduction2018}. A \emph{textcite} cand be also used: the book is by \textcite{vershyninHighDimensionalProbabilityIntroduction2018}. Specific results can be referenced: \cite[Example 5.4]{vershyninHighDimensionalProbabilityIntroduction2018}. Multi-citations are also supported: \cite{berkCoherenceParameterCharacterizing2022, berkModeladaptedFourierSampling2023}.
+
+Alternatively, pandoc syntax also works, though you may want to set the default citation command to \emph{textcite} in the plugin settings. \cite{vershyninHighDimensionalProbabilityIntroduction2018}, \cite{vershyninHighDimensionalProbabilityIntroduction2018}, \cite[Example 2.1]{vershyninHighDimensionalProbabilityIntroduction2018}, \cite{berkCoherenceParameterCharacterizing2022, berkModeladaptedFourierSampling2023}, and then \cite{vershyninHighDimensionalProbabilityIntroduction2018}.
 \section{Main results}
 \label{loc:body.main_results}
 Here is an equation that we can reference.
@@ -28,73 +33,71 @@ Here is an equation that we can reference.
 1+1 = 2
 \end{equation}
 \begin{lemma}
-We could say that
-\begin{equation*}
-1+1  = 2
-\end{equation*}
-as in \autoref{eq:main}, but we will not.
+\label{lem:explicit}
+We reference the equation: \autoref{eq:main} and the result: \autoref{lem:explicit}.
 \begin{align}
 1+1 & = 1+3-2 \label{eq:aligned_eq:1}\\
 & = 2 \label{eq:aligned_eq:2}
 \end{align}
-Notice that \autoref{eq:aligned_eq:1} and \autoref{eq:aligned_eq:2} follows from arithmetic.
+We can reference individual lines of an align environment: \autoref{eq:aligned_eq:1} and \autoref{eq:aligned_eq:2}.
 \end{lemma}
-{#lem-explicit}
-Since \autoref{lem:explicit} failed to help us, we employ the following result.
+The next result is in its own note. Embedding the `Statement' header as follows creates a latex environment.
 \begin{theorem}
-
 \label{loc:theorem_1.statement}
 Indeed, $1+1  =  2$.
 \end{theorem}
-See \hyperlink{loc:theorem_1.proof}{the proof}. To prove \autoref{loc:theorem_1.statement}, we need the following two results.
+We can link to \hyperlink{loc:theorem_1.proof}{the proof} with a wikilink to the ``Proof" header.
+The theorem environment is then referenced as \autoref{loc:theorem_1.statement}, or as \autoref{loc:theorem_1.statement}. To show \autoref{loc:theorem_1.statement}, we need the following two results.
 \begin{lemma}
-
 \label{loc:lemma_1.statement}
 The first fact is that $10-9 = 1$
 \end{lemma}
 We defer \hyperlink{loc:lemma_1.proof}{the proof} to the appendix.
 \begin{lemma}
-
 \label{loc:other_small_lemmas.first_other_lemma}
 A first additional lemma
 \begin{equation*}
 1+1 = 2
 \end{equation*}
 \end{lemma}
-We can reference: 
+We can use lists. Also, results can live in the same note under different headers. We embedded two results from the same note: 
 \begin{enumerate}
-\item \autoref{loc:other_small_lemmas.first_other_lemma} and 
+\item The first is \autoref{loc:other_small_lemmas.first_other_lemma}.
 \item The other,\autoref{loc:other_small_lemmas.second_other_lemma}.
 \end{enumerate}
-% This will become a comment in latex.
+
+There are also options for comments.
+% This will become a comment in the latex export.
 \section{Proofs}
 \label{loc:body.proofs}
-We are ready to prove our main result.
-\begin{proof}
-[\hypertarget{loc:theorem_1.proof}Proof of \autoref{loc:theorem_1.statement}]For this we require another result.
+We are ready to prove our main result. We can embed proof environments from other notes. References to the correct results in the header of the proof are generated automatically.
+\begin{proof}[\hypertarget{loc:theorem_1.proof}Proof of \autoref{loc:theorem_1.statement}]
+For this we require another result.
 \begin{proposition}
-
 \label{loc:lemma_2.statement}
 $1+4 = 5$
 \end{proposition}
-\begin{proof}
-[\hypertarget{loc:lemma_2.proof}Proof of \autoref{loc:lemma_2.statement}]Left to the reader.
+\begin{proof}[\hypertarget{loc:lemma_2.proof}Proof of \autoref{loc:lemma_2.statement}]
+Left to the reader.
 \end{proof}
 and therefore we can finish the proof of \autoref{loc:theorem_1.statement}.
 \end{proof}
+\subsection{Sub-section for proofs}
+\label{loc:body.proofs.sub:section_for_proofs}
+There can be nested sections, which can be referenced via wikilinks from anywhere.
 \section{Numerics}
 \label{loc:body.numerics}
-Behold!
+Behold! Figures with captions are supported! The relevant files will be copied over with the export.
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.5\textwidth]{Files/intro_comp_wlabel.pdf}
-\caption{Notice that this is a great plot.\label{fig:intro_comp_wlabel.pdf}}
+\caption{Captions of figures are specified in the display part of the figure's embed wikilink.\label{fig:intro_comp_wlabel.pdf}}
 \end{figure}
-We can reference the above \autoref{fig:intro_comp_wlabel.pdf}.
+We can reference the figures with a wikilink \autoref{fig:intro_comp_wlabel.pdf}.
 \printbibliography
 \appendix
 \section{Appendix}
-\begin{proof}
-[\hypertarget{loc:lemma_1.proof}Proof of \autoref{loc:lemma_1.statement}]Ask chatgpt.
+\begin{proof}[\hypertarget{loc:lemma_1.proof}Proof of \autoref{loc:lemma_1.statement}]
+Ask chatgpt.
 \end{proof}
 \end{document}
