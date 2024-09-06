@@ -23,6 +23,8 @@ describe("my plugin", () => {
 \\varepsilon\\\\
 \\end{aligned}
 \\end{equation}
-`)
+\\autoref{eq:label:1}
+`
+)
 	})
 });

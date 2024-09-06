@@ -17,3 +17,4 @@ $$
 \varepsilon\\
 \end{aligned}
 $${#eq-other}
+@eq-label-1

@@ -21,6 +21,7 @@ I speak more
 and $\\varepsilon$
 \\autoref{loc:simple_lem.statement}
 \\end{lemma}
+\\autoref{lem:label}
 `)
 	})
 });

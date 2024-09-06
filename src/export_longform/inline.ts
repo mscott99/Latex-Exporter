@@ -1,5 +1,4 @@
 import { node, metadata_for_unroll, ExportPluginSettings } from "./interfaces";
-import { Wikilink, Citation, MultiCitation } from "./wikilinks";
 import { explicit_label } from "./labels";
 import { format_label } from "./labels";
 
@@ -41,14 +40,14 @@ export function split_inline<ClassObj extends node>(
 
 export class ExplicitRef implements node {
 	label: string;
-	constructor(content: string) {
-		this.label = content;
+	constructor(identifier: string, name:string) {
+		this.label = identifier + "-" + name;
 	}
 	static get_regexp(): RegExp {
-		return /@([\w-_:]+)/g; // parse only after parsing for citations.
+		return /@(ref|loc|tbl|eq|lem|sec|lst|thm|def|ex|exr|prf|alg)\-([\w_:\-]+)/g; // parse only after parsing for citations.
 	}
 	static build_from_match(regexmatch: RegExpMatchArray, settings: ExportPluginSettings): ExplicitRef {
-		return new ExplicitRef(regexmatch[1]);
+		return new ExplicitRef(regexmatch[1], regexmatch[2]);
 	}
 	async unroll(
 		data: metadata_for_unroll,

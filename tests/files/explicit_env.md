@@ -3,3 +3,4 @@ $$\varepsilon$$
 and $\varepsilon$
 [[simple_lem]]
 ::lemma
+@lem-label

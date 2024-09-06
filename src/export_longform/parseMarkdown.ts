@@ -587,6 +587,12 @@ export function parse_inline(
 	inline_arr: node[],
 	settings: ExportPluginSettings,
 ): node[] {
+	inline_arr = split_inline<ExplicitRef>(
+		inline_arr,
+		ExplicitRef.get_regexp(),
+		ExplicitRef.build_from_match,
+		settings,
+	); // Must be before citations.
 	inline_arr = split_inline<MultiCitation>(
 		inline_arr,
 		MultiCitation.get_regexp(),
@@ -615,12 +621,6 @@ export function parse_inline(
 		inline_arr,
 		InlineMath.get_regexp(),
 		InlineMath.build_from_match,
-		settings,
-	);
-	inline_arr = split_inline<ExplicitRef>(
-		inline_arr,
-		ExplicitRef.get_regexp(),
-		ExplicitRef.build_from_match,
 		settings,
 	);
 	inline_arr = split_inline<DoubleQuotes>(
