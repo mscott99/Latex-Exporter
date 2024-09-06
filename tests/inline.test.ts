@@ -24,7 +24,7 @@ Another \\emph{emph} \\textbf{strong}
 			settings,
 		);
 		expect(result)
-			.toEqual(`I cite \\othercite{first}, \\cite{second}, \\textcite{first}, \\cite{first, second}, \\cite[Remark 1]{second}.
+			.toEqual(`I cite \\othercite{first}, \\othercite{first}, \\cite{second}, \\textcite{first}, \\cite{first, second}, \\cite[Remark 1]{second}.
 `);
 	});
 });

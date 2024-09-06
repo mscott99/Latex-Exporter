@@ -466,7 +466,7 @@ export class Citation implements node {
 	display: string | undefined;
 	header: string | undefined;
 	static get_regexp(): RegExp {
-		return /(?:\[([^\[]*?)\])?\[\[@([^\]:\|]*?)(?:\#([^\]\|]*?))?(?:\|([^\]]*?))?\]\]/g;
+		return /(?:\[([^@\[]*?)\])?\[\[?@([^\]:\|]*?)(?:\#([^\]\|]*?))?(?:\|([^\]]*?))?\]\]?/g;
 	}
 	static build_from_match(
 		args: RegExpMatchArray,
