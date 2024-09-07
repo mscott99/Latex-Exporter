@@ -347,7 +347,9 @@ class LatexExportSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
-		new Setting(containerEl).setName("Template file").addText((text) =>
+		new Setting(containerEl).setName("Template file")
+			.setDesc("Relative vault path to a template file. Only set this if you would like to export with a template (you don't need to.)")
+			.addText((text) =>
 			text
 				.setPlaceholder("path/to/template_file.tex")
 				.setValue(this.plugin.settings.template_path)
@@ -359,7 +361,7 @@ class LatexExportSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}),
 		);
-		new Setting(containerEl).setName("Output folder").addText((text) =>
+		new Setting(containerEl).setName("Output folder").setDesc("Vault relative path of an existing folder in your vault. Exports will be written within that folder.").addText((text) =>
 			text
 				.setPlaceholder("path/to/output_folder/")
 				.setValue(this.plugin.settings.base_output_folder)
@@ -376,7 +378,7 @@ class LatexExportSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}),
 		);
-		new Setting(containerEl).setName("Math preamble file").addText((text) =>
+		new Setting(containerEl).setName("Math preamble file").setDesc("Vault relative path to a preamble.sty file in your vault. It will be included in the export.").addText((text) =>
 			text
 				.setPlaceholder("path/to/preamble_file")
 				.setValue(this.plugin.settings.preamble_file)
@@ -396,6 +398,7 @@ class LatexExportSettingTab extends PluginSettingTab {
 		);
 		new Setting(containerEl)
 			.setName("Prioritize lists over equations")
+			.setDesc("Whether to include display equations in lists, or stop the list and have the equation outside of the list.")
 			.addToggle((cb) =>
 				cb
 					.setValue(this.plugin.settings.prioritize_lists)
