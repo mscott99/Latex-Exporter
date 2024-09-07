@@ -264,7 +264,7 @@ export default class ExportPaperPlugin extends Plugin {
 				);
 			},
 		});
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.addSettingTab(new LatexExportSettingTab(this.app, this));
 	}
 
 	onunload() {}
@@ -336,7 +336,7 @@ class WarningModal extends Modal {
 	}
 }
 
-class SampleSettingTab extends PluginSettingTab {
+class LatexExportSettingTab extends PluginSettingTab {
 	plugin: ExportPaperPlugin;
 
 	constructor(app: App, plugin: ExportPaperPlugin) {
