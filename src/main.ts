@@ -10,6 +10,7 @@ import {
 	Setting,
 	TFile,
 	Modal,
+	normalizePath,
 } from "obsidian";
 import {
 	parse_longform,
@@ -347,58 +348,76 @@ class LatexExportSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
-		new Setting(containerEl).setName("Template file")
-			.setDesc("Relative vault path to a template file. Only set this if you would like to export with a template (you don't need to.)")
+		new Setting(containerEl)
+			.setName("Template file")
+			.setDesc(
+				"Relative vault path to a template file. Only set this if you would like to export with a template (you don't need to.)",
+			)
 			.addText((text) =>
-			text
-				.setPlaceholder("path/to/template_file.tex")
-				.setValue(this.plugin.settings.template_path)
-				.onChange(async (value) => {
-					if (value === "") {
-						value = "/";
-					}
-					this.plugin.settings.template_path = value;
-					await this.plugin.saveSettings();
-				}),
-		);
-		new Setting(containerEl).setName("Output folder").setDesc("Vault relative path of an existing folder in your vault. Exports will be written within that folder.").addText((text) =>
-			text
-				.setPlaceholder("path/to/output_folder/")
-				.setValue(this.plugin.settings.base_output_folder)
-				.onChange(async (value) => {
-					const match = /^(?:\/|\/?(.*?)\/?)$/.exec(value);
-					if (match) {
-						if (match[1] === undefined) {
+				text
+					.setPlaceholder("path/to/template_file.tex")
+					.setValue(this.plugin.settings.template_path)
+					.onChange(async (value) => {
+						if (value === "") {
 							value = "/";
-						} else {
-							value = match[1];
 						}
-					}
-					this.plugin.settings.base_output_folder = value;
-					await this.plugin.saveSettings();
-				}),
-		);
-		new Setting(containerEl).setName("Math preamble file").setDesc("Vault relative path to a preamble.sty file in your vault. It will be included in the export.").addText((text) =>
-			text
-				.setPlaceholder("path/to/preamble_file")
-				.setValue(this.plugin.settings.preamble_file)
-				.onChange(async (value) => {
-					this.plugin.settings.preamble_file = value;
-					await this.plugin.saveSettings();
-				}),
-		);
+						this.plugin.settings.template_path =
+							normalizePath(value);
+						await this.plugin.saveSettings();
+					}),
+			);
+		new Setting(containerEl)
+			.setName("Output folder")
+			.setDesc(
+				"Vault relative path of an existing folder in your vault. Exports will be written within that folder.",
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder("path/to/output_folder/")
+					.setValue(this.plugin.settings.base_output_folder)
+					.onChange(async (value) => {
+						const match = /^(?:\/|\/?(.*?)\/?)$/.exec(value);
+						if (match) {
+							if (match[1] === undefined) {
+								value = "/";
+							} else {
+								value = match[1];
+							}
+						}
+						this.plugin.settings.base_output_folder =
+							normalizePath(value);
+						await this.plugin.saveSettings();
+					}),
+			);
+		new Setting(containerEl)
+			.setName("Math preamble file")
+			.setDesc(
+				"Vault relative path to a preamble.sty file in your vault. It will be included in the export.",
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder("path/to/preamble_file")
+					.setValue(this.plugin.settings.preamble_file)
+					.onChange(async (value) => {
+						this.plugin.settings.preamble_file =
+							normalizePath(value);
+						await this.plugin.saveSettings();
+					}),
+			);
 		new Setting(containerEl).setName("Bib file").addText((text) =>
 			text
 				.setPlaceholder("path/to/bib_file")
 				.setValue(this.plugin.settings.bib_file)
 				.onChange(async (value) => {
-					this.plugin.settings.bib_file = value;
+					this.plugin.settings.bib_file = normalizePath(value);
 					await this.plugin.saveSettings();
 				}),
 		);
 		new Setting(containerEl)
 			.setName("Prioritize lists over equations")
-			.setDesc("Whether to include display equations in lists, or stop the list and have the equation outside of the list.")
+			.setDesc(
+				"Whether to include display equations in lists, or stop the list and have the equation outside of the list.",
+			)
 			.addToggle((cb) =>
 				cb
 					.setValue(this.plugin.settings.prioritize_lists)
