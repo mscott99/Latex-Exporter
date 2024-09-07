@@ -25,6 +25,6 @@ describe("my plugin", () => {
 \\end{equation}
 \\autoref{eq:label:1}
 `
-)
+		)
 	})
 });

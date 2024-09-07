@@ -182,8 +182,8 @@ export class Plot implements node {
 			`\\begin{figure}[h]
 \\centering
 \\includegraphics[width=0.5\\textwidth]{` +
-				path.join("Files", this.image.name) +
-				"}\n",
+			path.join("Files", this.image.name) +
+			"}\n",
 			buffer_offset,
 		);
 		let caption_text: string;
@@ -325,10 +325,10 @@ export class Environment implements node {
 			if (this.type === "proof") {
 				buffer_offset += buffer.write(
 					"[\\hypertarget{" +
-						this.label +
-						"}Proof of \\autoref{" +
-						this.label.replace("proof", "statement") +
-						"}]\n",
+					this.label +
+					"}Proof of \\autoref{" +
+					this.label.replace("proof", "statement") +
+					"}]\n",
 					buffer_offset,
 				);
 			} else {
@@ -363,10 +363,10 @@ export class Hyperlink implements node {
 			buffer_offset +
 			buffer.write(
 				"\\hyperlink{" +
-					this.address +
-					"}{" +
-					format_label(this.label) +
-					"}",
+				this.address +
+				"}{" +
+				format_label(this.label) +
+				"}",
 				buffer_offset,
 			)
 		);
@@ -471,19 +471,19 @@ export class Citation implements node {
 		settings: ExportPluginSettings,
 	): Citation {
 		let captured_id = undefined;
-		if(args[2] !== undefined){
+		if (args[2] !== undefined) {
 			captured_id = args[2];
-		}else if(args[4] !== undefined){
+		} else if (args[4] !== undefined) {
 			captured_id = args[4];
-		}else{
+		} else {
 			throw new Error("Unexpected: empty match for citation id.");
 		}
 		let result = undefined;
-		if(args[1] !== undefined && args[5] === undefined){
+		if (args[1] !== undefined && args[5] === undefined) {
 			result = args[1];
-		}else if(args[5] !== undefined){
+		} else if (args[5] !== undefined) {
 			result = args[5]
-		}else if(args[3] !== undefined && args[1]===undefined && args[5]===undefined){
+		} else if (args[3] !== undefined && args[1] === undefined && args[5] === undefined) {
 			result = "std";
 		}
 		return new Citation(captured_id, result);

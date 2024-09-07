@@ -40,7 +40,7 @@ export function split_inline<ClassObj extends node>(
 
 export class ExplicitRef implements node {
 	label: string;
-	constructor(identifier: string, name:string) {
+	constructor(identifier: string, name: string) {
 		this.label = identifier + "-" + name;
 	}
 	static get_regexp(): RegExp {
