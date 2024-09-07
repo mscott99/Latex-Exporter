@@ -346,32 +346,7 @@ class LatexExportSettingTab extends PluginSettingTab {
 
 	display(): void {
 		const { containerEl } = this;
-
 		containerEl.empty();
-
-		// new Setting(containerEl)
-		// 	.setName("Setting #1")
-		// 	.setDesc("It's a secret")
-		// 	.addText((text) =>
-		// 		text
-		// 			.setPlaceholder("Enter your secret")
-		// 			.setValue(this.plugin.settings.mySetting)
-		// 			.onChange(async (value) => {
-		// 				this.plugin.settings.mySetting = value;
-		// 				await this.plugin.saveSettings();
-		// 			}),
-		// 	);
-		// new Setting(containerEl).setName("test").addSearch((component)=>{
-		// component.setPlaceholder(this.plugin.settings.template_path).setValue(this.plugin.settings.template_path).onChange(async (value) => {
-		// 			// let val: string|null;
-		// 			// val = value
-		// 			// 		if(value == ""){
-		// 			// 		val = null
-		// 			// 	}
-		// 			this.plugin.settings.template_path = value;
-		// 			await this.plugin.saveSettings();
-		// 			console.log(this.plugin.settings.template_path);
-		// 		})});
 		new Setting(containerEl).setName("Template file").addText((text) =>
 			text
 				.setPlaceholder("path/to/template_file.tex")
