@@ -40,12 +40,13 @@ export function find_file(
 					file.basename.toLowerCase() === address.toLowerCase()))
 		) {
 			if (file_found !== undefined) {
-				if (!address_is_image_file(address)) { // It is common to find duplicates of image files, do not warn.
+				if (!address_is_image_file(address)) {
+					// It is common to find duplicates of image files, do not warn.
 					notice_and_warn(
 						"Multiple files found with the same name '" +
-						address +
-						"'. Returning the first one found. Additional file found has path: " +
-						file.path,
+							address +
+							"'. Returning the first one found. Additional file found has path: " +
+							file.path,
 					);
 				}
 			} else {

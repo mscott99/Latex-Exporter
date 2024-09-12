@@ -59,15 +59,15 @@ export async function label_from_location(
 		header,
 		data.parsed_file_bundle,
 		data.find_file,
-		settings
+		settings,
 	);
 	if (resolved_header === undefined) {
 		notice_and_warn(
 			"could not resolve header at " +
-			address +
-			": " +
-			header +
-			" keeping the header label as-is",
+				address +
+				": " +
+				header +
+				" keeping the header label as-is",
 		);
 		resolved_header =
 			typeof header === "string" ? header : header.join(".");
@@ -83,7 +83,7 @@ async function resolve_header_label(
 	header: string | string[],
 	file_cache: note_cache,
 	find_file: (address: string) => TFile | undefined,
-	settings: ExportPluginSettings
+	settings: ExportPluginSettings,
 ): Promise<string | undefined> {
 	let file_content: node[];
 	const cached_content = file_cache[address];
@@ -93,18 +93,18 @@ async function resolve_header_label(
 			if (file !== undefined && file_cache[file.basename] === undefined) {
 				notice_and_warn(
 					"address of reference '" +
-					address +
-					"' is referenced but was not embedded.",
+						address +
+						"' is referenced but was not embedded.",
 				);
 			}
 			const header_string =
 				typeof header === "string" ? header : header.join(".");
 			notice_and_warn(
 				"keeping the header address of " +
-				address +
-				": " +
-				header_string +
-				" as-is",
+					address +
+					": " +
+					header_string +
+					" as-is",
 			);
 			return header_string;
 		}
@@ -117,7 +117,11 @@ async function resolve_header_label(
 		// to make typescript happy
 		new_label = await get_header_address(header, file_content, settings);
 	} else {
-		new_label = await get_header_address([...header].reverse(), file_content, settings);
+		new_label = await get_header_address(
+			[...header].reverse(),
+			file_content,
+			settings,
+		);
 	}
 
 	if (new_label === undefined) {
@@ -125,10 +129,10 @@ async function resolve_header_label(
 			typeof header === "string" ? header : header.join(".");
 		notice_and_warn(
 			"Could not resolve header name '" +
-			header_string +
-			"' in file with address '" +
-			address +
-			"', keeping the header label as-is",
+				header_string +
+				"' in file with address '" +
+				address +
+				"', keeping the header label as-is",
 		);
 		return header_string;
 	}

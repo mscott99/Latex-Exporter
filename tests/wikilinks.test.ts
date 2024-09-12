@@ -18,7 +18,6 @@ describe("my plugin", () => {
 		);
 	});
 	test("multi citations", async () => {
-		const intermediate_result = await get_unrolled_file_contents("multi_citation");
 		const result = await get_latex_file_contents(
 			"multi_citation",
 			DEFAULT_SETTINGS,

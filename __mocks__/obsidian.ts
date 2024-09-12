@@ -7,4 +7,4 @@ export class TFile {
 	constructor() {}
 }
 
-export class Notice{}
+export class Notice {}

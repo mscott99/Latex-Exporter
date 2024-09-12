@@ -1,8 +1,5 @@
 import { node, metadata_for_unroll, ExportPluginSettings } from "./interfaces";
 import { label_from_location } from "./labels";
-import { Paragraph } from "./display";
-import { Text } from "./inline";
-import { strip_newlines } from "./utils";
 
 export class ProofHeader implements node {
 	title: string;
@@ -12,7 +9,11 @@ export class ProofHeader implements node {
 	async unroll(): Promise<node[]> {
 		return [this];
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings: ExportPluginSettings): Promise<number> {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	): Promise<number> {
 		const header_string = "\n\\textbf{" + this.title + "}\n\n";
 		buffer_offset += buffer.write(header_string, buffer_offset);
 		return buffer_offset;
@@ -30,7 +31,7 @@ export class Header implements node {
 		title: node[],
 		children: node[],
 		label?: string,
-		data?: metadata_for_unroll
+		data?: metadata_for_unroll,
 	) {
 		this.level = level;
 		this.title = title;
@@ -40,13 +41,19 @@ export class Header implements node {
 			this.data = data;
 		}
 	}
-	async unroll(data: metadata_for_unroll, settings: ExportPluginSettings): Promise<node[]> {
+	async unroll(
+		data: metadata_for_unroll,
+		settings: ExportPluginSettings,
+	): Promise<node[]> {
 		if (data.in_thm_env) {
 			const new_children: node[] = [];
 			for (const elt of this.children) {
 				new_children.push(...(await elt.unroll(data, settings)));
 			}
-			return [new ProofHeader(await this.latex_title(settings)), ...new_children];
+			return [
+				new ProofHeader(await this.latex_title(settings)),
+				...new_children,
+			];
 		}
 		this.level += data.headers_level_offset;
 		for (let i = 0; i < data.header_stack.length; i++) {
@@ -100,7 +107,11 @@ export class Header implements node {
 		}
 		return buffer.toString("utf8", 0, buffer_offset);
 	}
-	async latex(buffer: Buffer, buffer_offset: number, settings: ExportPluginSettings): Promise<number> {
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	): Promise<number> {
 		const header_title = await this.latex_title(settings);
 		let header_string = "";
 		if (this.level === 1) {
@@ -114,16 +125,18 @@ export class Header implements node {
 		}
 
 		buffer_offset += buffer.write(header_string, buffer_offset);
-		const promises = this.data.header_stack.map(async (e) => await e.latex_title(settings))
+		const promises = this.data.header_stack.map(
+			async (e) => await e.latex_title(settings),
+		);
 		buffer_offset += buffer.write(
 			"\\label{" +
-			await label_from_location(
-				this.data,
-				this.data.current_file.basename,
-				settings,
-				await Promise.all(promises),
-			) +
-			"}\n",
+				(await label_from_location(
+					this.data,
+					this.data.current_file.basename,
+					settings,
+					await Promise.all(promises),
+				)) +
+				"}\n",
 			buffer_offset,
 		);
 
@@ -169,7 +182,7 @@ export async function find_header(
 				if (
 					header_stack.length > 0 &&
 					(await elt.latex_title(settings)).toLowerCase().trim() ==
-					current_check.toLowerCase().trim()
+						current_check.toLowerCase().trim()
 				) {
 					if (header_stack.length == 1) {
 						return elt;
@@ -221,12 +234,12 @@ export async function get_header_address(
 			);
 			const new_address =
 				built_address === undefined
-					? (await elt.latex_title(settings))
+					? await elt.latex_title(settings)
 					: built_address + "." + (await elt.latex_title(settings));
 			if (
 				header_stack.length > 0 &&
 				(await elt.latex_title(settings)).toLowerCase().trim() ==
-				current_check.toLowerCase().trim()
+					current_check.toLowerCase().trim()
 			) {
 				if (header_stack.length == 1) {
 					return new_address;
@@ -247,4 +260,3 @@ export async function get_header_address(
 	}
 	return undefined;
 }
-

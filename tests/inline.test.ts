@@ -1,8 +1,5 @@
 jest.mock("obsidian");
-import {
-	get_latex_file_contents,
-	get_unrolled_file_contents,
-} from "./test_utils";
+import { get_latex_file_contents } from "./test_utils";
 import { DEFAULT_SETTINGS } from "../src/export_longform/interfaces";
 
 describe("all inline", () => {
@@ -18,11 +15,8 @@ Another \\emph{emph} \\textbf{strong}
 	});
 	test("citation", async () => {
 		let settings = DEFAULT_SETTINGS;
-		settings.default_citation_command = "othercite"
-		const result = await get_latex_file_contents(
-			"citations",
-			settings,
-		);
+		settings.default_citation_command = "othercite";
+		const result = await get_latex_file_contents("citations", settings);
 		expect(result)
 			.toEqual(`I cite \\othercite{first}, \\cite[p.2]{first}, \\cite{first}, \\othercite{first}, \\cite{second}, \\cite{second}, \\textcite{first}, \\cite{first, second}, \\cite[Remark 1]{second}.
 \\cite{hello, hi, other}

@@ -1,8 +1,5 @@
 jest.mock("obsidian");
-import {
-	get_latex_file_contents,
-	get_unrolled_file_contents,
-} from "./test_utils";
+import { get_latex_file_contents } from "./test_utils";
 import { DEFAULT_SETTINGS } from "../src/export_longform/interfaces";
 
 import {
@@ -46,7 +43,7 @@ describe("split_display_blocks", () => {
 			markdown,
 			BlankLine.build_from_match,
 			BlankLine.get_regexp(),
-			DEFAULT_SETTINGS
+			DEFAULT_SETTINGS,
 		);
 
 		expect(new_markdown).toEqual(expected);
@@ -72,7 +69,7 @@ describe("split_display_blocks", () => {
 			markdown,
 			DisplayMath.build_from_match,
 			DisplayMath.get_regexp(),
-			DEFAULT_SETTINGS
+			DEFAULT_SETTINGS,
 		);
 
 		expect(new_markdown).toEqual(expected);
@@ -99,7 +96,7 @@ describe("split_display_blocks", () => {
 			markdown,
 			DisplayCode.build_from_match,
 			DisplayCode.get_regexp(),
-			DEFAULT_SETTINGS
+			DEFAULT_SETTINGS,
 		);
 
 		expect(new_markdown).toEqual(expected);
@@ -118,7 +115,7 @@ describe("split_display_blocks", () => {
 			markdown,
 			EmbedWikilink.build_from_match,
 			EmbedWikilink.get_regexp(),
-			DEFAULT_SETTINGS
+			DEFAULT_SETTINGS,
 		);
 		expect(new_markdown).toEqual(expected);
 	});
@@ -159,7 +156,7 @@ describe("split_display_blocks", () => {
 				[text_to_parse],
 				InlineMath.get_regexp(),
 				InlineMath.build_from_match,
-				DEFAULT_SETTINGS
+				DEFAULT_SETTINGS,
 			),
 		).toEqual(expected);
 	});
@@ -179,7 +176,7 @@ describe("split_display_blocks", () => {
 				[text_to_parse],
 				Emphasis.get_regexp(),
 				Emphasis.build_from_match,
-				DEFAULT_SETTINGS
+				DEFAULT_SETTINGS,
 			),
 		).toEqual(expected);
 	});
@@ -199,7 +196,7 @@ describe("split_display_blocks", () => {
 				[text_to_parse],
 				Strong.get_regexp(),
 				Strong.build_from_match,
-				DEFAULT_SETTINGS
+				DEFAULT_SETTINGS,
 			),
 		).toEqual(expected);
 	});
@@ -217,7 +214,7 @@ describe("split_display_blocks", () => {
 				[text_to_parse],
 				Wikilink.get_regexp(),
 				Wikilink.build_from_match,
-				DEFAULT_SETTINGS
+				DEFAULT_SETTINGS,
 			),
 		).toEqual(expected);
 	});
@@ -233,7 +230,9 @@ describe("split_display_blocks", () => {
 			new Text(" for the "),
 			new InlineMath("\\sum"),
 		];
-		expect(parse_inline([text_to_parse], DEFAULT_SETTINGS)).toEqual(expected);
+		expect(parse_inline([text_to_parse], DEFAULT_SETTINGS)).toEqual(
+			expected,
+		);
 	});
 	// infinite loop
 	test("test explicit environment", () => {
@@ -255,7 +254,7 @@ describe("split_display_blocks", () => {
 			markdown,
 			Environment.build_from_match,
 			Environment.get_regexp(),
-			DEFAULT_SETTINGS
+			DEFAULT_SETTINGS,
 		);
 
 		expect(new_markdown).toEqual(expected);
@@ -316,10 +315,7 @@ $$\\sum$$ hi there.`;
 	test("test parsing lists", async () => {
 		let settings = DEFAULT_SETTINGS;
 		settings.prioritize_lists = true;
-		const result = await get_latex_file_contents(
-			"lists",
-			settings,
-		);
+		const result = await get_latex_file_contents("lists", settings);
 		expect(result).toEqual(`\\begin{itemize}
 \\item simple
 \\item unordered

@@ -5,8 +5,6 @@ import {
 	get_find_file_fn,
 	read_tfile,
 	get_unrolled_file_contents,
-	get_latex_file_contents,
-	get_parsed_file_contents,
 } from "./test_utils";
 import {
 	UnrolledWikilink,
@@ -35,7 +33,8 @@ describe("split_display_blocks", () => {
 		expect(out_embed.path).toEqual("tests/files/simple_embed.md");
 	});
 	test("test environment unrolling", async () => {
-		const unrolled_content = await get_unrolled_file_contents("simple_embed");
+		const unrolled_content =
+			await get_unrolled_file_contents("simple_embed");
 		const expected_content = [
 			new Environment(
 				[new Paragraph([new Text("Content of lemma2")])],
@@ -52,7 +51,10 @@ describe("split_display_blocks", () => {
 			throw new Error(`File not found: ${address}`);
 		}
 		const file_contents = await read_tfile(longform_file);
-		const parsed_contents = parse_note(file_contents, DEFAULT_SETTINGS).body;
+		const parsed_contents = parse_note(
+			file_contents,
+			DEFAULT_SETTINGS,
+		).body;
 		const data = init_data(longform_file, read_tfile, find_file);
 		const unrolled_content = await unroll_array(
 			data,
