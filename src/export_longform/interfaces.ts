@@ -80,9 +80,9 @@ export function init_data(
 		current_file: longform_file,
 		read_tfile: read_tfile,
 		find_file: find_file,
-		header_stack: [] as Header[],
-		media_files: [] as TFile[],
-		bib_keys: [] as string[],
+		header_stack: [],
+		media_files: [],
+		bib_keys: [],
 	} as metadata_for_unroll;
 }
 

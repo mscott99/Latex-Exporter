@@ -1,5 +1,4 @@
 jest.mock("obsidian");
-import { TFile } from "obsidian";
 import { DEFAULT_SETTINGS } from "../src/export_longform/interfaces";
 
 import {
@@ -24,8 +23,14 @@ describe("split_display_blocks", () => {
 	const notes_dir = "./tests/files/";
 	const find_file = get_find_file_fn(notes_dir);
 	test("should find the files", async () => {
-		const out_lem = find_file("lemma2") as TFile;
-		const out_embed = find_file("simple_embed") as TFile;
+		const out_lem = find_file("lemma2");
+		if (out_lem === undefined) {
+			throw new Error("File not found");
+		}
+		const out_embed = find_file("simple_embed");
+		if (out_embed === undefined) {
+			throw new Error("File not found");
+		}
 		expect(out_lem.path).toEqual("tests/files/subfolder/lemma2.md");
 		expect(out_embed.path).toEqual("tests/files/simple_embed.md");
 	});
