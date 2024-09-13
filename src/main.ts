@@ -313,6 +313,7 @@ class WarningModal extends Modal {
 						this.plugin.settings.warn_before_overwrite = false;
 					}
 					await this.callback();
+					await this.plugin.saveSettings();
 					this.close();
 				}),
 			)
