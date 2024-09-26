@@ -73,9 +73,14 @@ export default class ExportPaperPlugin extends Plugin {
 		const preamble_file = the_preamble_file ? the_preamble_file : undefined;
 		if (preamble_file !== undefined) {
 			const new_preamble = path.join(output_folder_path, "preamble.sty");
-			if (!this.app.vault.getFileByPath(new_preamble)) {
+			const existing_preamble = this.app.vault.getFileByPath(new_preamble)
+			if (!existing_preamble){
 				this.app.vault.copy(preamble_file, new_preamble);
 				export_message += "- Copying the preamble file\n";
+			} else if (this.settings.overwrite_preamble){
+				this.app.vault.delete(existing_preamble)
+				this.app.vault.copy(preamble_file, new_preamble);
+				export_message += "- Overwriting the preamble file\n";
 			} else {
 				export_message += "- Without overwriting the preamble file\n";
 			}
@@ -433,6 +438,19 @@ class LatexExportSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.prioritize_lists)
 					.onChange(async (value) => {
 						this.plugin.settings.prioritize_lists = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+		new Setting(containerEl)
+			.setName("Overwrite preamble.sty")
+			.setDesc(
+				"Overwrite the preamble file also if a preamble file is found in the root of the vault.",
+			)
+			.addToggle((cb) =>
+				cb
+					.setValue(this.plugin.settings.overwrite_preamble)
+					.onChange(async (value) => {
+						this.plugin.settings.overwrite_preamble = value;
 						await this.plugin.saveSettings();
 					}),
 			);

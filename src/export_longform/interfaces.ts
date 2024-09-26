@@ -22,6 +22,7 @@ export interface ExportPluginSettings {
 	prioritize_lists: boolean;
 	warn_before_overwrite: boolean;
 	default_citation_command: string;
+	overwrite_preamble: boolean;
 }
 
 export const DEFAULT_SETTINGS: ExportPluginSettings = {
@@ -33,6 +34,7 @@ export const DEFAULT_SETTINGS: ExportPluginSettings = {
 	prioritize_lists: false, // Whether to parse lists or equations first. Lists first allows lists containing display equations, but yields bugs because lines within an equation can easily start with '-'.
 	warn_before_overwrite: true,
 	default_citation_command: "cite",
+	overwrite_preamble: false,
 };
 
 export interface file_content {
