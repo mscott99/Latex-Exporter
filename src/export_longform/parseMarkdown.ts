@@ -16,6 +16,7 @@ import {
 	BlankLine,
 	Comment,
 	Quote,
+	DisplayCode,
 	split_display,
 } from "./display";
 import {
@@ -414,6 +415,12 @@ export function parse_display(
 		Quote.get_regexp(),
 		settings,
 	);
+	new_display = split_display<DisplayCode>(
+		new_display,
+		DisplayCode.build_from_match,
+		DisplayCode.get_regexp(),
+		settings,
+	); //must come before explicit environment
 	new_display = split_display<EmbedWikilink>(
 		new_display,
 		EmbedWikilink.build_from_match,
@@ -421,6 +428,72 @@ export function parse_display(
 		settings,
 	); //must come before explicit environment
 	return [parsed_yaml[0], new_display];
+}
+
+export function parse_after_headers(
+	new_display: node[],
+	settings: ExportPluginSettings,
+): node[] {
+	// let new_display = [new Paragraph([new Text(input)])] as node[];
+	new_display = split_display<Environment>(
+		new_display,
+		Environment.build_from_match,
+		Environment.get_regexp(),
+		settings,
+	);
+	new_display = split_display<BlankLine>(
+		new_display,
+		BlankLine.build_from_match,
+		BlankLine.get_regexp(),
+		settings,
+	); // BlankLine must be before the lists. They deliminate the lists.
+	if (!settings.prioritize_lists) {
+		new_display = split_display<DisplayMath>(
+			new_display,
+			DisplayMath.build_from_match,
+			DisplayMath.get_regexp(),
+			settings,
+		);
+	}
+	new_display = split_display<NumberedList>( // Lists parse until the end of the string. What limits them is the presence of other elements in front of them.
+		new_display,
+		NumberedList.build_from_match,
+		NumberedList.get_regexp(),
+		settings,
+	);
+	for (const elt of new_display) {
+		if (elt instanceof NumberedList) {
+			const new_content: node[][] = [];
+			for (const e of elt.content) {
+				new_content.push(parse_after_headers(e, settings));
+			}
+			elt.content = new_content;
+		}
+	}
+	new_display = split_display<UnorderedList>(
+		new_display,
+		UnorderedList.build_from_match,
+		UnorderedList.get_regexp(),
+		settings,
+	);
+	for (const elt of new_display) {
+		if (elt instanceof UnorderedList) {
+			const new_content: node[][] = [];
+			for (const e of elt.content) {
+				new_content.push(parse_after_headers(e, settings));
+			}
+			elt.content = new_content;
+		}
+	}
+	if (settings.prioritize_lists) {
+		new_display = split_display<DisplayMath>(
+			new_display,
+			DisplayMath.build_from_match,
+			DisplayMath.get_regexp(),
+			settings,
+		);
+	}
+	return new_display;
 }
 
 class ZeroHeader {
@@ -498,72 +571,6 @@ export function make_heading_tree(markdown: node[]): node[] {
 		}
 	}
 	return new_md.children;
-}
-
-export function parse_after_headers(
-	new_display: node[],
-	settings: ExportPluginSettings,
-): node[] {
-	// let new_display = [new Paragraph([new Text(input)])] as node[];
-	new_display = split_display<Environment>(
-		new_display,
-		Environment.build_from_match,
-		Environment.get_regexp(),
-		settings,
-	);
-	new_display = split_display<BlankLine>(
-		new_display,
-		BlankLine.build_from_match,
-		BlankLine.get_regexp(),
-		settings,
-	); // BlankLine must be before the lists. They deliminate the lists.
-	if (!settings.prioritize_lists) {
-		new_display = split_display<DisplayMath>(
-			new_display,
-			DisplayMath.build_from_match,
-			DisplayMath.get_regexp(),
-			settings,
-		);
-	}
-	new_display = split_display<NumberedList>( // Lists parse until the end of the string. What limits them is the presence of other elements in front of them.
-		new_display,
-		NumberedList.build_from_match,
-		NumberedList.get_regexp(),
-		settings,
-	);
-	for (const elt of new_display) {
-		if (elt instanceof NumberedList) {
-			const new_content: node[][] = [];
-			for (const e of elt.content) {
-				new_content.push(parse_after_headers(e, settings));
-			}
-			elt.content = new_content;
-		}
-	}
-	new_display = split_display<UnorderedList>(
-		new_display,
-		UnorderedList.build_from_match,
-		UnorderedList.get_regexp(),
-		settings,
-	);
-	for (const elt of new_display) {
-		if (elt instanceof UnorderedList) {
-			const new_content: node[][] = [];
-			for (const e of elt.content) {
-				new_content.push(parse_after_headers(e, settings));
-			}
-			elt.content = new_content;
-		}
-	}
-	if (settings.prioritize_lists) {
-		new_display = split_display<DisplayMath>(
-			new_display,
-			DisplayMath.build_from_match,
-			DisplayMath.get_regexp(),
-			settings,
-		);
-	}
-	return new_display;
 }
 
 function parse_yaml_header(input: string): [{ [key: string]: string }, string] {
