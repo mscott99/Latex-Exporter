@@ -256,15 +256,15 @@ export class DisplayCode implements node {
 		settings: ExportPluginSettings,
 	) {
 		// notice_and_warn("Code to latex not implemented");
-		buffer_offset += buffer.write("\\begin{lstlisting}\n", buffer_offset);
+		buffer_offset += buffer.write("\\begin{verbatim}", buffer_offset);
 		// if (this.label !== undefined) {
 		// 	buffer_offset += buffer.write(
 		// 		"\\label{" + format_label(this.label) + "}\n",
 		// 		buffer_offset,
 		// 	);
 		// }
-		buffer_offset += buffer.write(this.code + "\n", buffer_offset);
-		buffer_offset += buffer.write("\\end{lstlisting}\n", buffer_offset);
+		buffer_offset += buffer.write(this.code, buffer_offset);
+		buffer_offset += buffer.write("\\end{verbatim}\n", buffer_offset);
 		return buffer_offset;
 	}
 }

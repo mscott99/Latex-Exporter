@@ -27,4 +27,14 @@ and $\\varepsilon$
 \\autoref{lem:label}
 `);
 	});
+	test("Code", async () => {
+		const result = await get_latex_file_contents(
+			"code_env",
+			DEFAULT_SETTINGS,
+		);
+		expect(result).toEqual(`\\begin{verbatim}
+Here is some _code_ *things*
+\\end{verbatim}
+`);
+	});
 });
