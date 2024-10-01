@@ -30,7 +30,6 @@ export default class ExportPaperPlugin extends Plugin {
 		active_file: TFile,
 		settings: ExportPluginSettings,
 	) {
-		console.log("Exporting paper");
 		if (this.settings.base_output_folder === "") {
 			this.settings.base_output_folder = "/";
 		}
@@ -38,7 +37,6 @@ export default class ExportPaperPlugin extends Plugin {
 			this.settings.base_output_folder,
 		);
 		if (!base_folder) {
-			console.log(this.settings.base_output_folder);
 			base_folder = this.app.vault.getRoot();
 			console.warn(
 				"Output folder path not found, defaulting to the root of the vault.",
@@ -100,14 +98,13 @@ export default class ExportPaperPlugin extends Plugin {
 			the_template_file !== null ? the_template_file : undefined;
 
 		if (!template_file) {
-			console.log("Exporting with the default template.");
+			console.log("No template file found. Exporting with the default template.");
 		} else {
-			console.log("Exporting with template.");
+			console.log("Exporting with template " + template_file.name);
 		}
 
 		let out_file = this.app.vault.getFileByPath(output_path);
 		if (out_file === null) {
-			console.log("Creating new output file");
 			out_file = await this.app.vault.create(output_path, "");
 			await this.proceed_with_export(
 				active_file,
@@ -120,7 +117,6 @@ export default class ExportPaperPlugin extends Plugin {
 		} else {
 			const out_file_other = out_file;
 			if (this.settings.warn_before_overwrite) {
-				console.log("Warning before overwriting file");
 				new WarningModal(
 					this.app,
 					this,
@@ -136,7 +132,6 @@ export default class ExportPaperPlugin extends Plugin {
 					"It seems there is a previously exported file. Overwrite it?",
 				).open();
 			} else {
-				console.log("Overwriting without warning");
 				await this.proceed_with_export(
 					active_file,
 					settings,
