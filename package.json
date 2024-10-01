@@ -31,7 +31,6 @@
 		"typescript": "^4.7.4"
 	},
 	"dependencies": {
-		"fs": "^0.0.1-security",
 		"mdast-util-gfm-footnote": "^2.0.0",
 		"mdast-util-gfm-strikethrough": "^2.0.0",
 		"mdast-util-to-string": "^4.0.0",
