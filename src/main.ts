@@ -60,47 +60,53 @@ export default class ExportPaperPlugin extends Plugin {
 		const the_preamble_file = this.app.vault.getFileByPath(
 			this.settings.preamble_file,
 		);
+		let export_message = "Exporting the current file:\n";
 		const preamble_file = the_preamble_file ? the_preamble_file : undefined;
 		if (preamble_file !== undefined) {
 			const new_preamble = path.join(output_folder_path, "preamble.sty");
-			if (!this.app.vault.getFileByPath(new_preamble))
+			if (!this.app.vault.getFileByPath(new_preamble)) {
 				this.app.vault.copy(preamble_file, new_preamble);
+				export_message += "- Copying the preamble file\n";
+			} else {
+				export_message += "- Without overwriting the preamble file\n";
+			}
 		} else {
-			console.log("no preamble file found.");
+			export_message += " - Without a preamble file (none found)\n";
 		}
-
 		const header_file = this.app.vault.getFileByPath(
 			path.join(output_folder_path, "header.tex"),
 		);
 		if (!header_file) {
+			export_message += "- Creating the header file\n";
 			await this.app.vault.create(
 				path.join(output_folder_path, "header.tex"),
 				get_header_tex(),
 			);
+		}else{
+			export_message += "- Without overwriting the header file\n";
 		}
-
 		const the_bib_file = this.app.vault.getFileByPath(
 			this.settings.bib_file,
 		);
 		const bib_file = the_bib_file ? the_bib_file : undefined;
 		if (bib_file !== undefined) {
 			const new_bib = path.join(output_folder_path, "bibliography.bib");
-			if (!this.app.vault.getFileByPath(new_bib))
+			if (!this.app.vault.getFileByPath(new_bib)) {
+				export_message += "- Copying the bib file\n";
 				this.app.vault.copy(bib_file, new_bib);
+			}else{
+				export_message += "- Without overwriting the bib file\n";
+			}
 		} else {
-			console.log("no bib file found.");
+			export_message += "- Without a bib file (none found)"
 		}
-
 		const the_template_file = this.app.vault.getFileByPath(
 			this.settings.template_path,
 		);
 		const template_file =
 			the_template_file !== null ? the_template_file : undefined;
-
-		if (!template_file) {
-			console.log("No template file found. Exporting with the default template.");
-		} else {
-			console.log("Exporting with template " + template_file.name);
+		if(template_file !== undefined) {
+			export_message += "- Using the specified template file,\n";
 		}
 
 		let out_file = this.app.vault.getFileByPath(output_path);
@@ -113,6 +119,7 @@ export default class ExportPaperPlugin extends Plugin {
 				template_file,
 				out_file,
 				preamble_file,
+				export_message
 			);
 		} else {
 			const out_file_other = out_file;
@@ -128,6 +135,7 @@ export default class ExportPaperPlugin extends Plugin {
 							template_file,
 							out_file_other,
 							preamble_file,
+							export_message,
 						),
 					"It seems there is a previously exported file. Overwrite it?",
 				).open();
@@ -139,6 +147,7 @@ export default class ExportPaperPlugin extends Plugin {
 					template_file,
 					out_file,
 					preamble_file,
+					export_message,
 				);
 			}
 		}
@@ -151,6 +160,7 @@ export default class ExportPaperPlugin extends Plugin {
 		template_file: TFile | undefined,
 		out_file: TFile,
 		preamble_file: TFile | undefined,
+		partial_message: string = "",
 	) {
 		const notes_dir = this.app.vault;
 		const parsed_contents = await parse_longform(
@@ -179,12 +189,6 @@ export default class ExportPaperPlugin extends Plugin {
 				notes_dir.modify.bind(notes_dir),
 				notes_dir.cachedRead.bind(notes_dir),
 			);
-			new Notice(
-				"Latex content written to " +
-					out_file.path +
-					" by using the template file " +
-					template_file.path,
-			);
 		} else {
 			await write_without_template(
 				parsed_contents,
@@ -192,12 +196,8 @@ export default class ExportPaperPlugin extends Plugin {
 				notes_dir.modify.bind(notes_dir),
 				preamble_file,
 			);
-			new Notice(
-				"Latex content written to " +
-					out_file.path +
-					" by using the default template",
-			);
 		}
+		new Notice(partial_message + "To the vault folder inside the vault:\n" + output_folder_path + "/");
 	}
 
 	async export_with_selection(
