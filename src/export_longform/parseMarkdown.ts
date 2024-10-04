@@ -37,7 +37,7 @@ import {
 	InlineMath,
 } from "./inline";
 import { Header, find_header } from "./headers";
-import { TFile, Notice } from "obsidian";
+import { TFile, Notice, parseYaml } from "obsidian";
 
 // Describe label system
 // If embedwikilink env, the label is an address to the embedded header, defaults to "statement" if no header is provided.
@@ -571,15 +571,7 @@ function parse_yaml_header(input: string): [{ [key: string]: string }, string] {
 	if (!match) {
 		return [{}, input];
 	}
-	const yaml_content = match[1];
-	const remainder = match[2];
-	const field_regex = /^(['"]?)(\S+?)\1\s*?:\s+(['"]?)(.+?)\3$/gm;
-	let field_match: RegExpMatchArray | null;
-	const field_dict: { [key: string]: string } = {};
-	while ((field_match = field_regex.exec(yaml_content)) !== null) {
-		field_dict[field_match[2]] = field_match[4];
-	}
-	return [field_dict, remainder];
+	return [parseYaml(match[1]), match[2]];
 }
 
 export function parse_inline(
