@@ -6,29 +6,8 @@ module.exports = {
 	transform: {
 		'^.+\\.ts$': 'ts-jest',
 	},
-	// moduleNameMapper: {
-	//   obsidian: 'mocks/obsidian.ts',
-	// },
 	moduleFileExtensions: ['js', 'ts'],
-	// collectCoverageFrom: [
-	// 	'src/*.ts', // Adjust pattern to include your source files
-	// 	'!src/archived', // Exclude TypeScript declaration files
-	// ],
+	collectCoverageFrom: [
+		'src/*.ts',
+	],
 };
-// module.exports = {
-// 	verbose: true,
-// 	preset: 'ts-jest',
-// 	transform: {
-// 		'^.+\\.ts$': 'ts-jest',
-// 	},
-// 	// module: {
-// 	// 	rules: [
-// 	// 		{
-// 	// 			test: /\.txt/,
-// 	// 			type: 'asset/source',
-// 	// 		},
-// 	// 	]
-// 	// },
-// 	// testEnvironment: "jsdom",
-// 	moduleFileExtensions: ['js', 'ts'],
-// };
