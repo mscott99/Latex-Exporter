@@ -30,7 +30,6 @@ export default class ExportPaperPlugin extends Plugin {
 		active_file: TFile,
 		settings: ExportPluginSettings,
 	) {
-		console.log("Exporting paper");
 		if (this.settings.base_output_folder === "") {
 			this.settings.base_output_folder = "/";
 		}
@@ -38,7 +37,6 @@ export default class ExportPaperPlugin extends Plugin {
 			this.settings.base_output_folder,
 		);
 		if (!base_folder) {
-			console.log(this.settings.base_output_folder);
 			base_folder = this.app.vault.getRoot();
 			console.warn(
 				"Output folder path not found, defaulting to the root of the vault.",
@@ -62,57 +60,62 @@ export default class ExportPaperPlugin extends Plugin {
 		const the_preamble_file = this.app.vault.getFileByPath(
 			this.settings.preamble_file,
 		);
+		let export_message = "Exporting the current file:\n";
 		const preamble_file = the_preamble_file ? the_preamble_file : undefined;
 		if (preamble_file !== undefined) {
 			const new_preamble = path.join(output_folder_path, "preamble.sty");
 			const existing_preamble = this.app.vault.getFileByPath(new_preamble)
 			if (!existing_preamble){
 				this.app.vault.copy(preamble_file, new_preamble);
+				export_message += "- Copying the preamble file\n";
 			}else if (this.settings.overwrite_preamble){
 				this.app.vault.delete(existing_preamble)
 				this.app.vault.copy(preamble_file, new_preamble);
+				export_message += "- Overwriting the preamble file\n";
+			} else {
+				export_message += "- Without overwriting the preamble file\n";
 			}
 		} else {
-			console.log("no preamble file found.");
+			export_message += " - Without a preamble file (none found)\n";
 		}
-
 		const header_file = this.app.vault.getFileByPath(
 			path.join(output_folder_path, "header.tex"),
 		);
 		if (!header_file) {
+			export_message += "- Creating the header file\n";
 			await this.app.vault.create(
 				path.join(output_folder_path, "header.tex"),
 				get_header_tex(),
 			);
+		}else{
+			export_message += "- Without overwriting the header file\n";
 		}
-
 		const the_bib_file = this.app.vault.getFileByPath(
 			this.settings.bib_file,
 		);
 		const bib_file = the_bib_file ? the_bib_file : undefined;
 		if (bib_file !== undefined) {
 			const new_bib = path.join(output_folder_path, "bibliography.bib");
-			if (!this.app.vault.getFileByPath(new_bib))
+			if (!this.app.vault.getFileByPath(new_bib)) {
+				export_message += "- Copying the bib file\n";
 				this.app.vault.copy(bib_file, new_bib);
+			}else{
+				export_message += "- Without overwriting the bib file\n";
+			}
 		} else {
-			console.log("no bib file found.");
+			export_message += "- Without a bib file (none found)"
 		}
-
 		const the_template_file = this.app.vault.getFileByPath(
 			this.settings.template_path,
 		);
 		const template_file =
 			the_template_file !== null ? the_template_file : undefined;
-
-		if (!template_file) {
-			console.log("Exporting with the default template.");
-		} else {
-			console.log("Exporting with template.");
+		if(template_file !== undefined) {
+			export_message += "- Using the specified template file,\n";
 		}
 
 		let out_file = this.app.vault.getFileByPath(output_path);
 		if (out_file === null) {
-			console.log("Creating new output file");
 			out_file = await this.app.vault.create(output_path, "");
 			await this.proceed_with_export(
 				active_file,
@@ -121,11 +124,11 @@ export default class ExportPaperPlugin extends Plugin {
 				template_file,
 				out_file,
 				preamble_file,
+				export_message
 			);
 		} else {
 			const out_file_other = out_file;
 			if (this.settings.warn_before_overwrite) {
-				console.log("Warning before overwriting file");
 				new WarningModal(
 					this.app,
 					this,
@@ -137,11 +140,11 @@ export default class ExportPaperPlugin extends Plugin {
 							template_file,
 							out_file_other,
 							preamble_file,
+							export_message,
 						),
 					"It seems there is a previously exported file. Overwrite it?",
 				).open();
 			} else {
-				console.log("Overwriting without warning");
 				await this.proceed_with_export(
 					active_file,
 					settings,
@@ -149,6 +152,7 @@ export default class ExportPaperPlugin extends Plugin {
 					template_file,
 					out_file,
 					preamble_file,
+					export_message,
 				);
 			}
 		}
@@ -161,6 +165,7 @@ export default class ExportPaperPlugin extends Plugin {
 		template_file: TFile | undefined,
 		out_file: TFile,
 		preamble_file: TFile | undefined,
+		partial_message: string = "",
 	) {
 		const notes_dir = this.app.vault;
 		const parsed_contents = await parse_longform(
@@ -189,12 +194,6 @@ export default class ExportPaperPlugin extends Plugin {
 				notes_dir.modify.bind(notes_dir),
 				notes_dir.cachedRead.bind(notes_dir),
 			);
-			new Notice(
-				"Latex content written to " +
-					out_file.path +
-					" by using the template file " +
-					template_file.path,
-			);
 		} else {
 			await write_without_template(
 				parsed_contents,
@@ -202,12 +201,8 @@ export default class ExportPaperPlugin extends Plugin {
 				notes_dir.modify.bind(notes_dir),
 				preamble_file,
 			);
-			new Notice(
-				"Latex content written to " +
-					out_file.path +
-					" by using the default template",
-			);
 		}
+		new Notice(partial_message + "To the vault folder inside the vault:\n" + output_folder_path + "/");
 	}
 
 	async export_with_selection(
