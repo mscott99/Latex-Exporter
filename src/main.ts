@@ -21,11 +21,20 @@ import {
 	ExportPluginSettings,
 	DEFAULT_SETTINGS,
 } from "./export_longform";
-import { find_file } from "./export_longform/utils";
 
 export default class ExportPaperPlugin extends Plugin {
 	settings: ExportPluginSettings;
-
+	find_file = (address: string): TFile | undefined => {
+		const temp_result = this.app.metadataCache.getFirstLinkpathDest(
+			address,
+			"/",
+		);
+		if (temp_result) {
+			return temp_result;
+		} else {
+			return undefined;
+		}
+	};
 	async find_files_and_export(
 		active_file: TFile,
 		settings: ExportPluginSettings,
@@ -82,7 +91,7 @@ export default class ExportPaperPlugin extends Plugin {
 				path.join(output_folder_path, "header.tex"),
 				get_header_tex(),
 			);
-		}else{
+		} else {
 			export_message += "- Without overwriting the header file\n";
 		}
 		const the_bib_file = this.app.vault.getFileByPath(
@@ -94,18 +103,18 @@ export default class ExportPaperPlugin extends Plugin {
 			if (!this.app.vault.getFileByPath(new_bib)) {
 				export_message += "- Copying the bib file\n";
 				this.app.vault.copy(bib_file, new_bib);
-			}else{
+			} else {
 				export_message += "- Without overwriting the bib file\n";
 			}
 		} else {
-			export_message += "- Without a bib file (none found)"
+			export_message += "- Without a bib file (none found)";
 		}
 		const the_template_file = this.app.vault.getFileByPath(
 			this.settings.template_path,
 		);
 		const template_file =
 			the_template_file !== null ? the_template_file : undefined;
-		if(template_file !== undefined) {
+		if (template_file !== undefined) {
 			export_message += "- Using the specified template file,\n";
 		}
 
@@ -119,7 +128,7 @@ export default class ExportPaperPlugin extends Plugin {
 				template_file,
 				out_file,
 				preamble_file,
-				export_message
+				export_message,
 			);
 		} else {
 			const out_file_other = out_file;
@@ -165,7 +174,7 @@ export default class ExportPaperPlugin extends Plugin {
 		const notes_dir = this.app.vault;
 		const parsed_contents = await parse_longform(
 			notes_dir.cachedRead.bind(notes_dir),
-			(address: string) => find_file(notes_dir, address),
+			this.find_file,
 			active_file,
 			settings,
 		);
@@ -197,7 +206,12 @@ export default class ExportPaperPlugin extends Plugin {
 				preamble_file,
 			);
 		}
-		new Notice(partial_message + "To the vault folder inside the vault:\n" + output_folder_path + "/");
+		new Notice(
+			partial_message +
+				"To the vault folder inside the vault:\n" +
+				output_folder_path +
+				"/",
+		);
 	}
 
 	async export_with_selection(
@@ -208,7 +222,7 @@ export default class ExportPaperPlugin extends Plugin {
 		try {
 			return export_selection(
 				this.app.vault.cachedRead.bind(this.app.vault),
-				(address: string) => find_file(this.app.vault, address),
+				this.find_file,
 				active_file,
 				selection,
 				settings,
