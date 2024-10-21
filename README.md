@@ -108,6 +108,7 @@ To export excalidraw embedded images, follow the following instructions.
 Both ordered and unordered lists are supported. Lines following a number will be included in the item, regardless of indent. To finish a list, leave a blank line. Nested unordered lists are not supported.
 # Known limitations
 - Tables are not supported.
+- Lists may parse within display math. To avoid this, any line that starts with '-' or '+' should have no space right after the symbols '-', '+'.
 - Limited parsing of lists; they are indent-blind.
 - Inline code is not supported, and display is not tested.
 # Support

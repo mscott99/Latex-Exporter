@@ -119,6 +119,47 @@ describe("split_display_blocks", () => {
 		);
 		expect(new_markdown).toEqual(expected);
 	});
+	test("test embedded headers", async () => {
+		const result = await get_latex_file_contents(
+			"embedded_headers",
+			DEFAULT_SETTINGS,
+		);
+		expect(result).toEqual(`\\autoref{loc:second_big}
+\\section{Local}
+\\label{loc:local}
+\\subsection{Normal}
+\\label{loc:headers_embedded.nested.normal}
+\\subsubsection{supernested}
+\\label{loc:double_embed.head.supernested}
+\\autoref{loc:headers_embedded.nested.sub_nested}
+\\subsection{sub nested}
+\\label{loc:headers_embedded.nested.sub_nested}
+\\autoref{loc:headers_embedded.nested}
+\\autoref{loc:local}
+\\section{Second big}
+\\label{loc:second_big}
+`);
+	});
+	// 	Version of the test that would work for file-local header ids
+	// 	test("test embedded headers", async () => {
+	// 		const result = await get_latex_file_contents(
+	// 			"embedded_headers",
+	// 			DEFAULT_SETTINGS,
+	// 		);
+	// 		expect(result).toEqual(`\\section{Local}
+	// \\label{loc:embedded_headers.local}
+	// \\subsection{Normal}
+	// \\label{loc:headers_embedded.nested.normal}
+	// \\subsubsection{supernested}
+	// \\label{loc:double_embed.head.supernested}
+	// \\autoref{loc:headers_embedded.nested.sub_nested}
+	// \\subsection{sub nested}
+	// \\label{loc:headers_embedded.nested.sub_nested}
+	// \\autoref{loc:headers_embedded.nested}
+	// \\section{Second big}
+	// \\label{loc:embedded_headers.second_big}
+	// `);
+	// 	});
 	test("test header tree", () => {
 		const markdown = [
 			new Paragraph([

@@ -53,7 +53,8 @@ export type metadata_for_unroll = {
 	depth: number;
 	env_hash_list: string[];
 	parsed_file_bundle: note_cache; // use the path of the files as keys.
-	headers_level_offset: number; // To know by how much to increment headers by nestedness. Set to 10 to convert Headers to emphasized words.
+	ambient_header_level: number; // What header level are we currently in? The header level of consideration here is the global one.
+	headers_level_offset: number; // By how much the header levels written in the md file must be adjusted because of embed considerations.
 	explicit_env_index: number;
 	longform_file: TFile;
 	current_file: TFile;
@@ -74,13 +75,14 @@ export function init_data(
 		depth: 0,
 		env_hash_list: [] as string[],
 		parsed_file_bundle: {} as note_cache,
+		ambient_header_level: 0,
 		headers_level_offset: 0,
 		explicit_env_index: 1,
 		longform_file: longform_file,
 		current_file: longform_file,
 		read_tfile: read_tfile,
 		find_file: find_file,
-		header_stack: [],
+		header_stack: [], // file-local stack of headers.
 		media_files: [],
 		bib_keys: [],
 	} as metadata_for_unroll;

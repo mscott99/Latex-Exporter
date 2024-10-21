@@ -3,6 +3,18 @@ import { get_latex_file_contents } from "./test_utils";
 import { DEFAULT_SETTINGS } from "../src/export_longform/interfaces";
 
 describe("my plugin", () => {
+	test("test embedded eqn", async () => {
+		const result = await get_latex_file_contents(
+			"embed_eqn",
+			DEFAULT_SETTINGS,
+		);
+		expect(result).toEqual(`\\begin{equation}
+\\label{eq:ref}
+\\sum
+\\end{equation}
+\\autoref{eq:ref}
+`)
+	})
 	test("aligned env", async () => {
 		const result = await get_latex_file_contents(
 			"weird_equations",

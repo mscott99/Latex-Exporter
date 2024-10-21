@@ -56,6 +56,7 @@ export class Header implements node {
 			];
 		}
 		this.level += data.headers_level_offset;
+		data.ambient_header_level = this.level;
 		for (let i = 0; i < data.header_stack.length; i++) {
 			if (data.header_stack[i].level >= this.level) {
 				data.header_stack = data.header_stack.slice(0, i);
@@ -69,6 +70,7 @@ export class Header implements node {
 			depth: data.depth,
 			env_hash_list: data.env_hash_list,
 			parsed_file_bundle: data.parsed_file_bundle,
+			ambient_header_level: data.ambient_header_level,
 			headers_level_offset: data.headers_level_offset,
 			explicit_env_index: data.explicit_env_index,
 			read_tfile: data.read_tfile,
@@ -79,19 +81,11 @@ export class Header implements node {
 			media_files: data.media_files,
 			bib_keys: data.bib_keys,
 		};
-
 		const new_title: node[] = [];
 		for (const elt of this.title) {
 			new_title.push(...(await elt.unroll(data, settings)));
 		}
 		this.title = new_title;
-
-		// this.label = label_from_location(
-		// 	data,
-		// 	data.current_file.basename,
-		// 	data.header_stack.map((e) => e.latex_title()),
-		// );
-
 		const new_children: node[] = [];
 		for (const elt of this.children) {
 			new_children.push(...(await elt.unroll(data, settings)));
@@ -123,7 +117,6 @@ export class Header implements node {
 		} else if (this.level >= 4) {
 			header_string = "\n\\textbf{" + header_title + "}\n\n";
 		}
-
 		buffer_offset += buffer.write(header_string, buffer_offset);
 		const promises = this.data.header_stack.map(
 			async (e) => await e.latex_title(settings),
@@ -132,14 +125,13 @@ export class Header implements node {
 			"\\label{" +
 				(await label_from_location(
 					this.data,
-					this.data.current_file.basename,
+					this.data.current_file.basename, //File the header came from
 					settings,
 					await Promise.all(promises),
 				)) +
 				"}\n",
 			buffer_offset,
 		);
-
 		for (const e of this.children) {
 			buffer_offset = await e.latex(buffer, buffer_offset, settings);
 		}

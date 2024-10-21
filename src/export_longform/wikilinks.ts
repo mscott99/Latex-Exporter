@@ -75,18 +75,16 @@ export class EmbedWikilink implements node {
 				return [p];
 			}
 		}
-
 		if (this.display !== undefined) {
 			return [new Text(this.display)];
 		}
-		const header_val = this.header;
 		const return_data = await parse_embed_content(
 			this.content,
 			data.find_file,
 			data.read_tfile,
 			data.parsed_file_bundle,
 			settings,
-			header_val,
+			this.header,
 		);
 		if (return_data === undefined) {
 			const err_msg =
@@ -108,24 +106,34 @@ export class EmbedWikilink implements node {
 				new BlankLine(),
 			];
 		}
-		const [parsed_contents, header_level] = return_data;
-		const ambient_header_offset = data.headers_level_offset;
-		data.headers_level_offset -= header_level - 2; //disregard nesting level of the embedded header.
+		const [parsed_contents, level_of_header_being_embedded] = return_data;
+		const ambient_header_level_outside = data.ambient_header_level;
+		const ambient_header_offset_outside = data.headers_level_offset;
+		const ambient_header_stack = data.header_stack;
+		data.header_stack = [];
+		data.headers_level_offset = data.ambient_header_level - level_of_header_being_embedded;
 		const unrolled_contents = [] as node[];
 		const was_in_thm_env = data.in_thm_env;
 		if (this.attribute !== undefined) {
 			//unrolling within an environment
 			data.in_thm_env = true;
 		}
+		const candidate_file = data.find_file(this.content);
+		if(candidate_file === undefined){
+			throw new Error("Could not find file: " + this.content)
+		}
+		const ambient_current_file = data.current_file;
+		data.current_file = candidate_file;
 		for (const elt of parsed_contents) {
 			unrolled_contents.push(...(await elt.unroll(data, settings)));
 		}
 		if (!was_in_thm_env) {
 			data.in_thm_env = false;
 		}
-		data.headers_level_offset = ambient_header_offset;
-		// Make a label.
-
+		data.ambient_header_level = ambient_header_level_outside;
+		data.headers_level_offset = ambient_header_offset_outside;
+		data.current_file = ambient_current_file
+		data.header_stack=ambient_header_stack
 		const address =
 			this.content === "" ? data.longform_file.basename : this.content;
 		if (this.attribute !== undefined) {
@@ -142,12 +150,6 @@ export class EmbedWikilink implements node {
 				),
 			];
 		}
-		this.label = await label_from_location(
-			data,
-			address,
-			settings,
-			this.header,
-		);
 		return unrolled_contents;
 	}
 	async latex(
@@ -155,10 +157,12 @@ export class EmbedWikilink implements node {
 		buffer_offset: number,
 		settings: ExportPluginSettings,
 	): Promise<number> {
-		return (
-			buffer_offset +
-			buffer.write("\\autoref{" + this.label + "}\n", buffer_offset)
+		console.error(
+			"Embed wikilink " +
+				this.content +
+				"should have been unrolled to something else",
 		);
+		return 0;
 	}
 }
 
@@ -235,6 +239,9 @@ export class Wikilink implements node {
 		data: metadata_for_unroll,
 		settings: ExportPluginSettings,
 	): Promise<node[]> {
+		if(this.content === ""){
+			this.content = data.current_file.basename
+		}
 		return [
 			new UnrolledWikilink(
 				data,
@@ -400,6 +407,7 @@ export class UnrolledWikilink implements node {
 			depth: unroll_data.depth,
 			env_hash_list: unroll_data.env_hash_list,
 			parsed_file_bundle: unroll_data.parsed_file_bundle,
+			ambient_header_level: unroll_data.ambient_header_level,
 			headers_level_offset: unroll_data.headers_level_offset,
 			explicit_env_index: unroll_data.explicit_env_index,
 			find_file: unroll_data.find_file,
@@ -410,6 +418,7 @@ export class UnrolledWikilink implements node {
 			media_files: [...unroll_data.media_files],
 			bib_keys: [...unroll_data.bib_keys],
 		};
+		this.address = address
 		this.attribute = attribute;
 		this.address = address;
 		this.header = header;
@@ -420,13 +429,9 @@ export class UnrolledWikilink implements node {
 		buffer_offset: number,
 		settings: ExportPluginSettings,
 	): Promise<number> {
-		const address =
-			this.address === ""
-				? this.unroll_data.longform_file.basename
-				: this.address;
 		const label = await label_from_location(
 			this.unroll_data,
-			address,
+			this.address,
 			settings,
 			this.header,
 		);

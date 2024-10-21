@@ -59,11 +59,6 @@ export class ExplicitRef implements node {
 		data: metadata_for_unroll,
 		settings: ExportPluginSettings,
 	): Promise<node[]> {
-		this.label = explicit_label(
-			data.longform_file,
-			data.current_file,
-			this.label,
-		);
 		return [this];
 	}
 	async latex(

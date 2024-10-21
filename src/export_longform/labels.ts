@@ -54,14 +54,14 @@ export async function label_from_location(
 	if (header === "" || header === undefined) {
 		header = "statement";
 	}
-	let resolved_header = await resolve_header_label(
+	let resolved_head_label = await resolve_header_label(
 		address,
 		header,
 		data.parsed_file_bundle,
 		data.find_file,
 		settings,
 	);
-	if (resolved_header === undefined) {
+	if (resolved_head_label === undefined) {
 		notice_and_warn(
 			"could not resolve header at " +
 				address +
@@ -69,13 +69,13 @@ export async function label_from_location(
 				header +
 				" keeping the header label as-is",
 		);
-		resolved_header =
+		resolved_head_label =
 			typeof header === "string" ? header : header.join(".");
 	}
 	if (address === "" || address === data.longform_file.basename) {
-		return format_label("loc:" + resolved_header);
+		return format_label("loc:" + resolved_head_label);
 	}
-	return format_label("loc:" + address + "." + resolved_header);
+	return format_label("loc:" + address + "." + resolved_head_label);
 }
 
 async function resolve_header_label(
