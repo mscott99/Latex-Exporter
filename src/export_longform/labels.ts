@@ -51,6 +51,9 @@ export async function label_from_location(
 	if (address_is_image_file(address)) {
 		return format_label("fig:" + address);
 	}
+	if(address === ""){
+		return "" // empty label
+	}
 	if (header === "" || header === undefined) {
 		header = "statement";
 	}

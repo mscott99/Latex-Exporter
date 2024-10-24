@@ -239,7 +239,7 @@ export class Wikilink implements node {
 		data: metadata_for_unroll,
 		settings: ExportPluginSettings,
 	): Promise<node[]> {
-		if(this.content === ""){
+		if(this.content === "" && this.header !== undefined){
 			this.content = data.current_file.basename
 		}
 		return [
