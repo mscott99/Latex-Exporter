@@ -126,6 +126,7 @@ export class Header implements node {
 				(await label_from_location(
 					this.data,
 					this.data.current_file.basename, //File the header came from
+					this.data.current_file,
 					settings,
 					await Promise.all(promises),
 				)) +

@@ -368,6 +368,7 @@ export async function parse_embed_content(
 	find_file: (address: string) => TFile | undefined,
 	read_tfile: (file: TFile) => Promise<string>,
 	parsed_cache: note_cache,
+	file_of_origin: TFile,
 	settings: ExportPluginSettings,
 	header?: string,
 ): Promise<[node[], number] | undefined> {
@@ -390,7 +391,9 @@ export async function parse_embed_content(
 	const header_elt = await find_header(header, [content.body], settings);
 	if (header_elt === undefined) {
 		notice_and_warn(
-			"Header not found: " + header + " in file with address " + address,
+			"Header not found: " + header + " in file with address " + address +
+				"In note:\n"+
+				file_of_origin.path,
 		);
 		return undefined;
 	}

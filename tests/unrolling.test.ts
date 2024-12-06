@@ -1,10 +1,10 @@
 jest.mock("obsidian");
 import { DEFAULT_SETTINGS } from "../src/export_longform/interfaces";
-
 import {
 	get_find_file_fn,
 	read_tfile,
 	get_unrolled_file_contents,
+	get_latex_file_contents,
 } from "./test_utils";
 import {
 	UnrolledWikilink,
@@ -56,39 +56,24 @@ describe("split_display_blocks", () => {
 			DEFAULT_SETTINGS,
 		).body;
 		const data = init_data(longform_file, read_tfile, find_file);
-		const unrolled_content = await unroll_array(
-			data,
-			parsed_contents,
+		const unrolled_content = await get_latex_file_contents(
+			"longform_labels",
 			DEFAULT_SETTINGS,
 		);
-
-		const expected_content = [
-			new Environment(
-				[new Paragraph([new Text("Content of the other lemma.")])],
-				"theorem",
-				"loc:other_lem.statement",
-			),
-			new Environment(
-				[
-					new Paragraph([new Text("some stuff")]),
-					new DisplayMath("\\varepsilon", undefined),
-					new Paragraph([
-						new Text("reference:"),
-						new UnrolledWikilink(
-							data,
-							undefined,
-							"other_lem",
-							undefined,
-							undefined,
-						),
-					]),
-				],
-				"lemma",
-				"lem-label_1",
-			),
-		];
-
-		expect(unrolled_content).toEqual(expected_content);
+		const expected = `\\begin{theorem}
+\\label{loc:other_lem.statement}
+Content of the other lemma.
+\\end{theorem}
+\\begin{lemma}
+\\label{lem:label_1}
+some stuff
+\\begin{equation*}
+\\varepsilon
+\\end{equation*}
+reference:\\autoref{loc:other_lem.statement}
+\\end{lemma}
+`
+		expect(unrolled_content).toEqual(expected);
 	});
 
 	//Difficult to compare with a large data object.

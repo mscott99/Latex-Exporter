@@ -70,7 +70,12 @@ export class EmbedWikilink implements node {
 			} else {
 				data.media_files.push(file);
 				const p = new Plot(file, this.display);
-				p.label = await label_from_location(data, file.name, settings);
+				p.label = await label_from_location(
+					data,
+					file.name,
+					data.current_file,
+					settings,
+				);
 				// Resolve the label early. We can do this because label_from_location will not need to resolve headers.
 				return [p];
 			}
@@ -83,6 +88,7 @@ export class EmbedWikilink implements node {
 			data.find_file,
 			data.read_tfile,
 			data.parsed_file_bundle,
+			data.current_file,
 			settings,
 			this.header,
 		);
@@ -111,7 +117,8 @@ export class EmbedWikilink implements node {
 		const ambient_header_offset_outside = data.headers_level_offset;
 		const ambient_header_stack = data.header_stack;
 		data.header_stack = [];
-		data.headers_level_offset = data.ambient_header_level - level_of_header_being_embedded;
+		data.headers_level_offset =
+			data.ambient_header_level - level_of_header_being_embedded;
 		const unrolled_contents = [] as node[];
 		const was_in_thm_env = data.in_thm_env;
 		if (this.attribute !== undefined) {
@@ -119,8 +126,8 @@ export class EmbedWikilink implements node {
 			data.in_thm_env = true;
 		}
 		const candidate_file = data.find_file(this.content);
-		if(candidate_file === undefined){
-			throw new Error("Could not find file: " + this.content)
+		if (candidate_file === undefined) {
+			throw new Error("Could not find file: " + this.content);
 		}
 		const ambient_current_file = data.current_file;
 		data.current_file = candidate_file;
@@ -132,8 +139,8 @@ export class EmbedWikilink implements node {
 		}
 		data.ambient_header_level = ambient_header_level_outside;
 		data.headers_level_offset = ambient_header_offset_outside;
-		data.current_file = ambient_current_file
-		data.header_stack=ambient_header_stack
+		data.current_file = ambient_current_file;
+		data.header_stack = ambient_header_stack;
 		const address =
 			this.content === "" ? data.longform_file.basename : this.content;
 		if (this.attribute !== undefined) {
@@ -144,6 +151,7 @@ export class EmbedWikilink implements node {
 					await label_from_location(
 						data,
 						address,
+						data.current_file,
 						settings,
 						this.header,
 					),
@@ -170,11 +178,13 @@ export class Plot implements node {
 	image: TFile;
 	label: string;
 	caption: string | undefined;
+	file_of_origin: TFile;
 	constructor(image: TFile, caption?: string) {
 		this.image = image;
 		this.caption = caption;
 	}
-	async unroll(): Promise<node[]> {
+	async unroll(data: metadata_for_unroll): Promise<node[]> {
+		this.file_of_origin = data.current_file;
 		return [this];
 	}
 	async latex(
@@ -196,7 +206,9 @@ export class Plot implements node {
 			const warning =
 				"WARNING: Figure created from '" +
 				this.image.name +
-				"' has no caption.";
+				"' has no caption.\n" +
+				"In note:\n" +
+				this.file_of_origin.path;
 			notice_and_warn(warning);
 		} else {
 			caption_text = this.caption;
@@ -239,8 +251,8 @@ export class Wikilink implements node {
 		data: metadata_for_unroll,
 		settings: ExportPluginSettings,
 	): Promise<node[]> {
-		if(this.content === "" && this.header !== undefined){
-			this.content = data.current_file.basename
+		if (this.content === "" && this.header !== undefined) {
+			this.content = data.current_file.basename;
 		}
 		return [
 			new UnrolledWikilink(
@@ -418,7 +430,7 @@ export class UnrolledWikilink implements node {
 			media_files: [...unroll_data.media_files],
 			bib_keys: [...unroll_data.bib_keys],
 		};
-		this.address = address
+		this.address = address;
 		this.attribute = attribute;
 		this.address = address;
 		this.header = header;
@@ -432,6 +444,7 @@ export class UnrolledWikilink implements node {
 		const label = await label_from_location(
 			this.unroll_data,
 			this.address,
+			this.unroll_data.current_file,
 			settings,
 			this.header,
 		);
