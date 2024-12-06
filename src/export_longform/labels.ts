@@ -98,6 +98,8 @@ async function resolve_header_label(
 	if (cached_content === undefined) {
 		const file = find_file(address);
 		if (file === undefined || file_cache[file.basename] === undefined) {
+			const header_string =
+				typeof header === "string" ? header : header.join(".");
 			if (file !== undefined && file_cache[file.basename] === undefined) {
 				notice_and_warn(
 					"address of reference '" +
@@ -106,18 +108,17 @@ async function resolve_header_label(
 						"In note:\n" +
 						file_of_origin.path,
 				);
+			} else {
+				notice_and_warn(
+					"keeping the header address of " +
+						address +
+						": " +
+						header_string +
+						" as-is\n" +
+						"In note:\n" +
+						file_of_origin.path,
+				);
 			}
-			const header_string =
-				typeof header === "string" ? header : header.join(".");
-			notice_and_warn(
-				"keeping the header address of " +
-					address +
-					": " +
-					header_string +
-					" as-is\n" +
-					"In note:\n" +
-					file_of_origin.path,
-			);
 			return header_string;
 		}
 		file_content = file_cache[file.basename].body;
