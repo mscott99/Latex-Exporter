@@ -45,14 +45,15 @@ function explicit_label_with_address(label: string, address: string) {
 export async function label_from_location(
 	data: metadata_for_unroll,
 	address: string,
+	file_of_origin: TFile,
 	settings: ExportPluginSettings,
 	header?: string | string[],
 ): Promise<string> {
 	if (address_is_image_file(address)) {
 		return format_label("fig:" + address);
 	}
-	if(address === ""){
-		return "" // empty label
+	if (address === "") {
+		return ""; // empty label
 	}
 	if (header === "" || header === undefined) {
 		header = "statement";
@@ -62,6 +63,7 @@ export async function label_from_location(
 		header,
 		data.parsed_file_bundle,
 		data.find_file,
+		data.current_file,
 		settings,
 	);
 	if (resolved_head_label === undefined) {
@@ -70,7 +72,9 @@ export async function label_from_location(
 				address +
 				": " +
 				header +
-				" keeping the header label as-is",
+				" keeping the header label as-is.\n" +
+				"In note:\n" +
+				file_of_origin.path,
 		);
 		resolved_head_label =
 			typeof header === "string" ? header : header.join(".");
@@ -86,6 +90,7 @@ async function resolve_header_label(
 	header: string | string[],
 	file_cache: note_cache,
 	find_file: (address: string) => TFile | undefined,
+	file_of_origin: TFile,
 	settings: ExportPluginSettings,
 ): Promise<string | undefined> {
 	let file_content: node[];
@@ -97,7 +102,9 @@ async function resolve_header_label(
 				notice_and_warn(
 					"address of reference '" +
 						address +
-						"' is referenced but was not embedded.",
+						"' is referenced but was not embedded.\n" +
+						"In note:\n" +
+						file_of_origin.path,
 				);
 			}
 			const header_string =
@@ -107,7 +114,9 @@ async function resolve_header_label(
 					address +
 					": " +
 					header_string +
-					" as-is",
+					" as-is\n" +
+					"In note:\n" +
+					file_of_origin.path,
 			);
 			return header_string;
 		}
@@ -135,7 +144,9 @@ async function resolve_header_label(
 				header_string +
 				"' in file with address '" +
 				address +
-				"', keeping the header label as-is",
+				"', keeping the header label as-is\n" +
+				"In note:\n" +
+				file_of_origin.path,
 		);
 		return header_string;
 	}
