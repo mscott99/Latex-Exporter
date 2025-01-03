@@ -3,13 +3,13 @@ Write a paper directly in Obsidian! Export an Obsidian note to a full-fledged La
 ## Features
 This plugin supports:
 - Embedded content, including embedded content from headers.
-- LaTeX environments (e.g. \begin{theorem} environment, or lemma, etc.)
-- Seemless references to LaTeX environments from wikilinks.
+- LaTeX environments (e.g., \begin{theorem} environment, or lemma, etc.).
+- Seamless references to LaTeX environments from wikilinks.
 - Citations: of many kinds, including multi-citations.
 - LaTeX sections from Markdown headers (and subsections, etc.)
 - References to sections.
 - Equation references, including within `align` environments.
-- Title and author from the yaml header.
+- Title and author from the YAML header.
 - Specialized abstract and appendix sections.
 - Template-based exports.
 - Selection export to the clipboard.
@@ -23,16 +23,16 @@ This plugin is best used with plugins:
 - Extended MathJax, to use latex macros both in Obsidian and in the export.
 
 ## Purpose and concept
-Currently, converting a set of notes in a vault to a linear polished text is a non-trivial task. This is an obstacle in the overall writing task which fragments the writing accross tools: note-taking in Obsidian, followed by final writing in Overleaf. With this plugin, a single unified workflow becomes possible, spanning from ideation all the way to the final product. Keep writing your paper in Obsidian until you have polished the content, and your completed paper is a click away (though you may want to validate the formatting in LaTeX.) With this plugin, your paper can emerge organically from your graph of notes.
+Currently, using a set of notes in a vault to produce a single polished text is a non-trivial task. This is an obstacle in the overall writing task which fragments the writing process across tools: note-taking in Obsidian, followed by final writing in Overleaf. With this plugin, a single unified workflow becomes possible, spanning from ideation all the way to the final product, all in Obsidian. Keep writing your paper in Obsidian until the content is polished, and your completed paper is a click away.  With this plugin, your paper can emerge organically from your graph of notes.
 
-Here is how it works. The user should create a "longform" note which structures the content primarily through embed links (transclusions). The longform note specifies the sections and assembles content from other notes into a linear piece of writing. The paper should be readable from this note alone when viewed in Obsidian, even though the content may be spread accross your vault. Then exporting this embed-heavy note will extracts relevant content from your vault and create a single LaTeX output file.
+Here is how it works. You should create a "longform" note which structures the content, primarily through embed links (a.k.a. transclusions). The longform note specifies the sections of the main text and assembles content from other notes into a linear piece of writing. The paper should be readable from this note alone when viewed in Obsidian, even though the content may be spread across your vault. Then, exporting this embed-heavy note with Latex Exporter will extract all the relevant content from your vault and create a single LaTeX output file.
 
-For example, say you have a theorem which you would like to include in your paper. The theorem should reside in its own note, with the statement under the `Statement` header and its proof under the `Proof` header. Then in the longform note, 
-you may want to include the statement of the theorem in the introduction, which is done with the syntax `theorem::![[theorem_note#Statement]]`. Yet you may defer the proof to a later section. In that later section, you embed the proof with `proof::![[theorem_note#Proof]]`. Hyperlinks between the theorem and the proof will be automatically generated on export. Then what if you want to reference this theorem? You only need a standard wikilink, `[[theorem_note]]`. Note that each one of these embedding statements do not need to be in the longform note, or even in the same note! They merely need to be in a place which is visible in Obsidian from your longform note.
+For example, let's say that you have a theorem which you would like to include in your paper. The theorem should reside in its own note, with the statement under the header `Statement` and its proof under the `Proof` header in the same note. Then in the longform note, 
+you may want to include the statement of the theorem in the introduction by writing `theorem::![[theorem_note#Statement]]` on a new line. You would like to defer the proof to a later section. In that later section, you embed the proof by writing `proof::![[theorem_note#Proof]]`. Hyperlinks between the theorem and the proof will be automatically generated when exporting the longform note. What about referencing this theorem? For this you should use a standard wikilink, `[[theorem_note]]`. Note that the embedding structure can be recursive; as long as the content is visible in Obsidian from the longform note, it will be included in the export. If we think of the individual Markdown files, this means that an embedding statement like `theorem::![[theorem_note#Statement]]` may be situated within some third note `third_note.md`, which is itself embedded into the longform note, and the two-layers-deep content will still be fetched and added to the exported file.
 
-This plugin uses the information found in the graphical organisation of notes to create a sensible LaTeX document. It is not attempting to match the obsidian note visually, only its content. The LaTeX code in the export is minimal as much as possible, so that the author can later edit it if necessary.
+This plugin uses the information found in the graphical organization of notes to create a sensible LaTeX document. It is not attempting to match the obsidian note visually, only its content. The LaTeX code in the export is minimal as much as possible, so that the author can later edit it if necessary.
 ## Example
-See the sub-directory `example/vault` of the repository hosting this plugin for an example of an export. The corresponding pdf can be found [here](example/export/longform_note_output.pdf).
+See the subdirectory `example/vault` of the repository hosting this plugin for an example of an export. The corresponding PDF can be found [here](example/export/longform_note_output.pdf).
 | Obsidian | LaTeX Export |
 | ---- | ----- |
 |<img src="example/export/Screenshot_Obsidian-1.png" height="450"> |<img src="example/export/longform_note_output-1.png" height="450"> |
@@ -44,17 +44,23 @@ See the sub-directory `example/vault` of the repository hosting this plugin for 
 ### `Latex Exporter:Export current note`
 Navigate to the "longform" note that you would like to export, and run the command `Export to paper`. The plugin will create a folder in the root of your vault (or in the appropriate sub-folder inside your vault, if specified in the settings of the plugin), and will write all required files to this folder. The entire content inside the longform note will be exported, except if there is an h1 header named `Body` in the note, in which case only the content under `Body` will be exported. Additionally, content h1 headers `Abstract` and `Appendix` will be exported appropriately.
 
-To use citations, place a bib file named `bibliography.bib` in the root of your vault; it will be copied upon export to the correct location. Also, a you may place a file `preamble.sty` containing a LaTeX preamble in the root of the vault, which will also be copied. The `preamble.sty` file is meant to be used with the Extended MathJax plugin.
+To use citations, place a bib file named `bibliography.bib` in the root of your vault; it will be copied upon export to the correct location. Also, you can place a file `preamble.sty` containing a LaTeX preamble in the root of the vault, which will also be copied to the export directory. The `preamble.sty` file is meant to be used with the Extended MathJax plugin. Manual changes to the exported files `bibliography.bib` and `preamble.sty` inside export directories will not be overwritten by later exports.
 
 *Using a template*: In the settings, it is possible to specify the path to a template file. If this field is left blank, then the plugin will generate minimal LaTeX code required for the export to compile well. To use a template, place a template file inside your vault and specify its path in the plugin settings. A template file should contains LaTeX code with a pandoc-style anchor `$body$`, to be replaced by the converted content of the longform note. The anchors `$abstract$` and `$appendix$` can optionally be specified.
-#### Overwriting behaviour
-Before making manual changes to the exported LaTeX file, first copy the newly-generated folder to a different location, because re-running the export command from the same note will overwrite the exported LaTeX file (surrounding files, like the preamble or bib file, will not be overwritten). This behaviour is meant to facilitate editing the obsidian files while seeing the updated LaTeX output quickly.
+#### Overwriting behavior
+Before making manual changes to the exported LaTeX file, be careful to first copy the newly-generated folder to a different location, because under some settings (not the default), re-running the export command from the same note will overwrite the exported LaTeX file (surrounding files, like the preamble or bib file, will not be overwritten). This overwriting setting is meant to facilitate editing the obsidian files while seeing the updated LaTeX output quickly.
 ### `Latex Exporter:Export selection to clipboard`
 This command exports the selected portion of the current note to the clipboard. To use this command, navigate to the note of interest, go to the editing view (it does not work in reading view), select a portion of the note by dragging your cursor, and while the text is selected run `Cmd+P` and select the command `Latex Exporter:Export selection`. Be warned that the LaTeX exported using this method will only compile well if pasted into a document that imports the relevant LaTeX packages.
 ### Warnings
-Heed the warnings! They are meant to be helpful feedback as to what can be expected to fail based on the structure of the exported content. For example, you may have a wikilink (which is trying to become a reference) to a header which is not visible from the longform note. To get a good output you should fix the cause of the warnings.
+Heed the warnings! They are (usually) not bugs, but an important part of the plugin. They give you helpful feedback as to what should be fixed within your own notes to ensure a good export. For example, you may have a wikilink (which is trying to become a reference) addressed to a header which happens to not be visible from the longform note. The plugin will detect some such structural issues and tell you about it.
 
-The warnings appear as notices, but these go away quickly. To see them longer, you can find them in the developper console that you can access with `Ctrl + Shift + I` on Windows/Linux, or `Cmd + Option + I` on Mac.
+The warnings appear as notices, but these go away quickly. To see them longer, you can find them in the developer console that you can access with `Ctrl + Shift + I` on Windows/Linux, or `Cmd + Option + I` on Mac.
+
+Some other mistakes go undetected in the export phase, so it is a good idea to also look at diagnostic warnings from latex editors that appear within the exported latex documents. These may tell you about other mistakes in your notes.
+
+If you get an export problem which does not come from your notes, and is not listed in [[#Known limitations]],
+bug reports on GitHub are highly appreciated!
+
 ## Behaviour of supported elements
 Most markdown elements supported by Obsidian are supported by this plugin, with the notable exception of tables.
 ### Markdown headers 
@@ -103,18 +109,24 @@ Images will be copied to a subfolder of the output folder named "Files".
 #### Excalidraw support
 To export excalidraw embedded images, follow the following instructions. 
 1. In the Excalidraw settings, enable "Embedding Excalidraw into your Notes and Exporting > Export Settings > Auto-export Settings > Auto-export PNG".
-2. Make sure that the png exported by Excalidraw is in the /Files folder at the root of your vault. The embedding wikilink can be to the excalidraw note (instead of the exported png).
+2. Make sure that the PNG exported by Excalidraw is in the /Files folder at the root of your vault. The embedding wikilink can be to the Excalidraw note (instead of the exported PNG).
 ### Lists
-Both ordered and unordered lists are supported. Lines following a number will be included in the item, regardless of indent. To finish a list, leave a blank line. Nested unordered lists are not supported.
+Both ordered, and unordered lists are supported. Lines following a number will be included in the item, regardless of indent. To finish a list, leave a blank line. Nested unordered lists are not supported.
 # Known limitations
+Let me know through issues on GitHub if enhanced support for some of these
+are of interest to you.
+
 - Tables are not supported.
-- Lists may parse within display math. To avoid this, any line that starts with '-' or '+' should have no space right after the symbols '-', '+'.
-- Limited parsing of lists; they are indent-blind.
-- Inline code is not supported, and display is not tested.
-# Support
+- An equation in display math may be incorrectly parsed as a list within
+a display math block. To avoid this, make sure that any line that
+starts with '-' or '+' should have no space right after the symbols '-', '+'.
+- Limited parsing of lists (especially nested lists); they are indent-blind.
+- Inline code is not supported, and display code is not tested.
+# Support me!
 If you would like to support me, I appreciate it!        <a href='https://ko-fi.com/I2I712UFPK' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi2.png?v=3' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>  
 # Similar projects
-- Export to TeX: A very similar plugin. Latex Exporter seems to have more features in the export for references and citations, an Export to TeX has other advantages, such as exporting outside of the vault.
-- Obsidian-to-latex: python export tool alternative implementation with a different focus.
-- Plugin: Latex-like Theorem & Equation Referencer. It has improved visual appeal withing Obsidian. Compatibility with that plugin is a possible improvement of this plugin.
+- Export to TeX: A very similar plugin. Latex Exporter seems to have more features in the export for references and citations, an Export to TeX has other advantages, such as exporting outside the vault.
+- Obsidian-to-latex: python export tool with a different focus.
+- Plugin: Latex-like Theorem & Equation Referencer. It focuses on writing everything within single notes, whereas Latex Exporter
+uses the graph nature of Obsidian. It has improved visuals for theorems withing Obsidian. Compatibility with that plugin is a possible improvement of Latex Exporter plugin.
 - Plugin: Copy as LaTeX. Similar to the `Export selection` command, but without support for embedded content.
