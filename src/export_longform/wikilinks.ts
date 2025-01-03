@@ -345,7 +345,7 @@ export class Environment implements node {
 				buffer_offset += buffer.write(
 					"[\\hypertarget{" +
 						this.label +
-						"}Proof of \\autoref{" +
+						"}Proof of \\cref{" +
 						this.label.replace("proof", "statement") +
 						"}]\n",
 					buffer_offset,
@@ -460,7 +460,7 @@ export class UnrolledWikilink implements node {
 		if (this.header?.toLowerCase().trim() !== "proof") {
 			return (
 				buffer_offset +
-				buffer.write("\\autoref{" + label + "}", buffer_offset)
+				buffer.write("\\cref{" + label + "}", buffer_offset)
 			);
 		} else {
 			return (

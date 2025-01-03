@@ -70,7 +70,7 @@ some stuff
 \\begin{equation*}
 \\varepsilon
 \\end{equation*}
-reference:\\autoref{loc:other_lem.statement}
+reference:\\cref{loc:other_lem.statement}
 \\end{lemma}
 `
 		expect(unrolled_content).toEqual(expected);
@@ -122,7 +122,7 @@ reference:\\autoref{loc:other_lem.statement}
 	// 		longform_file,
 	// 		DEFAULT_SETTINGS
 	// 	);
-	// 	const expected_content = `\\begin{lemma}\n\\label{lem:label_1}\nsome stuff\n\\begin{equation*}\n\\varepsilon\n\\end{equation*}\n\\end{lemma}\n\\begin{theorem}\n\\label{loc:other_lem.statement}\nContent of the other lemma.\n\\end{theorem}\nreference:\\autoref{loc:other_lem.statement}\n`;
+	// 	const expected_content = `\\begin{lemma}\n\\label{lem:label_1}\nsome stuff\n\\begin{equation*}\n\\varepsilon\n\\end{equation*}\n\\end{lemma}\n\\begin{theorem}\n\\label{loc:other_lem.statement}\nContent of the other lemma.\n\\end{theorem}\nreference:\\cref{loc:other_lem.statement}\n`;
 	// 	expect(parsed_content.body).toEqual(expected_content);
 	// });
 });
