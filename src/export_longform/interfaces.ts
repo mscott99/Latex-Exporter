@@ -37,12 +37,6 @@ export const DEFAULT_SETTINGS: ExportPluginSettings = {
 	overwrite_preamble: false,
 };
 
-export interface file_content {
-	yaml: { [key: string]: string };
-	file: TFile;
-	children: node[];
-}
-
 export type parsed_note = {
 	yaml: { [key: string]: string };
 	body: node[];
