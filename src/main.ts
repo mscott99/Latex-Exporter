@@ -21,7 +21,7 @@ import {
 	ExportPluginSettings,
 	DEFAULT_SETTINGS,
 	parsed_longform,
-	notice_and_warn
+	notice_and_warn,
 } from "./export_longform";
 
 export default class ExportPaperPlugin extends Plugin {
@@ -57,7 +57,7 @@ export default class ExportPaperPlugin extends Plugin {
 			// console.log(parsed_contents.yaml["export_dir"] === "Shared/Exact_regularisation/exports")
 			base_folder = this.app.vault.getFolderByPath(
 				// parsed_contents.yaml["export_dir"],
-				parsed_contents.yaml["export_dir"]
+				parsed_contents.yaml["export_dir"],
 			);
 		} else {
 			base_folder = this.app.vault.getFolderByPath(
@@ -65,7 +65,9 @@ export default class ExportPaperPlugin extends Plugin {
 			);
 		}
 		if (!base_folder) {
-			notice_and_warn(				"Output folder path not found, defaulting to the root of the vault.")
+			notice_and_warn(
+				"Output folder path not found, defaulting to the root of the vault.",
+			);
 			base_folder = this.app.vault.getRoot();
 		}
 		const output_file_name = active_file.basename + "_output.tex";
@@ -484,6 +486,16 @@ class LatexExportSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.default_citation_command)
 					.onChange(async (value) => {
 						this.plugin.settings.default_citation_command = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+		new Setting(containerEl)
+			.setName("Set note names as environment titles")
+			.addToggle((cb) =>
+				cb
+					.setValue(this.plugin.settings.display_result_names)
+					.onChange(async (value) => {
+						this.plugin.settings.display_result_names = value;
 						await this.plugin.saveSettings();
 					}),
 			);
