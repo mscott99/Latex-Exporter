@@ -17,8 +17,8 @@ export function get_header_tex() {
 \\newtheorem{example}{Example}
 
 \\theoremstyle{remark}
-\\newtheorem{rmk}{Remark}[section]
-\\newtheorem{fact}[rmk]{Fact}
-\\newtheorem*{rmk*}{Remark}
+\\newtheorem{remark}{Remark}[section]
+\\newtheorem{fact}[remark]{Fact}
+\\newtheorem*{remark*}{Remark}
 \\newtheorem*{fact*}{Fact}`;
 }
