@@ -12,7 +12,7 @@ describe("my plugin", () => {
 \\label{eq:ref}
 \\sum
 \\end{equation}
-\\cref{eq:ref}
+\\Cref{eq:ref}
 `)
 	})
 	test("aligned env", async () => {
@@ -38,7 +38,7 @@ describe("my plugin", () => {
 \\varepsilon\\\\
 \\end{aligned}
 \\end{equation}
-\\cref{eq:label:1}
+\\Cref{eq:label:1}
 `);
 	});
 });

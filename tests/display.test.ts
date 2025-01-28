@@ -22,9 +22,9 @@ I speak more
 \\varepsilon
 \\end{equation*}
 and $\\varepsilon$
-\\cref{loc:simple_lem.statement}
+\\Cref{loc:simple_lem.statement}
 \\end{lemma}
-\\cref{lem:label}
+\\Cref{lem:label}
 `);
 	});
 	test("Code", async () => {

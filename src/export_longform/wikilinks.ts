@@ -349,7 +349,7 @@ export class Environment implements node {
 			start_env_string +=
 				"[\\hypertarget{" +
 				this.label +
-				"}Proof of \\cref{" +
+				"}Proof of \\Cref{" +
 				this.label.replace("proof", "statement") +
 				"}]";
 		} else if (
@@ -470,7 +470,7 @@ export class UnrolledWikilink implements node {
 		if (this.header?.toLowerCase().trim() !== "proof") {
 			return (
 				buffer_offset +
-				buffer.write("\\cref{" + label + "}", buffer_offset)
+				buffer.write("\\Cref{" + label + "}", buffer_offset)
 			);
 		} else {
 			return (
