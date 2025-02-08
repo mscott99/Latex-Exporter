@@ -22,9 +22,19 @@ I speak more
 \\varepsilon
 \\end{equation*}
 and $\\varepsilon$
-\\autoref{loc:simple_lem.statement}
+\\Cref{loc:simple_lem.statement}
 \\end{lemma}
-\\autoref{lem:label}
+\\Cref{lem:label}
+`);
+	});
+	test("Code", async () => {
+		const result = await get_latex_file_contents(
+			"code_env",
+			DEFAULT_SETTINGS,
+		);
+		expect(result).toEqual(`\\begin{verbatim}
+Here is some _code_ *things*
+\\end{verbatim}
 `);
 	});
 	test("Code", async () => {

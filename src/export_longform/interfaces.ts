@@ -23,6 +23,7 @@ export interface ExportPluginSettings {
 	warn_before_overwrite: boolean;
 	default_citation_command: string;
 	overwrite_preamble: boolean;
+	display_result_names: boolean;
 }
 
 export const DEFAULT_SETTINGS: ExportPluginSettings = {
@@ -35,13 +36,8 @@ export const DEFAULT_SETTINGS: ExportPluginSettings = {
 	warn_before_overwrite: true,
 	default_citation_command: "cite",
 	overwrite_preamble: false,
+	display_result_names: false,
 };
-
-export interface file_content {
-	yaml: { [key: string]: string };
-	file: TFile;
-	children: node[];
-}
 
 export type parsed_note = {
 	yaml: { [key: string]: string };

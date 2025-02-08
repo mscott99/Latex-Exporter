@@ -69,7 +69,7 @@ export class ExplicitRef implements node {
 		return (
 			buffer_offset +
 			buffer.write(
-				"\\autoref{" + format_label(this.label) + "}",
+				"\\Cref{" + format_label(this.label) + "}",
 				buffer_offset,
 			)
 		);

@@ -20,6 +20,8 @@ import {
 	get_header_tex,
 	ExportPluginSettings,
 	DEFAULT_SETTINGS,
+	parsed_longform,
+	notice_and_warn,
 } from "./export_longform";
 
 export default class ExportPaperPlugin extends Plugin {
@@ -42,17 +44,31 @@ export default class ExportPaperPlugin extends Plugin {
 		if (this.settings.base_output_folder === "") {
 			this.settings.base_output_folder = "/";
 		}
-		let base_folder = this.app.vault.getFolderByPath(
-			this.settings.base_output_folder,
+		const notes_dir = this.app.vault;
+		const parsed_contents = await parse_longform(
+			notes_dir.cachedRead.bind(notes_dir),
+			this.find_file,
+			active_file,
+			settings,
 		);
+
+		let base_folder;
+		if (parsed_contents.yaml["export_dir"] != null) {
+			// console.log(parsed_contents.yaml["export_dir"] === "Shared/Exact_regularisation/exports")
+			base_folder = this.app.vault.getFolderByPath(
+				// parsed_contents.yaml["export_dir"],
+				parsed_contents.yaml["export_dir"],
+			);
+		} else {
+			base_folder = this.app.vault.getFolderByPath(
+				this.settings.base_output_folder,
+			);
+		}
 		if (!base_folder) {
+			notice_and_warn(
+				"Output folder path not found, defaulting to the root of the vault.",
+			);
 			base_folder = this.app.vault.getRoot();
-			console.warn(
-				"Output folder path not found, defaulting to the root of the vault.",
-			);
-			new Notice(
-				"Output folder path not found, defaulting to the root of the vault.",
-			);
 		}
 		const output_file_name = active_file.basename + "_output.tex";
 		let output_folder_path = path.join(
@@ -73,12 +89,13 @@ export default class ExportPaperPlugin extends Plugin {
 		const preamble_file = the_preamble_file ? the_preamble_file : undefined;
 		if (preamble_file !== undefined) {
 			const new_preamble = path.join(output_folder_path, "preamble.sty");
-			const existing_preamble = this.app.vault.getFileByPath(new_preamble)
-			if (!existing_preamble){
+			const existing_preamble =
+				this.app.vault.getFileByPath(new_preamble);
+			if (!existing_preamble) {
 				this.app.vault.copy(preamble_file, new_preamble);
 				export_message += "- Copying the preamble file\n";
-			} else if (this.settings.overwrite_preamble){
-				this.app.vault.delete(existing_preamble)
+			} else if (this.settings.overwrite_preamble) {
+				this.app.vault.delete(existing_preamble);
 				this.app.vault.copy(preamble_file, new_preamble);
 				export_message += "- Overwriting the preamble file\n";
 			} else {
@@ -128,6 +145,7 @@ export default class ExportPaperPlugin extends Plugin {
 			out_file = await this.app.vault.create(output_path, "");
 			await this.proceed_with_export(
 				active_file,
+				parsed_contents,
 				settings,
 				output_folder_path,
 				template_file,
@@ -144,6 +162,7 @@ export default class ExportPaperPlugin extends Plugin {
 					() =>
 						this.proceed_with_export(
 							active_file,
+							parsed_contents,
 							settings,
 							output_folder_path,
 							template_file,
@@ -156,6 +175,7 @@ export default class ExportPaperPlugin extends Plugin {
 			} else {
 				await this.proceed_with_export(
 					active_file,
+					parsed_contents,
 					settings,
 					output_folder_path,
 					template_file,
@@ -169,6 +189,7 @@ export default class ExportPaperPlugin extends Plugin {
 
 	async proceed_with_export(
 		active_file: TFile,
+		parsed_contents: parsed_longform,
 		settings: ExportPluginSettings,
 		output_folder_path: string,
 		template_file: TFile | undefined,
@@ -177,12 +198,6 @@ export default class ExportPaperPlugin extends Plugin {
 		partial_message: string = "",
 	) {
 		const notes_dir = this.app.vault;
-		const parsed_contents = await parse_longform(
-			notes_dir.cachedRead.bind(notes_dir),
-			this.find_file,
-			active_file,
-			settings,
-		);
 
 		if (parsed_contents.media_files.length > 0) {
 			const files_folder = path.join(output_folder_path, "Files");
@@ -471,6 +486,19 @@ class LatexExportSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.default_citation_command)
 					.onChange(async (value) => {
 						this.plugin.settings.default_citation_command = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+		new Setting(containerEl)
+			.setName("File name as environment title")
+			.setDesc(
+				"Set note file names as environment titles for embedded latex environments.",
+			)
+			.addToggle((cb) =>
+				cb
+					.setValue(this.plugin.settings.display_result_names)
+					.onChange(async (value) => {
+						this.plugin.settings.display_result_names = value;
 						await this.plugin.saveSettings();
 					}),
 			);

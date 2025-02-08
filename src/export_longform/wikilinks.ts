@@ -155,6 +155,7 @@ export class EmbedWikilink implements node {
 						settings,
 						this.header,
 					),
+					address,
 				),
 			];
 		}
@@ -290,12 +291,18 @@ export class Environment implements node {
 	}
 	label: string | undefined;
 	type: string;
+	address_of_origin: string | undefined;
 	// address_of_origin: string | undefined;
-	constructor(children: node[], type: string, label?: string) {
+	constructor(
+		children: node[],
+		type: string,
+		label?: string,
+		address_of_origin?: string,
+	) {
 		this.children = children;
 		this.type = type.toLowerCase().trim();
 		this.label = label;
-		// this.address_of_origin = address_of_origin;
+		this.address_of_origin = address_of_origin;
 	}
 	static build_from_match(
 		match: RegExpMatchArray,
@@ -328,6 +335,7 @@ export class Environment implements node {
 				this.label,
 			);
 		}
+		this.address_of_origin = undefined; // Do not display the name of the note as title for this one.
 		this.children = await unroll_array(data, this.children, settings);
 		return [this];
 	}
@@ -336,26 +344,28 @@ export class Environment implements node {
 		buffer_offset: number,
 		settings: ExportPluginSettings,
 	): Promise<number> {
-		buffer_offset += buffer.write(
-			"\\begin{" + this.type + "}",
-			buffer_offset,
-		);
-		if (this.label !== undefined) {
-			if (this.type === "proof") {
-				buffer_offset += buffer.write(
-					"[\\hypertarget{" +
-						this.label +
-						"}Proof of \\autoref{" +
-						this.label.replace("proof", "statement") +
-						"}]\n",
-					buffer_offset,
-				);
-			} else {
-				buffer_offset += buffer.write(
-					"\n\\label{" + format_label(this.label) + "}\n",
-					buffer_offset,
-				);
-			}
+		let start_env_string = "\\begin{" + this.type + "}";
+		if (this.type === "proof" && this.label !== undefined) {
+			start_env_string +=
+				"[\\hypertarget{" +
+				this.label +
+				"}Proof of \\Cref{" +
+				this.label.replace("proof", "statement") +
+				"}]";
+		} else if (
+			settings.display_result_names &&
+			this.address_of_origin !== undefined
+		) {
+			// Save the name of the note during unroll
+			start_env_string += "[" + this.address_of_origin + "]";
+		}
+		buffer_offset += buffer.write(start_env_string + "\n", buffer_offset);
+
+		if (this.label !== undefined && this.type !== "proof") {
+			buffer_offset += buffer.write(
+				"\\label{" + format_label(this.label) + "}\n",
+				buffer_offset,
+			);
 		} else {
 			buffer_offset += buffer.write("\n", buffer_offset);
 		}
@@ -460,7 +470,7 @@ export class UnrolledWikilink implements node {
 		if (this.header?.toLowerCase().trim() !== "proof") {
 			return (
 				buffer_offset +
-				buffer.write("\\autoref{" + label + "}", buffer_offset)
+				buffer.write("\\Cref{" + label + "}", buffer_offset)
 			);
 		} else {
 			return (

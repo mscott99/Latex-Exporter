@@ -14,7 +14,7 @@ export function format_label(label: string): string {
 	return label
 		.toLowerCase()
 		.trim()
-		.replace(/\\autoref{/g, "")
+		.replace(/\\Cref{/g, "")
 		.replace(/}/g, "")
 		.replace(/ /g, "_")
 		.replace(/,/g, "")

@@ -124,18 +124,18 @@ describe("split_display_blocks", () => {
 			"embedded_headers",
 			DEFAULT_SETTINGS,
 		);
-		expect(result).toEqual(`\\autoref{loc:second_big}
+		expect(result).toEqual(`\\Cref{loc:second_big}
 \\section{Local}
 \\label{loc:local}
 \\subsection{Normal}
 \\label{loc:headers_embedded.nested.normal}
 \\subsubsection{supernested}
 \\label{loc:double_embed.head.supernested}
-\\autoref{loc:headers_embedded.nested.sub_nested}
+\\Cref{loc:headers_embedded.nested.sub_nested}
 \\subsection{sub nested}
 \\label{loc:headers_embedded.nested.sub_nested}
-\\autoref{loc:headers_embedded.nested}
-\\autoref{loc:local}
+\\Cref{loc:headers_embedded.nested}
+\\Cref{loc:local}
 \\section{Second big}
 \\label{loc:second_big}
 `);
@@ -152,7 +152,7 @@ describe("split_display_blocks", () => {
 	// \\label{loc:headers_embedded.nested.normal}
 	// \\subsubsection{supernested}
 	// \\label{loc:double_embed.head.supernested}
-	// \\autoref{loc:headers_embedded.nested.sub_nested}
+	// \\Cref{loc:headers_embedded.nested.sub_nested}
 	// \\subsection{sub nested}
 	// \\label{loc:headers_embedded.nested.sub_nested}
 	// \\autoref{loc:headers_embedded.nested}
