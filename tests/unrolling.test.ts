@@ -40,6 +40,7 @@ describe("split_display_blocks", () => {
 				[new Paragraph([new Text("Content of lemma2")])],
 				"lemma",
 				"loc:lemma2.statement",
+				"lemma2"
 			),
 		];
 		expect(unrolled_content).toEqual(expected_content);

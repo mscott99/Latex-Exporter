@@ -363,7 +363,7 @@ export class Environment implements node {
 
 		if (this.label !== undefined && this.type !== "proof") {
 			buffer_offset += buffer.write(
-				"\n\\label{" + format_label(this.label) + "}\n",
+				"\\label{" + format_label(this.label) + "}\n",
 				buffer_offset,
 			);
 		} else {

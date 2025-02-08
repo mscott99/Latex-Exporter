@@ -16,7 +16,6 @@ We \emph{have} \textbf{things} ``to" talk about. We can use latex macros: $\aff(
 
 Results are referenced by linking notes: we will show that \Cref{loc:theorem_1.statement} holds by using \Cref{loc:lemma_1.statement}, \Cref{loc:lemma_2.statement}, \Cref{loc:other_small_lemmas.first_other_lemma} and \Cref{loc:other_small_lemmas.second_other_lemma}. We can state results through labelled embeds, as follows. 
 \begin{lemma}
-
 \label{loc:other_small_lemmas.second_other_lemma}
 That the first lemma holds
 \end{lemma}
@@ -34,7 +33,6 @@ Here is an equation that we can reference.
 1+1 = 2
 \end{equation}
 \begin{lemma}
-
 \label{lem:explicit}
 We reference the equation: \Cref{eq:main} and the result: \Cref{lem:explicit}.
 \begin{align}
@@ -45,20 +43,17 @@ We can reference individual lines of an align environment: \Cref{eq:aligned_eq:1
 \end{lemma}
 The next result is in its own note. Embedding the `Statement' header as follows creates a latex environment.
 \begin{theorem}
-
 \label{loc:theorem_1.statement}
 Indeed, $1+1  =  2$.
 \end{theorem}
 We can link to \hyperlink{loc:theorem_1.proof}{the proof} with a wikilink to the ``Proof" header.
 The theorem environment is then referenced as \Cref{loc:theorem_1.statement}, or as \Cref{loc:theorem_1.statement}. To show \Cref{loc:theorem_1.statement}, we need the following two results.
 \begin{lemma}
-
 \label{loc:lemma_1.statement}
 The first fact is that $10-9 = 1$
 \end{lemma}
 We defer \hyperlink{loc:lemma_1.proof}{the proof} to the appendix.
 \begin{lemma}
-
 \label{loc:other_small_lemmas.first_other_lemma}
 A first additional lemma
 \begin{equation*}
@@ -80,7 +75,6 @@ We are ready to prove our main result. We can embed proof environments from othe
 
 For this we require another result.
 \begin{proposition}
-
 \label{loc:lemma_2.statement}
 $1+4 = 5$
 \end{proposition}

@@ -490,7 +490,10 @@ class LatexExportSettingTab extends PluginSettingTab {
 					}),
 			);
 		new Setting(containerEl)
-			.setName("Set note names as environment titles")
+			.setName("File name as environment title")
+			.setDesc(
+				"Set note file names as environment titles for embedded latex environments.",
+			)
 			.addToggle((cb) =>
 				cb
 					.setValue(this.plugin.settings.display_result_names)

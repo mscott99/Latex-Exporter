@@ -1,9 +1,9 @@
-cd ~/Obsidian/myVault/.obsidian/plugins/Latex-Exporter/example/
+echo "Remember to compile the pdf inside the vault before running this executable."
+cd ~/Obsidian/myVault/.obsidian/plugins/Latex-Exporter/example/ || exit 1
 pdftoppm -png ./vault/longform_note/longform_note_output.pdf ./export/longform_note_output
 cp ./vault/longform_note/longform_note_output.pdf ./export
 rm -r ./export/longform_note
 cp -r ./vault/longform_note ./export/longform_note
-ls ./export/longform_note/
 rm ./export/longform_note/*.pdf
 rm ./export/longform_note/*.synctex.gz
 rm ./export/longform_note/*.run.xml
