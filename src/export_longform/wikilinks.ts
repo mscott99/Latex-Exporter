@@ -354,7 +354,7 @@ export class Environment implements node {
 				"}]";
 		} else if (
 			settings.display_result_names &&
-			this.address_of_origin !== undefined
+			this.address_of_origin !== undefined && this.type !== "remark"
 		) {
 			// Save the name of the note during unroll
 			start_env_string += "[" + this.address_of_origin + "]";
