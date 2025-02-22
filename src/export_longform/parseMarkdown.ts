@@ -36,6 +36,7 @@ import {
 	SingleQuotes,
 	Strong,
 	InlineMath,
+	InlineCode
 } from "./inline";
 import { Header, find_header } from "./headers";
 import { TFile, Notice, parseYaml } from "obsidian";
@@ -646,6 +647,12 @@ export function parse_inline(
 		inline_arr,
 		Emphasis.get_regexp(),
 		Emphasis.build_from_match,
+		settings,
+	);
+	inline_arr = split_inline<InlineCode>(
+		inline_arr,
+		InlineCode.get_regexp(),
+		InlineCode.build_from_match,
 		settings,
 	);
 	return inline_arr;

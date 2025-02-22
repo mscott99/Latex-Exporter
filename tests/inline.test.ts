@@ -11,6 +11,7 @@ describe("all inline", () => {
 		expect(result)
 			.toEqual(`A \\emph{emph} \\textbf{strong} \`\`quotes" \`single'
 Another \\emph{emph} \\textbf{strong}
+\\texttt{code} \\texttt{code\_underscore}
 `);
 	});
 	test("citation", async () => {
