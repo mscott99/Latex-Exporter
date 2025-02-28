@@ -300,7 +300,7 @@ export async function write_without_template(
 		content +=
 			`\\appendix\n\\section{Appendix}\n` + parsed_contents["appendix"];
 	}
-	content += "\\end{document}";
+	content += "\\end{document}\n";
 	await modify(output_file, content);
 }
 
