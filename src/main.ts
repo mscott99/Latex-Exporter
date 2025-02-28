@@ -492,7 +492,7 @@ class LatexExportSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("File name as environment title")
 			.setDesc(
-				"Set note file names as environment titles for embedded latex environments.",
+				"Set note file names as environment titles, or to the value of the yaml entry 'env_title' for embedded latex environments. Set this yaml field to be empty for no title.",
 			)
 			.addToggle((cb) =>
 				cb

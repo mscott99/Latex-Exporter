@@ -372,7 +372,7 @@ export async function parse_embed_content(
 	file_of_origin: TFile,
 	settings: ExportPluginSettings,
 	header?: string,
-): Promise<[node[], number] | undefined> {
+): Promise<[node[], number, { [key: string]: string; }] | undefined> {
 	const file_found = find_file(address);
 	if (file_found === undefined) {
 		// no warning necessary, already warned in find_file
@@ -387,7 +387,7 @@ export async function parse_embed_content(
 		return undefined;
 	}
 	if (header === undefined) {
-		return [content.body, 0];
+		return [content.body, 0, content.yaml];
 	}
 	const header_elt = await find_header(header, [content.body], settings);
 	if (header_elt === undefined) {
@@ -398,7 +398,7 @@ export async function parse_embed_content(
 		);
 		return undefined;
 	}
-	return [header_elt.children, header_elt.level];
+	return [header_elt.children, header_elt.level, content.yaml];
 }
 
 export function parse_display(

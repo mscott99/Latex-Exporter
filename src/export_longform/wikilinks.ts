@@ -112,7 +112,11 @@ export class EmbedWikilink implements node {
 				new BlankLine(),
 			];
 		}
-		const [parsed_contents, level_of_header_being_embedded] = return_data;
+		const [
+			parsed_contents,
+			level_of_header_being_embedded,
+			embedded_file_yaml,
+		] = return_data;
 		const ambient_header_level_outside = data.ambient_header_level;
 		const ambient_header_offset_outside = data.headers_level_offset;
 		const ambient_header_stack = data.header_stack;
@@ -156,6 +160,7 @@ export class EmbedWikilink implements node {
 						this.header,
 					),
 					address,
+					embedded_file_yaml,
 				),
 			];
 		}
@@ -293,16 +298,19 @@ export class Environment implements node {
 	type: string;
 	address_of_origin: string | undefined;
 	// address_of_origin: string | undefined;
+	embedded_file_yaml: { [key: string]: string } | undefined;
 	constructor(
 		children: node[],
 		type: string,
 		label?: string,
 		address_of_origin?: string,
+		embedded_file_yaml?: { [key: string]: string },
 	) {
 		this.children = children;
 		this.type = type.toLowerCase().trim();
 		this.label = label;
 		this.address_of_origin = address_of_origin;
+		this.embedded_file_yaml = embedded_file_yaml;
 	}
 	static build_from_match(
 		match: RegExpMatchArray,
@@ -354,10 +362,21 @@ export class Environment implements node {
 				"}]";
 		} else if (
 			settings.display_result_names &&
-			this.address_of_origin !== undefined && this.type !== "remark"
+			this.address_of_origin !== undefined &&
+			this.type !== "remark"
 		) {
 			// Save the name of the note during unroll
-			start_env_string += "[" + this.address_of_origin + "]";
+			if (
+				this.embedded_file_yaml !== undefined &&
+				this.embedded_file_yaml.env_title !== undefined
+			) {
+				if (this.embedded_file_yaml.env_title !== "" && this.embedded_file_yaml.env_title !== null) { // empty string means no title at all.
+					start_env_string +=
+						"[" + this.embedded_file_yaml.env_title + "]";
+				}
+			} else {
+				start_env_string += "[" + this.address_of_origin + "]";
+			}
 		}
 		buffer_offset += buffer.write(start_env_string + "\n", buffer_offset);
 
