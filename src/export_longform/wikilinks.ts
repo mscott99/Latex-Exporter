@@ -201,7 +201,7 @@ export class Plot implements node {
 		buffer_offset += buffer.write(
 			`\\begin{figure}[h]
 \\centering
-\\includegraphics[width=0.5\\textwidth]{` +
+\\includegraphics[width=\\textwidth]{` +
 				path.join("Files", this.image.name) +
 				"}\n",
 			buffer_offset,
