@@ -103,7 +103,7 @@ Citations are wikilinks starting with the '@' character, immediately followed by
 
 The default citation command is `\cite{}` from the `biblatex` package, although a different default citation command can be set in the settings. If a different default citation command is set, a link of the form `[[@...]][std]` will be converted to `\cite{}`. Specifying `[txt]` as a label will instead ensure the use of `\textcite{}`. If many citations wikilinks are given consecutively without any characters between them, they will be included in a single LaTeX citation command, meaning that `[[@first]][[@second]]` becomes `\\cite{@first, @second}`.
 ### Figures
-Figures are created from embed links of image files, and are recognized by their file suffix. A caption can be added in the display section of the link: `![[image.jpeg|caption text here]]`. There are some themes in Obsidian which will display captions of this kind.
+Figures are created from embed links of image files, and are recognized by their file suffix. A caption can be added in the display section of the link: `![[image.jpeg|caption text here]]`. There are some themes in Obsidian which will display captions of this kind. Figures are referenced with wikilinks to the embedded file.
 
 Images will be copied to a subfolder of the output folder named "Files".
 #### Excalidraw support
