@@ -24,6 +24,7 @@ export interface ExportPluginSettings {
 	default_citation_command: string;
 	overwrite_preamble: boolean;
 	display_result_names: boolean;
+	last_external_folder: string;
 }
 
 export const DEFAULT_SETTINGS: ExportPluginSettings = {
@@ -37,6 +38,7 @@ export const DEFAULT_SETTINGS: ExportPluginSettings = {
 	default_citation_command: "cite",
 	overwrite_preamble: false,
 	display_result_names: false,
+	last_external_folder: "",
 };
 
 export type parsed_note = {

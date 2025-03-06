@@ -1,4 +1,5 @@
 import * as path from "path";
+import * as fs from 'fs';
 import {
 	App,
 	Editor,
@@ -11,7 +12,17 @@ import {
 	TFile,
 	Modal,
 	normalizePath,
+	FileSystemAdapter,
 } from "obsidian";
+
+// Use require for Electron compatibility in Obsidian
+const { remote } = require('electron');
+
+// Define type for Electron dialog return value
+interface OpenDialogReturnValue {
+    canceled: boolean;
+    filePaths: string[];
+}
 import {
 	parse_longform,
 	export_selection,
@@ -36,6 +47,113 @@ export default class ExportPaperPlugin extends Plugin {
 		} else {
 			return undefined;
 		}
+	};
+	
+	// External export method with FileSystemAdapter
+	async export_to_external_folder(active_file: TFile, external_folder: string, skip_overwrite_check: boolean = false) {
+		const parsed_contents = await parse_longform(
+			this.app.vault.cachedRead.bind(this.app.vault),
+			this.find_file,
+			active_file,
+			this.settings,
+		);
+
+		const output_folder_name = active_file.basename.replace(/ /g, "_");
+		const output_folder_path = path.join(external_folder, output_folder_name);
+		const output_file_name = `${active_file.basename}_output.tex`;
+		const output_path = path.join(output_folder_path, output_file_name);
+
+		// Check for overwrite
+		if (fs.existsSync(output_path) && !skip_overwrite_check && this.settings.warn_before_overwrite) {
+			new WarningModal(
+				this.app,
+				this,
+				() => this.export_to_external_folder(active_file, external_folder, true),
+				"It seems there is a previously exported file in the external folder. Overwrite it?"
+			).open();
+			return;
+		}
+
+		// Create external folder if it doesn't exist
+		if (!fs.existsSync(output_folder_path)) {
+			fs.mkdirSync(output_folder_path, { recursive: true });
+		}
+
+		let export_message = "Exporting to external folder:\n";
+		const preamble_file = this.app.vault.getFileByPath(this.settings.preamble_file) ?? undefined;
+		const new_preamble_path = path.join(output_folder_path, "preamble.sty");
+		if (preamble_file) {
+			if (!fs.existsSync(new_preamble_path) || this.settings.overwrite_preamble) {
+				fs.copyFileSync(
+					(this.app.vault.adapter as FileSystemAdapter).getFullPath(preamble_file.path),
+					new_preamble_path
+				);
+				export_message += this.settings.overwrite_preamble 
+					? "- Overwriting the preamble file\n" 
+					: "- Copying the preamble file\n";
+			} else {
+				export_message += "- Without overwriting the preamble file\n";
+			}
+		} else {
+			export_message += "- Without a preamble file (none found)\n";
+		}
+
+		const header_path = path.join(output_folder_path, "header.tex");
+		if (!fs.existsSync(header_path)) {
+			fs.writeFileSync(header_path, get_header_tex());
+			export_message += "- Creating the header file\n";
+		} else {
+			export_message += "- Without overwriting the header file\n";
+		}
+
+		const bib_file = this.app.vault.getFileByPath(this.settings.bib_file) ?? undefined;
+		const new_bib_path = path.join(output_folder_path, "bibliography.bib");
+		if (bib_file && !fs.existsSync(new_bib_path)) {
+			fs.copyFileSync(
+				(this.app.vault.adapter as FileSystemAdapter).getFullPath(bib_file.path),
+				new_bib_path
+			);
+			export_message += "- Copying the bib file\n";
+		} else {
+			export_message += bib_file ? "- Without overwriting the bib file\n" : "- Without a bib file (none found)\n";
+		}
+
+		const template_file = this.app.vault.getFileByPath(this.settings.template_path) ?? undefined;
+		if (template_file) {
+			export_message += "- Using the specified template file,\n";
+			await write_with_template(
+				template_file,
+				parsed_contents,
+				{ path: output_path } as TFile,
+				async (_file, content) => fs.writeFileSync(output_path, content),
+				this.app.vault.cachedRead.bind(this.app.vault),
+			);
+		} else {
+			await write_without_template(
+				parsed_contents,
+				{ path: output_path } as TFile,
+				async (_file, content) => fs.writeFileSync(output_path, content),
+				preamble_file,
+			);
+		}
+
+		if (parsed_contents.media_files.length > 0) {
+			const files_folder = path.join(output_folder_path, "Files");
+			if (!fs.existsSync(files_folder)) {
+				fs.mkdirSync(files_folder);
+			}
+			for (const media_file of parsed_contents.media_files) {
+				fs.copyFileSync(
+					(this.app.vault.adapter as FileSystemAdapter).getFullPath(media_file.path),
+					path.join(files_folder, media_file.name)
+				);
+			}
+		}
+
+		this.settings.last_external_folder = external_folder;
+		await this.saveSettings();
+
+		new Notice(`${export_message}To external folder: ${output_folder_path}`);
 	};
 	async find_files_and_export(
 		active_file: TFile,
@@ -271,6 +389,35 @@ export default class ExportPaperPlugin extends Plugin {
 				}
 			},
 		});
+		
+		// NEW: Updated external export command with folder picker
+		this.addCommand({
+			id: "export-paper-external",
+			name: "Export current note to external folder",
+			checkCallback: (checking: boolean) => {
+				const active_file = this.app.workspace.getActiveFile();
+				if (!(active_file instanceof TFile)) {
+					return false;
+				} else if (checking) {
+					return true;
+				} else {
+					remote.dialog.showOpenDialog({
+						properties: ['openDirectory'],
+					}).then((result: OpenDialogReturnValue) => {
+						if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+							new Notice("External export cancelled");
+							return;
+						}
+						const selectedPath = result.filePaths[0];
+						this.export_to_external_folder(active_file, selectedPath);
+					}).catch((err: Error) => {
+						console.error("Error opening folder picker:", err);
+						new Notice("Failed to open folder picker");
+					});
+				}
+			},
+		});
+		
 		this.addCommand({
 			id: "selection-export-paper",
 			name: "Export selection",
@@ -499,6 +646,20 @@ class LatexExportSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.display_result_names)
 					.onChange(async (value) => {
 						this.plugin.settings.display_result_names = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+		new Setting(containerEl)
+			.setName("Last external folder")
+			.setDesc(
+				"The last used external folder for exports. Updated automatically when exporting externally."
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder("Last used external folder (e.g., /home/user/latex)")
+					.setValue(this.plugin.settings.last_external_folder)
+					.onChange(async (value) => {
+						this.plugin.settings.last_external_folder = normalizePath(value);
 						await this.plugin.saveSettings();
 					}),
 			);
