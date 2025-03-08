@@ -83,14 +83,19 @@ export default class ExportPaperPlugin extends Plugin {
 		const preamble_file = this.app.vault.getFileByPath(this.settings.preamble_file) ?? undefined;
 		const new_preamble_path = path.join(output_folder_path, "preamble.sty");
 		if (preamble_file) {
-			if (!fs.existsSync(new_preamble_path) || this.settings.overwrite_preamble) {
+			const preamble_exists = fs.existsSync(new_preamble_path);
+			if (this.settings.overwrite_preamble && preamble_exists) {
 				fs.copyFileSync(
 					(this.app.vault.adapter as FileSystemAdapter).getFullPath(preamble_file.path),
 					new_preamble_path
 				);
-				export_message += this.settings.overwrite_preamble 
-					? "- Overwriting the preamble file\n" 
-					: "- Copying the preamble file\n";
+				export_message += "- Overwriting the preamble file\n";
+			} else if (!preamble_exists) {
+				fs.copyFileSync(
+					(this.app.vault.adapter as FileSystemAdapter).getFullPath(preamble_file.path),
+					new_preamble_path
+				);
+				export_message += "- Copying the preamble file\n";
 			} else {
 				export_message += "- Without overwriting the preamble file\n";
 			}
@@ -99,25 +104,32 @@ export default class ExportPaperPlugin extends Plugin {
 		}
 
 		const header_path = path.join(output_folder_path, "header.tex");
-		if (this.settings.overwrite_header || !fs.existsSync(header_path)) {
+		const header_exists = fs.existsSync(header_path);
+		if (this.settings.overwrite_header && header_exists) {
 			fs.writeFileSync(header_path, get_header_tex());
-			export_message += this.settings.overwrite_header && fs.existsSync(header_path)
-				? "- Overwriting the header file\n" 
-				: "- Creating the header file\n";
+			export_message += "- Overwriting the header file\n";
+		} else if (!header_exists) {
+			fs.writeFileSync(header_path, get_header_tex());
+			export_message += "- Creating the header file\n";
 		} else {
 			export_message += "- Without overwriting the header file\n";
 		}
 
 		const bib_file = this.app.vault.getFileByPath(this.settings.bib_file) ?? undefined;
 		const new_bib_path = path.join(output_folder_path, "bibliography.bib");
-		if (bib_file && !fs.existsSync(new_bib_path)) {
-			fs.copyFileSync(
-				(this.app.vault.adapter as FileSystemAdapter).getFullPath(bib_file.path),
-				new_bib_path
-			);
-			export_message += "- Copying the bib file\n";
+		if (bib_file) {
+			const bib_exists = fs.existsSync(new_bib_path);
+			if (!bib_exists) {
+				fs.copyFileSync(
+					(this.app.vault.adapter as FileSystemAdapter).getFullPath(bib_file.path),
+					new_bib_path
+				);
+				export_message += "- Copying the bib file\n";
+			} else {
+				export_message += "- Without overwriting the bib file\n";
+			}
 		} else {
-			export_message += bib_file ? "- Without overwriting the bib file\n" : "- Without a bib file (none found)\n";
+			export_message += "- Without a bib file (none found)\n";
 		}
 
 		const template_file = this.app.vault.getFileByPath(this.settings.template_path) ?? undefined;
@@ -144,24 +156,32 @@ export default class ExportPaperPlugin extends Plugin {
 			if (!fs.existsSync(files_folder)) {
 				fs.mkdirSync(files_folder);
 			}
-			let figure_message_added = false;
+			let copying_message_added = false;
+			let skipping_message_added = false;
+			
 			for (const media_file of parsed_contents.media_files) {
 				const destination_path = path.join(files_folder, media_file.name);
-				if (this.settings.overwrite_figures || !fs.existsSync(destination_path)) {
+				const file_exists = fs.existsSync(destination_path);
+				
+				if (this.settings.overwrite_figures && file_exists) {
 					fs.copyFileSync(
 						(this.app.vault.adapter as FileSystemAdapter).getFullPath(media_file.path),
 						destination_path
 					);
-					if (!figure_message_added) {
-						export_message += this.settings.overwrite_figures 
-							? "- Overwriting figure files\n" 
-							: "- Copying figure files\n";
-						figure_message_added = true;
+					export_message += `- Overwriting figure file: ${media_file.name}\n`;
+				} else if (!file_exists) {
+					fs.copyFileSync(
+						(this.app.vault.adapter as FileSystemAdapter).getFullPath(media_file.path),
+						destination_path
+					);
+					if (!copying_message_added) {
+						export_message += "- Copying figure files\n";
+						copying_message_added = true;
 					}
+				} else if (!skipping_message_added) {
+					export_message += "- Without overwriting figure files\n";
+					skipping_message_added = true;
 				}
-			}
-			if (!figure_message_added) {
-				export_message += "- Without overwriting figure files\n";
 			}
 		}
 
@@ -224,13 +244,13 @@ export default class ExportPaperPlugin extends Plugin {
 			const new_preamble = path.join(output_folder_path, "preamble.sty");
 			const existing_preamble =
 				this.app.vault.getFileByPath(new_preamble);
-			if (!existing_preamble) {
-				this.app.vault.copy(preamble_file, new_preamble);
-				export_message += "- Copying the preamble file\n";
-			} else if (this.settings.overwrite_preamble) {
-				this.app.vault.delete(existing_preamble);
-				this.app.vault.copy(preamble_file, new_preamble);
+			if (this.settings.overwrite_preamble && existing_preamble) {
+				await this.app.vault.delete(existing_preamble);
+				await this.app.vault.copy(preamble_file, new_preamble);
 				export_message += "- Overwriting the preamble file\n";
+			} else if (!existing_preamble) {
+				await this.app.vault.copy(preamble_file, new_preamble);
+				export_message += "- Copying the preamble file\n";
 			} else {
 				export_message += "- Without overwriting the preamble file\n";
 			}
@@ -259,14 +279,15 @@ export default class ExportPaperPlugin extends Plugin {
 		const bib_file = the_bib_file ? the_bib_file : undefined;
 		if (bib_file !== undefined) {
 			const new_bib = path.join(output_folder_path, "bibliography.bib");
-			if (!this.app.vault.getFileByPath(new_bib)) {
+			const existing_bib = this.app.vault.getFileByPath(new_bib);
+			if (!existing_bib) {
+				await this.app.vault.copy(bib_file, new_bib);
 				export_message += "- Copying the bib file\n";
-				this.app.vault.copy(bib_file, new_bib);
 			} else {
 				export_message += "- Without overwriting the bib file\n";
 			}
 		} else {
-			export_message += "- Without a bib file (none found)";
+			export_message += "- Without a bib file (none found)\n";
 		}
 		const the_template_file = this.app.vault.getFileByPath(
 			this.settings.template_path,
@@ -340,14 +361,30 @@ export default class ExportPaperPlugin extends Plugin {
 			const files_folder = path.join(output_folder_path, "Files");
 			await this.app.vault.createFolder(files_folder).catch((e) => e);
 			// await this.create_folder_if_not(files_folder);
+			let copying_message_added = false;
+			let skipping_message_added = false;
+			
 			for (const media_file of parsed_contents.media_files) {
 				const destination_path = path.join(files_folder, media_file.name);
 				const existing_file = this.app.vault.getFileByPath(destination_path);
-				if (settings.overwrite_figures || !existing_file) {
-					if (existing_file) await this.app.vault.delete(existing_file);
+				
+				if (settings.overwrite_figures && existing_file) {
+					await this.app.vault.delete(existing_file);
 					await this.app.vault
 						.copy(media_file, destination_path)
 						.catch((e) => e);
+					partial_message += `- Overwriting figure file: ${media_file.name}\n`;
+				} else if (!existing_file) {
+					await this.app.vault
+						.copy(media_file, destination_path)
+						.catch((e) => e);
+					if (!copying_message_added) {
+						partial_message += "- Copying figure files\n";
+						copying_message_added = true;
+					}
+				} else if (!skipping_message_added) {
+					partial_message += "- Without overwriting figure files\n";
+					skipping_message_added = true;
 				}
 			}
 		}
