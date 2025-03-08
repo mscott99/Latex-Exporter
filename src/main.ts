@@ -99,9 +99,11 @@ export default class ExportPaperPlugin extends Plugin {
 		}
 
 		const header_path = path.join(output_folder_path, "header.tex");
-		if (!fs.existsSync(header_path)) {
+		if (this.settings.overwrite_header || !fs.existsSync(header_path)) {
 			fs.writeFileSync(header_path, get_header_tex());
-			export_message += "- Creating the header file\n";
+			export_message += this.settings.overwrite_header && fs.existsSync(header_path)
+				? "- Overwriting the header file\n" 
+				: "- Creating the header file\n";
 		} else {
 			export_message += "- Without overwriting the header file\n";
 		}
@@ -142,11 +144,24 @@ export default class ExportPaperPlugin extends Plugin {
 			if (!fs.existsSync(files_folder)) {
 				fs.mkdirSync(files_folder);
 			}
+			let figure_message_added = false;
 			for (const media_file of parsed_contents.media_files) {
-				fs.copyFileSync(
-					(this.app.vault.adapter as FileSystemAdapter).getFullPath(media_file.path),
-					path.join(files_folder, media_file.name)
-				);
+				const destination_path = path.join(files_folder, media_file.name);
+				if (this.settings.overwrite_figures || !fs.existsSync(destination_path)) {
+					fs.copyFileSync(
+						(this.app.vault.adapter as FileSystemAdapter).getFullPath(media_file.path),
+						destination_path
+					);
+					if (!figure_message_added) {
+						export_message += this.settings.overwrite_figures 
+							? "- Overwriting figure files\n" 
+							: "- Copying figure files\n";
+						figure_message_added = true;
+					}
+				}
+			}
+			if (!figure_message_added) {
+				export_message += "- Without overwriting figure files\n";
 			}
 		}
 
@@ -222,13 +237,17 @@ export default class ExportPaperPlugin extends Plugin {
 		} else {
 			export_message += " - Without a preamble file (none found)\n";
 		}
-		const header_file = this.app.vault.getFileByPath(
-			path.join(output_folder_path, "header.tex"),
-		);
-		if (!header_file) {
-			export_message += "- Creating the header file\n";
+		const header_path = path.join(output_folder_path, "header.tex");
+		const header_file = this.app.vault.getFileByPath(header_path);
+		if (this.settings.overwrite_header || !header_file) {
+			if (header_file) {
+				await this.app.vault.delete(header_file);
+				export_message += "- Overwriting the header file\n";
+			} else {
+				export_message += "- Creating the header file\n";
+			}
 			await this.app.vault.create(
-				path.join(output_folder_path, "header.tex"),
+				header_path,
 				get_header_tex(),
 			);
 		} else {
@@ -322,9 +341,14 @@ export default class ExportPaperPlugin extends Plugin {
 			await this.app.vault.createFolder(files_folder).catch((e) => e);
 			// await this.create_folder_if_not(files_folder);
 			for (const media_file of parsed_contents.media_files) {
-				await this.app.vault
-					.copy(media_file, path.join(files_folder, media_file.name))
-					.catch((e) => e);
+				const destination_path = path.join(files_folder, media_file.name);
+				const existing_file = this.app.vault.getFileByPath(destination_path);
+				if (settings.overwrite_figures || !existing_file) {
+					if (existing_file) await this.app.vault.delete(existing_file);
+					await this.app.vault
+						.copy(media_file, destination_path)
+						.catch((e) => e);
+				}
 			}
 		}
 
@@ -613,6 +637,28 @@ class LatexExportSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.overwrite_preamble)
 					.onChange(async (value) => {
 						this.plugin.settings.overwrite_preamble = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+		new Setting(containerEl)
+			.setName("Overwrite figure files")
+			.setDesc("Overwrite figure files in the Files folder during export.")
+			.addToggle((cb) =>
+				cb
+					.setValue(this.plugin.settings.overwrite_figures)
+					.onChange(async (value) => {
+						this.plugin.settings.overwrite_figures = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+		new Setting(containerEl)
+			.setName("Overwrite header file")
+			.setDesc("Overwrite the header file (header.tex) during export.")
+			.addToggle((cb) =>
+				cb
+					.setValue(this.plugin.settings.overwrite_header)
+					.onChange(async (value) => {
+						this.plugin.settings.overwrite_header = value;
 						await this.plugin.saveSettings();
 					}),
 			);

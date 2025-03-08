@@ -25,6 +25,8 @@ export interface ExportPluginSettings {
 	overwrite_preamble: boolean;
 	display_result_names: boolean;
 	last_external_folder: string;
+	overwrite_figures: boolean;
+	overwrite_header: boolean;
 }
 
 export const DEFAULT_SETTINGS: ExportPluginSettings = {
@@ -39,6 +41,8 @@ export const DEFAULT_SETTINGS: ExportPluginSettings = {
 	overwrite_preamble: false,
 	display_result_names: false,
 	last_external_folder: "",
+	overwrite_figures: false,
+	overwrite_header: false,
 };
 
 export type parsed_note = {
