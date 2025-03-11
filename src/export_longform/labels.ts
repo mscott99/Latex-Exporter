@@ -18,7 +18,9 @@ export function format_label(label: string): string {
 		.replace(/}/g, "")
 		.replace(/ /g, "_")
 		.replace(/,/g, "")
-		.replace(/-/g, ":");
+		.replace(/-/g, ":")
+		.replace(/\$/g, "")
+		.replace(/\\/g, "");
 }
 
 export function explicit_label(
