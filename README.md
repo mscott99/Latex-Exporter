@@ -16,6 +16,7 @@ This plugin supports:
 - Conversion of most markdown elements supported by Obsidian to equivalents in latex.
 - Export of markdown quotes to LaTeX comments.
 - Obsidian comments `%%...%%` excluded from the export.
+- Hyperlinks `[label](https://example.com)` exported as `\href{url}{label}`.
 
 This plugin is best used with plugins:
 - Zotero integration (see https://mscott99.github.io/matthew_s_scott_zettel/Setup%20workflows/Setup%20citations/ to configure the settings appropriately), or Citations (almost required to work with citations.)
@@ -41,16 +42,16 @@ See the subdirectory `example/vault` of the repository hosting this plugin for a
 |<img src="example/export/Screenshot_Obsidian-4.png" height="450">||
 
 ## How to use: the commands
-### `Latex Exporter:Export current note`
-Navigate to the "longform" note that you would like to export, and run the command `Export to paper`. The plugin will create a folder in the root of your vault (or in the appropriate sub-folder inside your vault, if specified in the settings of the plugin), and will write all required files to this folder. The entire content inside the longform note will be exported, except if there is an h1 header named `Body` in the note, in which case only the content under `Body` will be exported. Additionally, content h1 headers `Abstract` and `Appendix` will be exported appropriately.
+### `Latex Exporter:Export current note in-vault`
+Navigate to the "longform" note that you would like to export, and run the command `Export current note in-vault`. The plugin will create a folder in the root of your vault (or in the appropriate sub-folder inside your vault, if specified in the settings of the plugin), and will write all required files to this folder. The entire content inside the longform note will be exported, except if there is an h1 header named `Body` in the note, in which case only the content under `Body` will be exported. Additionally, content h1 headers `Abstract` and `Appendix` will be exported appropriately.
 
-To use citations, place a bib file named `bibliography.bib` in the root of your vault; it will be copied upon export to the correct location. Also, you can place a file `preamble.sty` containing a LaTeX preamble in the root of the vault, which will also be copied to the export directory. The `preamble.sty` file is meant to be used with the Extended MathJax plugin. Manual changes to the exported files `bibliography.bib` and `preamble.sty` inside export directories will not be overwritten by later exports.
+To use citations, place a bib file named `bibliography.bib` in the root of your vault; it will be copied upon export to the correct location. Also, you can place a file `preamble.sty` containing a LaTeX preamble in the root of the vault, which will also be copied to the export directory. The `preamble.sty` file is meant to be used with the Extended MathJax plugin. Manual changes to the exported files `bibliography.bib` and `preamble.sty` inside export directories will not be overwritten by later exports unless overwrite settings are enabled.
 
 *Using a template*: In the settings, it is possible to specify the path to a template file. If this field is left blank, then the plugin will generate minimal LaTeX code required for the export to compile well. To use a template, place a template file inside your vault and specify its path in the plugin settings. A template file should contains LaTeX code with a pandoc-style anchor `$body$`, to be replaced by the converted content of the longform note. The anchors `$abstract$` and `$appendix$` can optionally be specified.
 #### Overwriting behavior
-Before making manual changes to the exported LaTeX file, be careful to first copy the newly-generated folder to a different location, because under some settings (not the default), re-running the export command from the same note will overwrite the exported LaTeX file (surrounding files, like the preamble or bib file, will not be overwritten). This overwriting setting is meant to facilitate editing the obsidian files while seeing the updated LaTeX output quickly.
+Before making manual changes to the exported LaTeX file, be careful to first copy the newly-generated folder to a different location, because under some settings (not the default), re-running the export command from the same note will overwrite the exported LaTeX file (surrounding files, like the preamble or bib file, will not be overwritten unless specified in settings). This overwriting setting is meant to facilitate editing the obsidian files while seeing the updated LaTeX output quickly. Additional settings allow overwriting figure files (`Files` folder) and the header file (`header.tex`) during export.
 ### `Latex Exporter:Export selection to clipboard`
-This command exports the selected portion of the current note to the clipboard. To use this command, navigate to the note of interest, go to the editing view (it does not work in reading view), select a portion of the note by dragging your cursor, and while the text is selected run `Cmd+P` and select the command `Latex Exporter:Export selection`. Be warned that the LaTeX exported using this method will only compile well if pasted into a document that imports the relevant LaTeX packages.
+This command exports the selected portion of the current note to the clipboard. To use this command, navigate to the note of interest, go to the editing view (it does not work in reading view), select a portion of the note by dragging your cursor, and while the text is selected run `Cmd+P` and select the command `Latex Exporter:Export selection to clipboard`. Be warned that the LaTeX exported using this method will only compile well if pasted into a document that imports the relevant LaTeX packages.
 ### Warnings
 Heed the warnings! They are (usually) not bugs, but an important part of the plugin. They give you helpful feedback as to what should be fixed within your own notes to ensure a good export. For example, you may have a wikilink (which is trying to become a reference) addressed to a header which happens to not be visible from the longform note. The plugin will detect some such structural issues and tell you about it.
 
@@ -78,7 +79,7 @@ The label `theorem` can be modified to `lemma`, `corollary`, or any other enviro
 Results embedded in this way are referenced with wikilinks: `[[theorem_note_title]]`. The generated LaTeX label of an embedded environement depends on both the note of origin and the header of origin of the embedded content. This means you may choose to have many results in the same note, under different headers. If no header is specified in the referencing wikilink, the plugin defaults to a possible `Statement` header, i.e., it is no different than if the wikilink was of the form `[[theorem_note_title#Statement]]`. Other headers can be used, e.g. `lemma::![[theorem_note_title#Other Statement]]`. Such a result can be referenced with `[[theorem_note_title#Other Statement]]`. However, only a `Statement` header has an implicit association with a possible `Proof` header in the same file.
 #### Explicit environments
 LaTeX environments can be written directly in the main note with the following syntax.
-```
+```markdown
 lemma::
 The following is always true.
 $$\prod > \sum$$
@@ -93,7 +94,8 @@ Equations are labelled with the quarto syntax `$$...$${#eq-my_label}` where the 
 $$\begin{align}
 hey &= hi \\
 and &= other \\
-\end{align}$${#eq-align_label}
+\end{align}$$
+{#eq-align_label}
 ```
 The first line in the align environment can be referenced with `@eq-align_label-1` and the second with `@eq-align_label-2`, and so on. The reference `@eq-align_label` will not work.
 ### Direct Embeds
