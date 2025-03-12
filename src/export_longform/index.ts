@@ -15,6 +15,7 @@ export {
 	Environment,
 	Wikilink,
 	EmbedWikilink,
+	Hyperlink,
 } from "./wikilinks";
 export { init_data, unroll_array, DEFAULT_SETTINGS } from "./interfaces";
 export type { node, ExportPluginSettings } from "./interfaces";

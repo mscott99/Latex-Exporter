@@ -26,6 +26,7 @@ import {
 	PandocMultiCitation,
 	EmbedWikilink,
 	Environment,
+	Hyperlink,
 } from "./wikilinks";
 import {
 	split_inline,
@@ -619,6 +620,12 @@ export function parse_inline(
 		Wikilink.build_from_match,
 		settings,
 	); // must be before inline math so as to include math in displayed text.
+	inline_arr = split_inline<Hyperlink>(
+		inline_arr,
+		Hyperlink.get_regexp(),
+		Hyperlink.build_from_match,
+		settings,
+	);
 	inline_arr = split_inline<InlineMath>(
 		inline_arr,
 		InlineMath.get_regexp(),

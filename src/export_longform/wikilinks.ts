@@ -400,32 +400,34 @@ export class Environment implements node {
 }
 
 export class Hyperlink implements node {
-	address: string;
-	label: string;
-	async latex(
-		buffer: Buffer,
-		buffer_offset: number,
-		settings: ExportPluginSettings,
-	): Promise<number> {
-		return (
-			buffer_offset +
-			buffer.write(
-				"\\hyperlink{" +
-					this.address +
-					"}{" +
-					format_label(this.label) +
-					"}",
-				buffer_offset,
-			)
-		);
-	}
-	async unroll(): Promise<node[]> {
-		return [this];
-	}
-	constructor(label: string, address: string) {
-		this.label = label;
-		this.address = address;
-	}
+    address: string;
+    label: string;
+    static get_regexp(): RegExp {
+        return /\[([^\[\]]+?)\]\((https?:\/\/[^\s]+?)\)/g;
+    }
+    static build_from_match(
+        args: RegExpMatchArray,
+        settings: ExportPluginSettings,
+    ): Hyperlink {
+        return new Hyperlink(args[1], args[2]);
+    }
+    constructor(label: string, address: string) {
+        this.label = label;
+        this.address = address;
+    }
+    async unroll(): Promise<node[]> {
+        return [this];
+    }
+    async latex(
+        buffer: Buffer,
+        buffer_offset: number,
+        settings: ExportPluginSettings,
+    ): Promise<number> {
+        return buffer_offset + buffer.write(
+            `\\href{${this.address}}{${this.label}}`,
+            buffer_offset
+        );
+    }
 }
 
 // The purpose of this class is to defer the label resolution until all files are parsed. So labels are determined in the latex() call.
