@@ -436,7 +436,7 @@ export default class ExportPaperPlugin extends Plugin {
 
 		this.addCommand({
 			id: "export-paper",
-			name: "Export current note",
+			name: "Export current note in-vault",
 			checkCallback: (checking: boolean) => {
 				const active_file = this.app.workspace.getActiveFile();
 				if (!(active_file instanceof TFile)) {
@@ -481,7 +481,7 @@ export default class ExportPaperPlugin extends Plugin {
 		
 		this.addCommand({
 			id: "selection-export-paper",
-			name: "Export selection",
+			name: "Export selection to clipboard",
 			editorCheckCallback: (
 				checking: boolean,
 				editor: Editor,
