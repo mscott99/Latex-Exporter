@@ -51,5 +51,7 @@ There can be nested sections, which can be referenced via wikilinks from anywher
 Behold! Figures with captions are supported! The relevant files will be copied over with the export.
 ![[intro_comp_wlabel.pdf|Captions of figures are specified in the display part of the figure's embed wikilink.]]
 We can reference the figures with a wikilink [[intro_comp_wlabel.pdf]].
+## Other features
+External link: [google.com](https://www.google.com).
 # Appendix
 proof::![[lemma_1#Proof]]

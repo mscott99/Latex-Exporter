@@ -92,10 +92,13 @@ There can be nested sections, which can be referenced via wikilinks from anywher
 Behold! Figures with captions are supported! The relevant files will be copied over with the export.
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.5\textwidth]{Files/intro_comp_wlabel.pdf}
+\includegraphics[width=\textwidth]{Files/intro_comp_wlabel.pdf}
 \caption{Captions of figures are specified in the display part of the figure's embed wikilink.\label{fig:intro_comp_wlabel.pdf}}
 \end{figure}
 We can reference the figures with a wikilink \Cref{fig:intro_comp_wlabel.pdf}.
+\section{Other features}
+\label{loc:body.other_features}
+External link: \href{https://www.google.com}{google.com}.
 \printbibliography
 \appendix
 \section{Appendix}
