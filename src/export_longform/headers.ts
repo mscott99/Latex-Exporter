@@ -218,6 +218,11 @@ export async function get_header_address(
 	} else {
 		header_stack = [...header];
 	}
+	if (header_stack.length == 1 && header_stack[0] == "") {
+		// Let the label match the statement if there is a statement.
+		const statement_attempt = await get_header_address(["statement"], current_content, settings, built_address)
+		return statement_attempt === undefined ? "" : statement_attempt
+	}
 	for (const elt of current_content) {
 		if (elt instanceof Header) {
 			const current_check = header_stack[header_stack.length - 1];

@@ -17,6 +17,10 @@ I speak more
 			DEFAULT_SETTINGS,
 		);
 		expect(result).toEqual(`\\begin{lemma}
+\\label{loc:simple_lem.statement}
+hi
+\\end{lemma}
+\\begin{lemma}
 \\label{lem:label}
 \\begin{equation*}
 \\varepsilon

@@ -39,7 +39,7 @@ describe("split_display_blocks", () => {
 			new Environment(
 				[new Paragraph([new Text("Content of lemma2")])],
 				"lemma",
-				"loc:lemma2.statement",
+				"loc:lemma2",
 				"lemma2",
 				{}
 			),
@@ -64,6 +64,9 @@ describe("split_display_blocks", () => {
 		);
 		const expected = `\\begin{theorem}
 \\label{loc:other_lem.statement}
+
+\\textbf{Statement}
+
 Content of the other lemma.
 \\end{theorem}
 \\begin{lemma}
