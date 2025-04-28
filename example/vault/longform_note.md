@@ -29,7 +29,7 @@ $$
 We can reference individual lines of an align environment: @eq-aligned_eq-1 and @eq-aligned_eq-2.
 ::lemma
 The next result is in its own note. Embedding the 'Statement' header as follows creates a latex environment.
-theorem::![[theorem_1#Statement]]
+theorem::![[theorem_1#Statement|Behold! The main theorem]]
 We can link to [[theorem_1#Proof]] with a wikilink to the "Proof" header.
 The theorem environment is then referenced as [[theorem_1]], or as [[theorem_1#Statement]]. To show [[theorem_1]], we need the following two results.
 lemma::![[lemma_1#statement]]

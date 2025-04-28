@@ -68,7 +68,7 @@ Most markdown elements supported by Obsidian are supported by this plugin, with 
 h1 headers become Latex sections, h2 and onwards become subsections of the correct depth. If the export occurs within a `Body` h1 header, then these are offset by 1: h2 headers will be sections.
 ### Latex Environments
 There are two ways of specifying LaTeX environments: through embeds and explicitly.
-#### Embeded Environments (recommended)
+#### Embedded Environments (recommended)
 Place your theorem in a note distinct from the longform note. In the theorem note, specify a h1 header `# Statement` under which the statement should be written. If a proof is given, write it under another h1 header in the same note `# Proof`. Then in the main note, embed the statement with the following syntax.
 ```theorem::![[theorem_note_title#Statement]]```
 To provide the proof, write the following at the desired location:
@@ -76,7 +76,13 @@ To provide the proof, write the following at the desired location:
 
 The label `theorem` can be modified to `lemma`, `corollary`, or any other environment name. A hyperlink from the proof to the corresponding result will be created automatically (it will look like `proof of Lemma 3.1`.)
 
-Results embedded in this way are referenced with wikilinks: `[[theorem_note_title]]`. The generated LaTeX label of an embedded environement depends on both the note of origin and the header of origin of the embedded content. This means you may choose to have many results in the same note, under different headers. If no header is specified in the referencing wikilink, the plugin defaults to a possible `Statement` header, i.e., it is no different than if the wikilink was of the form `[[theorem_note_title#Statement]]`. Other headers can be used, e.g. `lemma::![[theorem_note_title#Other Statement]]`. Such a result can be referenced with `[[theorem_note_title#Other Statement]]`. However, only a `Statement` header has an implicit association with a possible `Proof` header in the same file.
+Results embedded in this way are referenced with wikilinks: `[[markdown_base_file_name]]`. The generated LaTeX label of an embedded environement depends on both the note of origin and the header of origin of the embedded content. This means you may choose to have many results in the same note, under different headers. If no header is specified in the referencing wikilink, the plugin defaults to a possible `Statement` header, i.e., it is no different than if the wikilink was of the form `[[markdown_base_file_name#Statement]]`. Other headers can be used, e.g. `lemma::![[markdown_base_file_name#Other Statement]]`. Such a result can be referenced with `[[markdown_base_file_name#Other Statement]]`. However, only a `Statement` header has an implicit association with a possible `Proof` header in the same file.
+
+Embedded environments can have manual latex titles. The title is taken from the display
+field of the wikilink `[[markdown_base_file_name#Statement|title_visible_in_latex]]`.
+There are two fallbacks if this is not specified: the `env_title` yaml field
+inside the embedded note, and then the base file name of the markdown note (this
+needs to be enabled in the settings).
 #### Explicit environments
 LaTeX environments can be written directly in the main note with the following syntax.
 ```markdown

@@ -1,5 +1,5 @@
 ---
-env_title: A very nice theorem
+env_title: yaml title
 ---
 # Statement
 Here is my theorem content

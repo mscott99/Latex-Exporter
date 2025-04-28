@@ -47,18 +47,19 @@ Here is some _code_ *things*
 \\end{verbatim}
 `);
 	});
-	// Test below will fail because the yaml parsing comes from obsidian. Enable if I fish out my manual yaml parsing from that package (probably not).
+	// Test below does not check yaml parsing; from obsidian. Enable if I fish out my manual yaml parsing from that package (probably not).
+	// Cannot test this, because the yaml module is called for any embed env.
 // 	test("test title of envs", async () => {
 // 		const display_settings = DEFAULT_SETTINGS;
-// 		display_settings.display_result_names = true;
+// 		display_settings.default_env_name_to_file_name = true;
 // 		const result = await get_latex_file_contents(
 // 			"env_with_title",
 // 			display_settings,
 // 		);
-// 		expect(result).toEqual(`\\begin{theorem}[A very nice theorem]
+// 		expect(result).toEqual(`\\begin{theorem}[display title of env]
 // \\label{thm:embed_with_title}
 // Here is my theorem content
 // \\end{theorem}
 // `);
-// });
+// 	});
 });

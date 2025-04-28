@@ -23,7 +23,8 @@ export interface ExportPluginSettings {
 	warn_before_overwrite: boolean;
 	default_citation_command: string;
 	overwrite_preamble: boolean;
-	display_result_names: boolean;
+	display_env_titles: boolean;
+	default_env_name_to_file_name: boolean;
 	last_external_folder: string;
 	overwrite_figures: boolean;
 	overwrite_header: boolean;
@@ -39,7 +40,8 @@ export const DEFAULT_SETTINGS: ExportPluginSettings = {
 	warn_before_overwrite: true,
 	default_citation_command: "cite",
 	overwrite_preamble: false,
-	display_result_names: false,
+	display_env_titles: true,
+	default_env_name_to_file_name: false,
 	last_external_folder: "",
 	overwrite_figures: false,
 	overwrite_header: false,

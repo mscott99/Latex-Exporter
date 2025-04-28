@@ -80,9 +80,6 @@ export class EmbedWikilink implements node {
 				return [p];
 			}
 		}
-		if (this.display !== undefined) {
-			return [new Text(this.display)];
-		}
 		const return_data = await parse_embed_content(
 			this.content,
 			data.find_file,
@@ -161,6 +158,7 @@ export class EmbedWikilink implements node {
 					),
 					address,
 					embedded_file_yaml,
+					this.display,
 				),
 			];
 		}
@@ -297,6 +295,7 @@ export class Environment implements node {
 	label: string | undefined;
 	type: string;
 	address_of_origin: string | undefined;
+	display_title: string | undefined;
 	// address_of_origin: string | undefined;
 	embedded_file_yaml: { [key: string]: string } | undefined;
 	constructor(
@@ -305,12 +304,14 @@ export class Environment implements node {
 		label?: string,
 		address_of_origin?: string,
 		embedded_file_yaml?: { [key: string]: string },
+		display_title?: string,
 	) {
 		this.children = children;
 		this.type = type.toLowerCase().trim();
 		this.label = label;
 		this.address_of_origin = address_of_origin;
 		this.embedded_file_yaml = embedded_file_yaml;
+		this.display_title = display_title;
 	}
 	static build_from_match(
 		match: RegExpMatchArray,
@@ -361,20 +362,29 @@ export class Environment implements node {
 				this.label.replace("proof", "statement") +
 				"}]";
 		} else if (
-			settings.display_result_names &&
-			this.address_of_origin !== undefined &&
-			this.type !== "remark"
+			this.type !== "remark" && settings.display_env_titles
 		) {
-			// Save the name of the note during unroll
-			if (
+			if (this.display_title !== undefined) {
+				if(this.display_title !== ""){
+					start_env_string +=
+						"[" + this.display_title + "]";
+				}
+			} else if (
 				this.embedded_file_yaml !== undefined &&
 				this.embedded_file_yaml.env_title !== undefined
 			) {
-				if (this.embedded_file_yaml.env_title !== "" && this.embedded_file_yaml.env_title !== null) { // empty string means no title at all.
+				if (
+					this.embedded_file_yaml.env_title !== "" &&
+					this.embedded_file_yaml.env_title !== null
+				) {
+					// empty string means no title at all.
 					start_env_string +=
 						"[" + this.embedded_file_yaml.env_title + "]";
 				}
-			} else {
+			} else if (
+				settings.default_env_name_to_file_name &&
+				this.address_of_origin !== undefined
+			) {
 				start_env_string += "[" + this.address_of_origin + "]";
 			}
 		}
@@ -400,34 +410,37 @@ export class Environment implements node {
 }
 
 export class Hyperlink implements node {
-    address: string;
-    label: string;
-    static get_regexp(): RegExp {
-        return /\[([^\[\]]+?)\]\((https?:\/\/[^\s]+?)\)/g;
-    }
-    static build_from_match(
-        args: RegExpMatchArray,
-        settings: ExportPluginSettings,
-    ): Hyperlink {
-        return new Hyperlink(args[1], args[2]);
-    }
-    constructor(label: string, address: string) {
-        this.label = label;
-        this.address = address;
-    }
-    async unroll(): Promise<node[]> {
-        return [this];
-    }
-    async latex(
-        buffer: Buffer,
-        buffer_offset: number,
-        settings: ExportPluginSettings,
-    ): Promise<number> {
-        return buffer_offset + buffer.write(
-            `\\href{${this.address}}{${this.label}}`,
-            buffer_offset
-        );
-    }
+	address: string;
+	label: string;
+	static get_regexp(): RegExp {
+		return /\[([^\[\]]+?)\]\((https?:\/\/[^\s]+?)\)/g;
+	}
+	static build_from_match(
+		args: RegExpMatchArray,
+		settings: ExportPluginSettings,
+	): Hyperlink {
+		return new Hyperlink(args[1], args[2]);
+	}
+	constructor(label: string, address: string) {
+		this.label = label;
+		this.address = address;
+	}
+	async unroll(): Promise<node[]> {
+		return [this];
+	}
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	): Promise<number> {
+		return (
+			buffer_offset +
+			buffer.write(
+				`\\href{${this.address}}{${this.label}}`,
+				buffer_offset,
+			)
+		);
+	}
 }
 
 // The purpose of this class is to defer the label resolution until all files are parsed. So labels are determined in the latex() call.
