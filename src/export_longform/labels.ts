@@ -110,16 +110,6 @@ async function resolve_header_label(
 						"In note:\n" +
 						file_of_origin.path,
 				);
-			} else {
-				notice_and_warn(
-					"keeping the header address of " +
-						address +
-						": " +
-						header_string +
-						" as-is\n" +
-						"In note:\n" +
-						file_of_origin.path,
-				);
 			}
 			return header_string;
 		}
