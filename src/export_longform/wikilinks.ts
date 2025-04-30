@@ -12,7 +12,11 @@ import {
 	parse_embed_content,
 	traverse_tree_and_parse_inline,
 } from "./parseMarkdown";
-import { parse_display, parse_after_headers } from "./parseMarkdown";
+import {
+	parse_display,
+	parse_after_headers,
+	parse_yaml_header,
+} from "./parseMarkdown";
 import { Paragraph, BlankLine } from "./display";
 import {
 	escape_latex,
@@ -361,13 +365,10 @@ export class Environment implements node {
 				"}Proof of \\Cref{" +
 				this.label.replace("proof", "statement") +
 				"}]";
-		} else if (
-			this.type !== "remark" && settings.display_env_titles
-		) {
+		} else if (this.type !== "remark" && settings.display_env_titles) {
 			if (this.display_title !== undefined) {
-				if(this.display_title !== ""){
-					start_env_string +=
-						"[" + this.display_title + "]";
+				if (this.display_title !== "") {
+					start_env_string += "[" + this.display_title + "]";
 				}
 			} else if (
 				this.embedded_file_yaml !== undefined &&
@@ -485,6 +486,62 @@ export class UnrolledWikilink implements node {
 		buffer_offset: number,
 		settings: ExportPluginSettings,
 	): Promise<number> {
+		const hasBeenEmbedded =
+			this.unroll_data.parsed_file_bundle[this.address] !== undefined;
+		const file = this.unroll_data.find_file(this.address);
+		if (!file) {
+			notice_and_warn(
+				"Wikilink with address '" +
+					this.address +
+					"' points to no file. Wikilink is in file: '" +
+					this.unroll_data.current_file.path +
+					"'",
+			);
+			return (
+				buffer_offset +
+				buffer.write(
+					"FAILED TO RESOLVE:[[" + this.address + "]]",
+					buffer_offset,
+				)
+			);
+		}
+		if (
+			!hasBeenEmbedded &&
+			!address_is_image_file(this.address) &&
+			(!this.header || this.header.toLowerCase() === "statement")
+		) {
+			const file_contents = await this.unroll_data.read_tfile(file);
+			const [yaml] = parse_yaml_header(file_contents);
+			const bib_key_match = yaml.bib_key?.match(
+				/@([a-zA-Z0-9\-_]+)|\[\[@([a-zA-Z0-9\-_]+)\]\]/,
+			);
+			const bib_key = bib_key_match
+				? bib_key_match[1] || bib_key_match[2]
+				: undefined;
+			const result_name = yaml.result_name;
+			if (bib_key && typeof result_name === "string") {
+				const citation = new Citation(
+					bib_key,
+					result_name || this.displayed,
+				);
+				return citation.latex(buffer, buffer_offset, settings);
+			} else {
+				notice_and_warn(
+					"address of reference '" +
+						this.address +
+						"' is referenced but was not embedded.\n" +
+						"In note:\n" +
+						this.unroll_data.current_file.path,
+				);
+				return (
+					buffer_offset +
+					buffer.write(
+						"FAILED TO RESOLVE:[[" + this.address + "]]",
+						buffer_offset,
+					)
+				);
+			}
+		}
 		const label = await label_from_location(
 			this.unroll_data,
 			this.address,

@@ -42,6 +42,10 @@ We can use lists. Also, results can live in the same note under different header
 There are also options for comments.
 %%This will not be exported at all%%
 > This will become a comment in the latex export.
+
+Another lemma of interest from my previous work: [[previous published result]].
+[[Dead citation]] --> Generates a warning on export that you have a dead link.
+[[Non-embedded result]] --> Generates a warning that this result is not embedded elsewhere.
 ## Proofs
 We are ready to prove our main result. We can embed proof environments from other notes. References to the correct results in the header of the proof are generated automatically.
 proof::![[theorem_1#Proof]]

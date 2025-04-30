@@ -578,7 +578,7 @@ export function make_heading_tree(markdown: node[]): node[] {
 	return new_md.children;
 }
 
-function parse_yaml_header(input: string): [{ [key: string]: string }, string] {
+export function parse_yaml_header(input: string): [{ [key: string]: string }, string] {
 	const match = /^---\n(.*?)---\n(.*)$/s.exec(input);
 	if (!match) {
 		return [{}, input];
