@@ -83,6 +83,15 @@ field of the wikilink `[[markdown_base_file_name#Statement|title_visible_in_late
 There are two fallbacks if this is not specified: the `env_title` yaml field
 inside the embedded note, and then the base file name of the markdown note (this
 needs to be enabled in the settings).
+#### Previously published results
+If you have a result in your vault that is in some published paper, add two
+entries to the YAML header:
+- bib_key: @bibKey    (This can also be in a wikilink [[@bibKey]])
+- result_name: Proposition 3.1
+If the plugin encounters a wikilink referring to this note, it will render
+to a citation `\cite[Proposition 3.1]{bibKey}`. This only works for notes
+that have not been embedded elsewhere in the longform (in which case the
+wikilink will become a reference).
 #### Explicit environments
 LaTeX environments can be written directly in the main note with the following syntax.
 ```markdown

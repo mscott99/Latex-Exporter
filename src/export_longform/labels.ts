@@ -102,15 +102,6 @@ async function resolve_header_label(
 		if (file === undefined || file_cache[file.basename] === undefined) {
 			const header_string =
 				typeof header === "string" ? header : header.join(".");
-			if (file !== undefined && file_cache[file.basename] === undefined) {
-				notice_and_warn(
-					"address of reference '" +
-						address +
-						"' is referenced but was not embedded.\n" +
-						"In note:\n" +
-						file_of_origin.path,
-				);
-			}
 			return header_string;
 		}
 		file_content = file_cache[file.basename].body;
