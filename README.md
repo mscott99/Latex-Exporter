@@ -86,7 +86,7 @@ needs to be enabled in the settings).
 #### Previously published results
 If you have a result in your vault that is in some published paper, add two
 entries to the YAML header:
-- bib_key: @bibKey    (This can also be in a wikilink [[@bibKey]])
+- source: @bibKey    (This can also be in a wikilink [[@bibKey]])
 - result_name: Proposition 3.1
 If the plugin encounters a wikilink referring to this note, it will render
 to a citation `\cite[Proposition 3.1]{bibKey}`. This only works for notes

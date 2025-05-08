@@ -1,5 +1,5 @@
 ---
-bib_key: "[[@scottpaper]]"
+source: "[[@scottpaper]]"
 result_name: Proposition 3.1
 ---
 # Statement
