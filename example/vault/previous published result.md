@@ -1,6 +1,6 @@
 ---
-bib_key: "[[@scottpaper]]"
-result_name: Proposition 3.1
+source: "[[@scottpaper]]"
+published_result_name: Proposition 3.1
 ---
 # Statement
 stuff

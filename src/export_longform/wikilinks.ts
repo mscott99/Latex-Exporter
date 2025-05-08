@@ -512,17 +512,17 @@ export class UnrolledWikilink implements node {
 		) {
 			const file_contents = await this.unroll_data.read_tfile(file);
 			const [yaml] = parse_yaml_header(file_contents);
-			const bib_key_match = yaml.bib_key?.match(
+			const bib_key_match = yaml.source?.match(
 				/@([a-zA-Z0-9\-_]+)|\[\[@([a-zA-Z0-9\-_]+)\]\]/,
 			);
 			const bib_key = bib_key_match
 				? bib_key_match[1] || bib_key_match[2]
 				: undefined;
-			const result_name = yaml.result_name;
-			if (bib_key && typeof result_name === "string") {
+			const published_result_name = yaml.published_result_name;
+			if (bib_key && typeof published_result_name === "string") {
 				const citation = new Citation(
 					bib_key,
-					result_name || this.displayed,
+					published_result_name || this.displayed,
 				);
 				return citation.latex(buffer, buffer_offset, settings);
 			} else {
