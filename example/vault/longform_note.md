@@ -1,6 +1,6 @@
 ---
 title: An example of how to use this plugin.
-author: Matthew Scott
+author: Matthew S Scott
 ---
 # Abstract
 This is the abstract. The abstract needs only be placed under an header named "Abstract" in the longform note.
