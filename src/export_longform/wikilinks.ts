@@ -73,7 +73,7 @@ export class EmbedWikilink implements node {
 				];
 			} else {
 				data.media_files.push(file);
-				const p = new Plot(file, this.display);
+				const p = new Plot(file, data.current_file, this.display);
 				p.label = await label_from_location(
 					data,
 					file.name,
@@ -187,7 +187,8 @@ export class Plot implements node {
 	label: string;
 	caption: string | undefined;
 	file_of_origin: TFile;
-	constructor(image: TFile, caption?: string) {
+	constructor(image: TFile, current_file:TFile, caption?: string) {
+		this.file_of_origin = current_file
 		this.image = image;
 		this.caption = caption;
 	}
@@ -215,6 +216,8 @@ export class Plot implements node {
 				"WARNING: Figure created from '" +
 				this.image.name +
 				"' has no caption.\n" +
+					"You may want to add one in the display part of the wikilink: for example,\n"+
+					"![[plot.png|my caption]]\n"+
 				"In note:\n" +
 				this.file_of_origin.path;
 			notice_and_warn(warning);
