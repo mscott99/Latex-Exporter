@@ -10,9 +10,11 @@ Most of the introduction is in another note. We embed its contents without creat
 
 ![[introduction#The good part of the good intro]]
 ## Literature review
-We cite as follows: [[@vershyninHighDimensionalProbabilityIntroduction2018]]. A *textcite* cand be also used: the book is by [txt][[@vershyninHighDimensionalProbabilityIntroduction2018]]. Specific results can be referenced: [Example 5.4][[@vershyninHighDimensionalProbabilityIntroduction2018]]. Multi-citations are also supported: [[@berkCoherenceParameterCharacterizing2022]][[@berkModeladaptedFourierSampling2023]].
+We cite as follows: [[@vershyninHighDimensionalProbabilityIntroduction2018]]. A *textcite* can also be used: the book is by [[@vershyninHighDimensionalProbabilityIntroduction2018]][txt]. Specific results can be referenced: [[@vershyninHighDimensionalProbabilityIntroduction2018]][Example 5.4]. Multi-citations are also supported: [[@berkCoherenceParameterCharacterizing2022]][[@berkModeladaptedFourierSampling2023]].
 
-Alternatively, pandoc syntax also works, though you may want to set the default citation command to *textcite* in the plugin settings. @vershyninHighDimensionalProbabilityIntroduction2018, [-@vershyninHighDimensionalProbabilityIntroduction2018], @vershyninHighDimensionalProbabilityIntroduction2018[Example 2.1], @berkCoherenceParameterCharacterizing2022;@berkModeladaptedFourierSampling2023, and then @vershyninHighDimensionalProbabilityIntroduction2018.
+Alternatively, pandoc syntax also works, though you may want to set the default citation command to *textcite* in the plugin settings. @vershyninHighDimensionalProbabilityIntroduction2018, [-@vershyninHighDimensionalProbabilityIntroduction2018], @vershyninHighDimensionalProbabilityIntroduction2018[Example 2.1], @berkCoherenceParameterCharacterizing2022;@berkModeladaptedFourierSampling2023, 
+[@berkCoherenceParameterCharacterizing2022;@berkModeladaptedFourierSampling2023] and then [@vershyninHighDimensionalProbabilityIntroduction2018].
+
 ## Main results
 Here is an equation that we can reference.
 $$1+1 = 2$$

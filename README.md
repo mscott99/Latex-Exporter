@@ -39,7 +39,6 @@ See the subdirectory `example/vault` of the repository hosting this plugin for a
 |<img src="example/export/Screenshot_Obsidian-1.png" height="450"> |<img src="example/export/longform_note_output-1.png" height="450"> |
 |<img src="example/export/Screenshot_Obsidian-2.png" height="450">|<img src="example/export/longform_note_output-2.png" height="450"> |
 |<img src="example/export/Screenshot_Obsidian-3.png" height="450">|<img src="example/export/longform_note_output-3.png" height="450"> |
-|<img src="example/export/Screenshot_Obsidian-4.png" height="450">||
 
 ## How to use: the commands
 ### `Latex Exporter:Export current note in-vault`
@@ -116,9 +115,18 @@ The first line in the align environment can be referenced with `@eq-align_label-
 ### Direct Embeds
 A simple embed `![[Other note]]` without a breadcrumb-like attribute of the style `theorem::` will embed the content into the main note without creating a LaTeX environment, even if this embed wikilink specifies a header. As always in this plugin, embeds are recursive; it is fine to have many layers deep of embeds.
 ### Citations
-Citations are wikilinks starting with the '@' character, immediately followed by the bibtex key. To use this feature it is strongly encouraged to use either the Zotero integration plugin (recommended, and it should be set up so that the citations match the aformentionned format, see https://mscott99.github.io/matthew_s_scott_zettel/Setup%20workflows/Setup%20citations/ for how to do this) or the Citations plugin. Pandoc-style citations are also supported, with some limitations. Any citation with a locator will become a cite command `\\cite`. To get the author names to be displayed, you can set the 'default citation command' option in the plugin settings to "textcite". Citations can also have labels (locators) to reference specific results in a source, in which case they look like `[[@<bibtex_key>]][<label>]` or `@<bibtex_key>[<label>]` and gives an output of `\cite[<label>]{<bibtex_key>}`.
+#### Wikilink citations
+Wikilink citations work great together with plugins like `Zotero connector`. A citation wikilink must start with the '@' character, immediately followed by the bibtex key. To use this feature it is strongly encouraged to use either the Zotero integration plugin (recommended, and it should be set up so that the citations match the aforementioned format, see https://mscott99.github.io/matthew_s_scott_zettel/Setup%20workflows/Setup%20citations/ for how to do this). Alternatively, you can also use the Citations plugin. A citation wikilink becomes a cite command: `\\cite`. To get the author names to be displayed, you can set the 'default citation command' option in the plugin settings to "textcite". Citations can also have labels (locators) to reference specific results in a source, in which case they look like `[[@<bibtex_key>]][<label>]` or `@<bibtex_key>[<label>]` and gives an output of `\cite[<label>]{<bibtex_key>}`. If `<label>` is 'std', `\\cite` will be used. If it is `txt`, `\\textcite` is used.
 
-The default citation command is `\cite{}` from the `biblatex` package, although a different default citation command can be set in the settings. If a different default citation command is set, a link of the form `[[@...]][std]` will be converted to `\cite{}`. Specifying `[txt]` as a label will instead ensure the use of `\textcite{}`. If many citations wikilinks are given consecutively without any characters between them, they will be included in a single LaTeX citation command, meaning that `[[@first]][[@second]]` becomes `\\cite{@first, @second}`.
+The default citation command can be set in the settings. If many citations wikilinks are given consecutively without any characters between them, they will be included in a single LaTeX citation command, meaning that `[[@first]][[@second]]` becomes `\\cite{@first, @second}`.
+#### Pandoc-style citations
+The following is supported:
+@smith2021 → \textcite{Smith2021}
+[@smith2021] → \parencite{Smith2021}
+[@smith2021, p. 14] → \parencite[p. 14]{Smith2021}
+@smith2021 [p. 14] → \textcite[p. 14]{Smith2021}
+[-@smith2021] → \citeyear{Smith2021}
+[@smith2021; @Jones2020] → \parencite{Smith2021, Jones2020}
 ### Figures
 Figures are created from embed links of image files, and are recognized by their file suffix. A caption can be added in the display section of the link: `![[image.jpeg|caption text here]]`. There are some themes in Obsidian which will display captions of this kind. Figures are referenced with wikilinks to the embedded file.
 

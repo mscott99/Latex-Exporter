@@ -23,6 +23,7 @@ import {
 	Wikilink,
 	Citation,
 	MultiCitation,
+	PandocCitation,
 	PandocMultiCitation,
 	EmbedWikilink,
 	Environment,
@@ -68,9 +69,6 @@ export async function parse_longform(
 	settings: ExportPluginSettings,
 	selection?: string,
 ): Promise<parsed_longform> {
-	if (longform_file === undefined) {
-		throw new Error(`File not found: ${longform_file}`);
-	}
 	let file_contents: string;
 	if (selection === undefined) {
 		file_contents = await read_tfile(longform_file);
@@ -612,6 +610,12 @@ export function parse_inline(
 		inline_arr,
 		Citation.get_regexp(),
 		Citation.build_from_match,
+		settings,
+	);
+	inline_arr = split_inline<PandocCitation>(
+		inline_arr,
+		PandocCitation.get_regexp(),
+		PandocCitation.build_from_match,
 		settings,
 	);
 	inline_arr = split_inline<Wikilink>(

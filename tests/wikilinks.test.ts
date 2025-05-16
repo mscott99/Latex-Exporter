@@ -14,7 +14,7 @@ describe("my plugin", () => {
 			DEFAULT_SETTINGS,
 		);
 		expect(result).toEqual(
-			"This is a \\textcite{citation}. Another \\textcite{citation}. See \\cite[Proposition 3]{citation}. And~\\cite{citation}. Case~\\cite{citation} followed by\\cite{citation1, citation2}.\n",
+			"This is a \\textcite{citation}. Another \\textcite{citation}. See \\textcite[Proposition 3]{citation}. And~\\cite{citation}. Case~\\cite{citation} followed by\\cite{citation1, citation2}.\n",
 		);
 	});
 	test("multi citations", async () => {

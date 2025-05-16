@@ -22,9 +22,10 @@ That the first lemma holds
 Note that the above result was embedded into the note `introduction' which was itself embedded into the longform note, and this still produces a result that can be referenced from anywhere via wikilinks.
 \section{Literature review}
 \label{loc:body.literature_review}
-We cite as follows: \cite{vershyninHighDimensionalProbabilityIntroduction2018}. A \emph{textcite} cand be also used: the book is by \textcite{vershyninHighDimensionalProbabilityIntroduction2018}. Specific results can be referenced: \cite[Example 5.4]{vershyninHighDimensionalProbabilityIntroduction2018}. Multi-citations are also supported: \cite{berkCoherenceParameterCharacterizing2022, berkModeladaptedFourierSampling2023}.
+We cite as follows: \cite{vershyninHighDimensionalProbabilityIntroduction2018}. A \emph{textcite} can also be used: the book is by \textcite{vershyninHighDimensionalProbabilityIntroduction2018}. Specific results can be referenced: \cite[Example 5.4]{vershyninHighDimensionalProbabilityIntroduction2018}. Multi-citations are also supported: \cite{berkCoherenceParameterCharacterizing2022, berkModeladaptedFourierSampling2023}.
 
-Alternatively, pandoc syntax also works, though you may want to set the default citation command to \emph{textcite} in the plugin settings. \cite{vershyninHighDimensionalProbabilityIntroduction2018}, \cite{vershyninHighDimensionalProbabilityIntroduction2018}, \cite[Example 2.1]{vershyninHighDimensionalProbabilityIntroduction2018}, \cite{berkCoherenceParameterCharacterizing2022, berkModeladaptedFourierSampling2023}, and then \cite{vershyninHighDimensionalProbabilityIntroduction2018}.
+Alternatively, pandoc syntax also works, though you may want to set the default citation command to \emph{textcite} in the plugin settings. \textcite{vershyninHighDimensionalProbabilityIntroduction2018}, \citeyear{vershyninHighDimensionalProbabilityIntroduction2018}, \textcite[Example 2.1]{vershyninHighDimensionalProbabilityIntroduction2018}, \cite{berkCoherenceParameterCharacterizing2022, berkModeladaptedFourierSampling2023}, 
+\parencite{berkCoherenceParameterCharacterizing2022, berkModeladaptedFourierSampling2023} and then \parencite{vershyninHighDimensionalProbabilityIntroduction2018}.
 \section{Main results}
 \label{loc:body.main_results}
 Here is an equation that we can reference.

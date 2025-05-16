@@ -187,8 +187,8 @@ export class Plot implements node {
 	label: string;
 	caption: string | undefined;
 	file_of_origin: TFile;
-	constructor(image: TFile, current_file:TFile, caption?: string) {
-		this.file_of_origin = current_file
+	constructor(image: TFile, current_file: TFile, caption?: string) {
+		this.file_of_origin = current_file;
 		this.image = image;
 		this.caption = caption;
 	}
@@ -216,8 +216,8 @@ export class Plot implements node {
 				"WARNING: Figure created from '" +
 				this.image.name +
 				"' has no caption.\n" +
-					"You may want to add one in the display part of the wikilink: for example,\n"+
-					"![[plot.png|my caption]]\n"+
+				"You may want to add one in the display part of the wikilink: for example,\n" +
+				"![[plot.png|my caption]]\n" +
 				"In note:\n" +
 				this.file_of_origin.path;
 			notice_and_warn(warning);
@@ -525,6 +525,7 @@ export class UnrolledWikilink implements node {
 			if (bib_key && typeof published_result_name === "string") {
 				const citation = new Citation(
 					bib_key,
+					"std",
 					published_result_name || this.displayed,
 				);
 				return citation.latex(buffer, buffer_offset, settings);
@@ -581,42 +582,114 @@ export class UnrolledWikilink implements node {
 	}
 }
 
+export class PandocCitation {
+	id: string;
+	type: string | undefined;
+	result: string | undefined;
+	static get_regexp(): RegExp {
+		return /(?:(?:@([^,.;\[\] ]+))|(?:\[(-)?@([^,;.\[\]\- ]+)(?:, ?([^\]\[]*))?\]))(?:\[([^\]@]*)\])?/g;
+	}
+	constructor(id: string, type?: string, suffix?: string) {
+		this.id = id;
+		this.type = type;
+		this.result = suffix;
+	}
+	static build_from_match(
+		args: RegExpMatchArray,
+		settings: ExportPluginSettings,
+	): PandocCitation {
+		let bibkey = undefined;
+		let enclosed_in_brackets: boolean;
+		if (args[1] != undefined) {
+			bibkey = args[1];
+			enclosed_in_brackets = false;
+		} else if (args[3] != undefined) {
+			bibkey = args[3];
+			enclosed_in_brackets = true;
+		} else {
+			throw Error("Unexpected regex behaviour; no bibkey found");
+		}
+		let suffix = undefined;
+		if (args[4] !== undefined) {
+			suffix = args[4];
+		} else if (args[5] !== undefined) {
+			suffix = args[5];
+		}
+		const supressed = args[2] !== undefined;
+		let citation_type: string;
+		if (supressed) {
+			citation_type = "year"; // [-@smith2021] → \citeyear
+		} else if (enclosed_in_brackets) {
+			citation_type = "parenthesis"; // [@smith2021] or [@smith2021, p. 14] → \parencite
+		} else {
+			citation_type = "txt"; // @smith2021 or @smith2021 [p. 14] → \textcite
+		}
+		if (suffix == "std" || suffix == "txt") {
+			citation_type = suffix;
+			suffix = undefined;
+		}
+		return new Citation(bibkey, citation_type, suffix);
+	}
+	async unroll(): Promise<node[]> {
+		throw Error("Should not be unrolled.");
+	}
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	): Promise<number> {
+		throw Error("Latex on this PandocCitation should not be called.");
+	}
+}
+
 export class Citation implements node {
 	// TODO: Make this a full item, not a result of an unroll.
 	id: string;
+	type: string | undefined;
 	result: string | undefined;
 	static get_regexp(): RegExp {
-		return /(?:\[([^@\[]*?)\])?(?:(?:\[\[@([a-zA-Z0-9\.\-_]*)\]\])|(?:(\[\-)?@([a-zA-Z0-9\-_]*)\]?))(?:\[([^@\[]*?)\])?/g;
+		return /(?:\[([^@\[]*?)\])?(?:(?:\[\[@([a-zA-Z0-9\.\-_]*)\]\]))(?:\[([^@\[]*?)\])?/g;
 	}
 	static build_from_match(
 		args: RegExpMatchArray,
 		settings: ExportPluginSettings,
 	): Citation {
-		let captured_id = undefined;
-		if (args[2] !== undefined) {
-			captured_id = args[2];
-		} else if (args[4] !== undefined) {
-			captured_id = args[4];
-		} else {
+		let captured_id = args[2];
+		if (captured_id == "") {
 			throw new Error("Unexpected: empty match for citation id.");
 		}
+		let type = undefined;
 		let result = undefined;
-		if (args[1] !== undefined && args[5] === undefined) {
+		if (args[1] !== undefined) {
 			result = args[1];
-		} else if (args[5] !== undefined) {
-			result = args[5];
-		} else if (
-			args[3] !== undefined &&
-			args[1] === undefined &&
-			args[5] === undefined
-		) {
-			result = "std";
+		} else if (args[3] !== undefined) {
+			result = args[3];
 		}
-		return new Citation(captured_id, result);
+		if (result == "std" || result == "txt") {
+			type = result;
+			result = undefined;
+		}
+		return new Citation(captured_id, type, result);
 	}
-	constructor(id: string, result?: string) {
+	constructor(id: string, type?: string, suffix?: string) {
+		if (
+			!(
+				type == undefined ||
+				type == "txt" ||
+				type == "std" ||
+				type == "year" ||
+				type == "parenthesis"
+			)
+		) {
+			notice_and_warn(
+				"Invalid citation type: " + type + ". Reverting to default.",
+			);
+			this.type = undefined;
+		} else {
+			this.type = type;
+		}
 		this.id = id;
-		this.result = result;
+		this.result = suffix;
 	}
 	async unroll(): Promise<node[]> {
 		return [this];
@@ -627,33 +700,27 @@ export class Citation implements node {
 		settings: ExportPluginSettings,
 	): Promise<number> {
 		// TODO: change the use of textcite to an option in settings
-		if (this.result !== undefined) {
-			if (this.result === "std") {
-				return (
-					buffer_offset +
-					buffer.write("\\cite{" + this.id + "}", buffer_offset)
-				);
-			} else if (this.result === "txt") {
-				return (
-					buffer_offset +
-					buffer.write("\\textcite{" + this.id + "}", buffer_offset)
-				);
-			}
-			return (
-				buffer_offset +
-				buffer.write(
-					"\\cite[" + this.result + "]{" + this.id + "}",
-					buffer_offset,
-				)
-			);
+		let citestring = "\\";
+		let citeword;
+		if (this.type == "txt") {
+			citeword = "textcite";
+		} else if (this.type == "std") {
+			citeword = "cite";
+		} else if (this.type == "parenthesis") {
+			citeword = "parencite";
+		} else if (this.type == "year") {
+			citeword = "citeyear";
+		} else if (this.type == undefined) {
+			citeword = settings.default_citation_command;
+		} else {
+			throw Error("Invalid type: " + this.type);
 		}
-		return (
-			buffer_offset +
-			buffer.write(
-				"\\" + settings.default_citation_command + "{" + this.id + "}",
-				buffer_offset,
-			)
-		);
+		citestring += citeword;
+		if (this.result !== undefined) {
+			citestring += "[" + this.result + "]";
+		}
+		citestring += "{" + this.id + "}";
+		return buffer_offset + buffer.write(citestring, buffer_offset);
 	}
 }
 
@@ -693,15 +760,21 @@ export class MultiCitation implements node {
 
 export class PandocMultiCitation implements node {
 	ids: string[];
+	type: string;
 	static get_regexp(): RegExp {
-		return /(?<!\[)\[?@([a-zA-Z0-9\-_]+);[ \t]*(?:@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?\]?/g;
+		return /(?<!\[)(\[)?@([a-zA-Z0-9\-_]+);[ \t]*(?:@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?(?:;[ \t]@([a-zA-Z0-9\-_]+))?\]?/g;
 	}
 	static build_from_match(args: RegExpMatchArray): PandocMultiCitation {
 		return new PandocMultiCitation(args);
 	}
 	constructor(args: string[]) {
 		this.ids = [];
-		for (const id of args.slice(1)) {
+		if (args[1] !== undefined) {
+			this.type = "parenthesis";
+		}else{
+			this.type = "std"
+		}
+		for (const id of args.slice(2)) {
 			if (id === undefined) {
 				break;
 			}
@@ -712,7 +785,11 @@ export class PandocMultiCitation implements node {
 		return [this];
 	}
 	async latex(buffer: Buffer, buffer_offset: number): Promise<number> {
-		buffer_offset += buffer.write("\\cite{", buffer_offset);
+		let citeword = "cite"
+		if(this.type == "parenthesis"){
+			citeword = "parencite"
+		}
+		buffer_offset += buffer.write("\\" + citeword +"{", buffer_offset);
 		for (const id of this.ids.slice(0, -1)) {
 			buffer_offset += buffer.write(id + ", ", buffer_offset);
 		}

@@ -1,1 +1,1 @@
-This is a [[@citation]]. Another [[@citation]]. See [Proposition 3][[@citation]]. And~[std][[@citation]]. Case~[std][[@citation]] followed by[[@citation1]][[@citation2]].
+This is a [[@citation]]. Another [[@citation]]. See [[@citation]][Proposition 3]. And~[[@citation]][std]. Case~[[@citation]][std] followed by[[@citation1]][[@citation2]].

@@ -1,4 +1,4 @@
-I cite @first, @first[p.2], [-@first], [[@first]], [std][[@second]], [[@second]][std], [txt][[@first]], [[@first]][[@second]], [Remark 1][[@second]].
+I cite @first, @first[p.2], [-@first], [[@first]], [[@second]][std], [[@second]][std], [[@first]][txt], [[@first]][[@second]], [[@second]][Remark 1].
 @hello; @hi; @other
 [@hello;  @what]
 @vershyninHighDimensionalProbabilityIntroduction2018, [-@vershyninHighDimensionalProbabilityIntroduction2018], @vershyninHighDimensionalProbabilityIntroduction2018[Example 2.1],

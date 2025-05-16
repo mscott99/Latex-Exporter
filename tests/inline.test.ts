@@ -19,11 +19,11 @@ Another \\emph{emph} \\textbf{strong}
 		settings.default_citation_command = "othercite";
 		const result = await get_latex_file_contents("citations", settings);
 		expect(result)
-			.toEqual(`I cite \\othercite{first}, \\cite[p.2]{first}, \\cite{first}, \\othercite{first}, \\cite{second}, \\cite{second}, \\textcite{first}, \\cite{first, second}, \\cite[Remark 1]{second}.
+			.toEqual(`I cite \\textcite{first}, \\textcite[p.2]{first}, \\citeyear{first}, \\othercite{first}, \\cite{second}, \\cite{second}, \\textcite{first}, \\cite{first, second}, \\othercite[Remark 1]{second}.
 \\cite{hello, hi, other}
-\\cite{hello, what}
-\\othercite{vershyninHighDimensionalProbabilityIntroduction2018}, \\cite{vershyninHighDimensionalProbabilityIntroduction2018}, \\cite[Example 2.1]{vershyninHighDimensionalProbabilityIntroduction2018},
-\\cite{berkCoherenceParameterCharacterizing2022, berkModeladaptedFourierSampling2023}, and then \\othercite{vershyninHighDimensionalProbabilityIntroduction2018}.
+\\parencite{hello, what}
+\\textcite{vershyninHighDimensionalProbabilityIntroduction2018}, \\citeyear{vershyninHighDimensionalProbabilityIntroduction2018}, \\textcite[Example 2.1]{vershyninHighDimensionalProbabilityIntroduction2018},
+\\cite{berkCoherenceParameterCharacterizing2022, berkModeladaptedFourierSampling2023}, and then \\textcite{vershyninHighDimensionalProbabilityIntroduction2018}.
 `);
 	});
 });
