@@ -205,8 +205,10 @@ export class Plot implements node {
 			`\\begin{figure}[h]
 \\centering
 \\includegraphics[width=\\textwidth]{` +
-				path.join("Files", this.image.name) +
-				"}\n",
+				"Files" +
+				"/" +
+				this.image.name +
+				"}\n",// Cannot use path.join, because the path is a latex path.
 			buffer_offset,
 		);
 		let caption_text: string;
