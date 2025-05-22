@@ -13,8 +13,8 @@ describe("my plugin", () => {
 \\sum
 \\end{equation}
 \\Cref{eq:ref}
-`)
-	})
+`);
+	});
 	test("aligned env", async () => {
 		const result = await get_latex_file_contents(
 			"weird_equations",

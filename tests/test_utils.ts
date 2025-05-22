@@ -4,7 +4,11 @@ import { parse_note, init_data, parse_longform } from "../src/export_longform";
 import { TFile } from "obsidian";
 import * as fs from "fs";
 import * as path from "path";
-import { address_is_image_file, ExportPluginSettings, DEFAULT_SETTINGS } from "../src/export_longform/interfaces";
+import {
+	address_is_image_file,
+	ExportPluginSettings,
+	DEFAULT_SETTINGS,
+} from "../src/export_longform/interfaces";
 
 export async function read_tfile(file: TFile): Promise<string> {
 	return fs.readFileSync(file.path, "utf-8");
@@ -62,7 +66,7 @@ export async function get_latex_file_contents(
 		read_tfile,
 		find_file,
 		longform_file,
-		settings
+		settings,
 	);
 	return parsed_content.body;
 }

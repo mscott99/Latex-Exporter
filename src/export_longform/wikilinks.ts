@@ -208,7 +208,7 @@ export class Plot implements node {
 				"Files" +
 				"/" +
 				this.image.name +
-				"}\n",// Cannot use path.join, because the path is a latex path.
+				"}\n", // Cannot use path.join, because the path is a latex path.
 			buffer_offset,
 		);
 		let caption_text: string;
@@ -773,8 +773,8 @@ export class PandocMultiCitation implements node {
 		this.ids = [];
 		if (args[1] !== undefined) {
 			this.type = "parenthesis";
-		}else{
-			this.type = "std"
+		} else {
+			this.type = "std";
 		}
 		for (const id of args.slice(2)) {
 			if (id === undefined) {
@@ -787,11 +787,11 @@ export class PandocMultiCitation implements node {
 		return [this];
 	}
 	async latex(buffer: Buffer, buffer_offset: number): Promise<number> {
-		let citeword = "cite"
-		if(this.type == "parenthesis"){
-			citeword = "parencite"
+		let citeword = "cite";
+		if (this.type == "parenthesis") {
+			citeword = "parencite";
 		}
-		buffer_offset += buffer.write("\\" + citeword +"{", buffer_offset);
+		buffer_offset += buffer.write("\\" + citeword + "{", buffer_offset);
 		for (const id of this.ids.slice(0, -1)) {
 			buffer_offset += buffer.write(id + ", ", buffer_offset);
 		}

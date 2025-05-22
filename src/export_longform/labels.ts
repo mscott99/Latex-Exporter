@@ -84,7 +84,9 @@ export async function label_from_location(
 	if (address === "" || address === data.longform_file.basename) {
 		return format_label("loc:" + resolved_head_label);
 	}
-	return resolved_head_label === "" ?  format_label("loc:" + address):format_label("loc:" + address + "." + resolved_head_label);
+	return resolved_head_label === ""
+		? format_label("loc:" + address)
+		: format_label("loc:" + address + "." + resolved_head_label);
 }
 
 async function resolve_header_label(

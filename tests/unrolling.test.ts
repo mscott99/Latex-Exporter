@@ -41,7 +41,7 @@ describe("split_display_blocks", () => {
 				"lemma",
 				"loc:lemma2",
 				"lemma2",
-				{}
+				{},
 			),
 		];
 		expect(unrolled_content).toEqual(expected_content);
@@ -77,7 +77,7 @@ some stuff
 \\end{equation*}
 reference:\\Cref{loc:other_lem.statement}
 \\end{lemma}
-`
+`;
 		expect(unrolled_content).toEqual(expected);
 	});
 

@@ -4,7 +4,7 @@ import {
 	unroll_array,
 	ExportPluginSettings,
 } from "./interfaces";
-import {TFile} from "obsidian"
+import { TFile } from "obsidian";
 import { notice_and_warn, strip_newlines } from "./utils";
 import { Text } from "./inline";
 import { format_label } from "./labels";
@@ -89,8 +89,8 @@ export class DisplayMath implements node {
 		this.label = label;
 		this.explicit_env_name = explicit_env;
 	}
-	async unroll(data:metadata_for_unroll): Promise<node[]> {
-		this.file_of_origin=data.current_file
+	async unroll(data: metadata_for_unroll): Promise<node[]> {
+		this.file_of_origin = data.current_file;
 		return [this];
 	}
 	async latex(
@@ -108,7 +108,7 @@ export class DisplayMath implements node {
 				notice_and_warn(
 					`Environment ${this.explicit_env_name} does not support labels.\n Ignoring label ${this.label}
 In note:
-`+ this.file_of_origin.path,
+` + this.file_of_origin.path,
 				);
 			}
 			if (

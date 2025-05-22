@@ -38,7 +38,7 @@ import {
 	SingleQuotes,
 	Strong,
 	InlineMath,
-	InlineCode
+	InlineCode,
 } from "./inline";
 import { Header, find_header } from "./headers";
 import { TFile, Notice, parseYaml } from "obsidian";
@@ -371,7 +371,7 @@ export async function parse_embed_content(
 	file_of_origin: TFile,
 	settings: ExportPluginSettings,
 	header?: string,
-): Promise<[node[], number, { [key: string]: string; }] | undefined> {
+): Promise<[node[], number, { [key: string]: string }] | undefined> {
 	const file_found = find_file(address);
 	if (file_found === undefined) {
 		// no warning necessary, already warned in find_file
@@ -391,8 +391,11 @@ export async function parse_embed_content(
 	const header_elt = await find_header(header, [content.body], settings);
 	if (header_elt === undefined) {
 		notice_and_warn(
-			"Header not found: " + header + " in file with address " + address +
-				"In note:\n"+
+			"Header not found: " +
+				header +
+				" in file with address " +
+				address +
+				"In note:\n" +
 				file_of_origin.path,
 		);
 		return undefined;
@@ -576,7 +579,9 @@ export function make_heading_tree(markdown: node[]): node[] {
 	return new_md.children;
 }
 
-export function parse_yaml_header(input: string): [{ [key: string]: string }, string] {
+export function parse_yaml_header(
+	input: string,
+): [{ [key: string]: string }, string] {
 	const match = /^---\n(.*?)---\n(.*)$/s.exec(input);
 	if (!match) {
 		return [{}, input];

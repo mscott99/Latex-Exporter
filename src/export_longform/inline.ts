@@ -280,7 +280,11 @@ export class InlineCode implements node {
 		settings: ExportPluginSettings,
 	) {
 		return (
-			buffer_offset + buffer.write("\\texttt{" + this.code.replace('_','\_') + "}", buffer_offset)
+			buffer_offset +
+			buffer.write(
+				"\\texttt{" + this.code.replace("_", "_") + "}",
+				buffer_offset,
+			)
 		);
 	}
 }

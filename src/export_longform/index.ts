@@ -27,5 +27,5 @@ export {
 	Paragraph,
 	split_display,
 } from "./display";
-export {notice_and_warn} from "./utils"
+export { notice_and_warn } from "./utils";
 export type { parsed_longform } from "./parseMarkdown";
