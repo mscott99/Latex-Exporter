@@ -93,6 +93,12 @@ export function escape_latex(input: string) {
 		.replace(/”/g, "''")
 		.replace(/‘/g, "`")
 		.replace(/’/g, "'")
+		.replace(/\u00A0/g, '~') // non-breaking space
+		.replace(/\u00AD/g, '\-') // soft hyphen
+		.replace(/\u200B/g, '') // zero-width space
+		.replace(/\u200C/g, '') // zero-width non-joiner
+		.replace(/\u200D/g, '') // zero-width joiner (remove, as it may not be needed)
+		.replace(/\uFEFF/g, '') // zero-width no-break space / BOM
 }
 
 export function find_image_file(
