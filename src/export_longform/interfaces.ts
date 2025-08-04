@@ -96,7 +96,7 @@ export function init_data(
 
 export function address_is_image_file(address: string) {
 	if (
-		/\.(?:jpeg|svg|pdf|png|jpg|gif|svg|pdf|tiff|excalidraw?)$/.exec(address)
+		/\.(?:jpeg|svg|pdf|png|jpg|gif|svg|pdf|tiff|excalidraw)$/.exec(address)
 	) {
 		return true;
 	}
