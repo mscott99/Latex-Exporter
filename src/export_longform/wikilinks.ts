@@ -11,6 +11,7 @@ import { Text } from "./inline";
 import {
 	parse_embed_content,
 	traverse_tree_and_parse_inline,
+	parse_inline,
 } from "./parseMarkdown";
 import {
 	parse_display,
@@ -18,11 +19,7 @@ import {
 	parse_yaml_header,
 } from "./parseMarkdown";
 import { Paragraph, BlankLine } from "./display";
-import {
-	strip_newlines,
-	notice_and_warn,
-	find_image_file,
-} from "./utils";
+import { strip_newlines, notice_and_warn, find_image_file } from "./utils";
 import { label_from_location, explicit_label, format_label } from "./labels";
 import { assert } from "console";
 
@@ -70,18 +67,23 @@ export class EmbedWikilink implements node {
 					new Paragraph([new Text(err_msg)]),
 					new BlankLine(),
 				];
-			} else {
-				data.media_files.push(file);
-				const p = new Plot(file, data.current_file, this.display);
-				p.label = await label_from_location(
-					data,
-					file.name,
-					data.current_file,
-					settings,
-				);
-				// Resolve the label early. We can do this because label_from_location will not need to resolve headers.
-				return [p];
 			}
+			data.media_files.push(file);
+			const p = new Plot(
+				file,
+				data.current_file,
+				this.display == undefined
+					? undefined
+					: new Paragraph([new Text(this.display)]),
+			);
+			p.label = await label_from_location(
+				data,
+				file.name,
+				data.current_file,
+				settings,
+			);
+			// Resolve the label early. We can do this because label_from_location will not need to resolve headers.
+			return [p];
 		}
 		const return_data = await parse_embed_content(
 			this.content,
@@ -156,6 +158,7 @@ export class EmbedWikilink implements node {
 						data,
 						address,
 						data.current_file,
+
 						settings,
 						this.header,
 					),
@@ -181,12 +184,77 @@ export class EmbedWikilink implements node {
 	}
 }
 
+export class CaptionedPlot implements node {
+	address: string;
+	caption: string;
+	constructor(address: string, caption: string) {
+		this.address = address;
+		this.caption = caption;
+	}
+	static get_regexp(): RegExp {
+		return /(?:\S*?::\s*\n?\s*)?!\[\[([^\r\n#\|\]]*\.(?:jpeg|svg|pdf|png|jpg|gif|svg|pdf|tiff|excalidraw))(?:#[^\n\r\u2028\u2029\]\|]+?)?(?:\|[^\n\r\u2028\u2029\]]*?)?\]\][^\S\n\r\u2028\u2029]*\n\n?>[^\S\n\r\u2028\u2029]*([^\n\r]+)/g;
+	}
+	static build_from_match(
+		args: RegExpMatchArray,
+		settings: ExportPluginSettings,
+	): CaptionedPlot {
+		return new CaptionedPlot(args[1], args[2]);
+	}
+	async unroll(
+		data: metadata_for_unroll,
+		settings: ExportPluginSettings,
+	): Promise<node[]> {
+		const file = find_image_file(data.find_file, this.address);
+		if (file === undefined) {
+			const err_msg =
+				"Content not found: Could not find the content of the plot with image '" +
+				this.address +
+				"'";
+			notice_and_warn(err_msg);
+			return [
+				new BlankLine(),
+				new Paragraph([new Text(err_msg)]),
+				new BlankLine(),
+			];
+		}
+		data.media_files.push(file);
+		const caption = new Paragraph(parse_inline([new Text(this.caption)], settings))
+		const finished_caption = await caption.unroll(data, settings)
+		const caption_paragraph = finished_caption[0]
+		if (!(caption_paragraph instanceof Paragraph)) {
+		  throw new Error('caption_paragraph must be an instance of Paragraph');
+		}
+		const p = new Plot(
+			file,
+			data.current_file,
+			caption_paragraph,
+		);
+		p.file_of_origin = data.current_file;
+		p.label = await label_from_location(
+			data,
+			file.name,
+			data.current_file,
+			settings,
+		);
+		// Resolve the label early. We can do this because label_from_location will not need to resolve headers.
+		return [p];
+	}
+	async latex(
+		buffer: Buffer,
+		buffer_offset: number,
+		settings: ExportPluginSettings,
+	) {
+		throw new Error("Not implemented");
+		return buffer_offset;
+	}
+}
+
 export class Plot implements node {
 	image: TFile;
 	label: string;
-	caption: string | undefined;
+	caption: Paragraph | undefined;
 	file_of_origin: TFile;
-	constructor(image: TFile, current_file: TFile, caption?: string) {
+	constructor(image: TFile, current_file: TFile, caption?: Paragraph) {
 		this.file_of_origin = current_file;
 		this.image = image;
 		this.caption = caption;
@@ -222,13 +290,22 @@ export class Plot implements node {
 				"In note:\n" +
 				this.file_of_origin.path;
 			notice_and_warn(warning);
+			buffer_offset += buffer.write(
+				"\\caption{" + caption_text + "\\label{" + this.label + "}}\n",
+				buffer_offset,
+			);
 		} else {
-			caption_text = this.caption;
+			buffer_offset += buffer.write("\\caption{", buffer_offset);
+			buffer_offset = await this.caption.latex(
+				buffer,
+				buffer_offset,
+				settings,
+			);
+			buffer_offset += buffer.write(
+				"\\label{" + this.label + "}}\n",
+				buffer_offset,
+			);
 		}
-		buffer_offset += buffer.write(
-			"\\caption{" + caption_text + "\\label{" + this.label + "}}\n",
-			buffer_offset,
-		);
 		buffer_offset += buffer.write("\\end{figure}\n", buffer_offset);
 		return buffer_offset;
 	}
@@ -547,9 +624,16 @@ export class UnrolledWikilink implements node {
 				);
 			}
 		}
+		let img_file = undefined;
+		if (address_is_image_file(this.address)) {
+			img_file = find_image_file(
+				this.unroll_data.find_file,
+				this.address,
+			);
+		}
 		const label = await label_from_location(
 			this.unroll_data,
-			this.address,
+			img_file == undefined ? this.address : file.name,
 			this.unroll_data.current_file,
 			settings,
 			this.header,

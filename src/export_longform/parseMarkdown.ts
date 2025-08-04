@@ -21,6 +21,7 @@ import {
 } from "./display";
 import {
 	Wikilink,
+	CaptionedPlot,
 	Citation,
 	MultiCitation,
 	PandocCitation,
@@ -409,6 +410,12 @@ export function parse_display(
 ): [{ [key: string]: string }, node[]] {
 	const parsed_yaml = parse_yaml_header(input);
 	let new_display = [new Paragraph([new Text(parsed_yaml[1])])] as node[];
+	new_display = split_display<CaptionedPlot>(
+		new_display,
+		CaptionedPlot.build_from_match,
+		CaptionedPlot.get_regexp(),
+		settings,
+	);
 	new_display = split_display<Comment>(
 		new_display,
 		Comment.build_from_match,
