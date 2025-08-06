@@ -184,6 +184,29 @@ export class EmbedWikilink implements node {
 	}
 }
 
+function concatenateFromIndex2(arr:Array<string|undefined>) {
+  const parts:Array<string> = [];
+  for (let i = 2; i < arr.length; i++) {
+	const elt = arr[i]
+    if (elt !== undefined) {
+      parts.push(elt);
+    }
+  }
+  if (parts.length === 0) {
+    return '';
+  }
+  let result = parts[0];
+  for (let i = 1; i < parts.length; i++) {
+    const curr = parts[i];
+    if (result.endsWith(' ') || curr.startsWith(' ')) {
+      result += curr;
+    } else {
+      result += ' ' + curr;
+    }
+  }
+  return result;
+}
+
 export class CaptionedPlot implements node {
 	address: string;
 	caption: string;
@@ -192,13 +215,16 @@ export class CaptionedPlot implements node {
 		this.caption = caption;
 	}
 	static get_regexp(): RegExp {
-		return /(?:\S*?::\s*\n?\s*)?!\[\[([^\r\n#\|\]]*\.(?:jpeg|svg|pdf|png|jpg|gif|svg|pdf|tiff|excalidraw))(?:#[^\n\r\u2028\u2029\]\|]+?)?(?:\|[^\n\r\u2028\u2029\]]*?)?\]\][^\S\n\r\u2028\u2029]*\n\n?>[^\S\n\r\u2028\u2029]*([^\n\r]+)/g;
+		return /(?:\S*?::\s*\n?\s*)?!\[\[([^\r\n#\|\]]*\.(?:jpeg|svg|pdf|png|jpg|gif|svg|pdf|tiff|excalidraw))(?:#[^\n\r\u2028\u2029\]\|]+?)?(?:\|[^\n\r\u2028\u2029\]]*?)?\]\][^\S\n\r\u2028\u2029]*\n\n?>(?: \[![^\]\n\r\u2028\u2029]+\])?[^\S\n\r\u2028\u2029]*([^\n\r]+)(?:[\n\r]>?[^\S\n\r\u2028\u2029]*([^\n\r]+))?(?:[\n\r]>?[^\S\n\r\u2028\u2029]*([^\n\r]+))?(?:[\n\r]>?[^\S\n\r\u2028\u2029]*([^\n\r]+))?(?:[\n\r]>?[^\S\n\r\u2028\u2029]*([^\n\r]+))?(?:[\n\r]>?[^\S\n\r\u2028\u2029]*([^\n\r]+))?(?:[\n\r]>?[^\S\n\r\u2028\u2029]*([^\n\r]+))?(?:[\n\r]>?[^\S\n\r\u2028\u2029]*([^\n\r]+))?(?:[\n\r]>?[^\S\n\r\u2028\u2029]*([^\n\r]+))?(?:[\n\r]>?[^\S\n\r\u2028\u2029]*([^\n\r]+))?(?:[\n\r]>?[^\S\n\r\u2028\u2029]*([^\n\r]+))?(?:[\n\r]>?[^\S\n\r\u2028\u2029]*([^\n\r]+))?(?:[\n\r]>?[^\S\n\r\u2028\u2029]*([^\n\r]+))?(?:[\n\r][\s]*?[\n\r]|[\n\r][\s]*?$|$)/g;
+		// return /(?:\S*?::\s*\n?\s*)?!\[\[([^\r\n#\|\]]*\.(?:jpeg|svg|pdf|png|jpg|gif|svg|pdf|tiff|excalidraw))(?:#[^\n\r\u2028\u2029\]\|]+?)?(?:\|[^\n\r\u2028\u2029\]]*?)?\]\][^\S\n\r\u2028\u2029]*\n\n?>(?: \[![^\]\n\r\u2028\u2029]+\])?[^\S\n\r\u2028\u2029]*([^\n\r]+)/g;
 	}
 	static build_from_match(
 		args: RegExpMatchArray,
 		settings: ExportPluginSettings,
 	): CaptionedPlot {
-		return new CaptionedPlot(args[1], args[2]);
+		const address = args[1]
+		const caption = concatenateFromIndex2(args)
+		return new CaptionedPlot(address, caption);
 	}
 	async unroll(
 		data: metadata_for_unroll,
