@@ -410,34 +410,16 @@ export function parse_display(
 ): [{ [key: string]: string }, node[]] {
 	const parsed_yaml = parse_yaml_header(input);
 	let new_display = [new Paragraph([new Text(parsed_yaml[1])])] as node[];
-	new_display = split_display<CaptionedPlot>(
-		new_display,
-		CaptionedPlot.build_from_match,
-		CaptionedPlot.get_regexp(),
-		settings,
-	);
 	new_display = split_display<Comment>(
 		new_display,
 		Comment.build_from_match,
 		Comment.get_regexp(),
 		settings,
 	);
-	new_display = split_display<Quote>(
-		new_display,
-		Quote.build_from_match,
-		Quote.get_regexp(),
-		settings,
-	);
 	new_display = split_display<DisplayCode>(
 		new_display,
 		DisplayCode.build_from_match,
 		DisplayCode.get_regexp(),
-		settings,
-	); //must come before explicit environment
-	new_display = split_display<EmbedWikilink>(
-		new_display,
-		EmbedWikilink.build_from_match,
-		EmbedWikilink.get_regexp(),
 		settings,
 	); //must come before explicit environment
 	return [parsed_yaml[0], new_display];
@@ -448,6 +430,24 @@ export function parse_after_headers(
 	settings: ExportPluginSettings,
 ): node[] {
 	// let new_display = [new Paragraph([new Text(input)])] as node[];
+	new_display = split_display<CaptionedPlot>(
+		new_display,
+		CaptionedPlot.build_from_match,
+		CaptionedPlot.get_regexp(),
+		settings,
+	); //must come before Quote and EmbedWikilink for caption priority over display feature.
+	new_display = split_display<Quote>(
+		new_display,
+		Quote.build_from_match,
+		Quote.get_regexp(),
+		settings,
+	);
+	new_display = split_display<EmbedWikilink>(
+		new_display,
+		EmbedWikilink.build_from_match,
+		EmbedWikilink.get_regexp(),
+		settings,
+	); //must come before explicit environment
 	new_display = split_display<Environment>(
 		new_display,
 		Environment.build_from_match,
