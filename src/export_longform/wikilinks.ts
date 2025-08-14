@@ -470,7 +470,7 @@ export class Environment implements node {
 				"[\\hypertarget{" +
 				this.label +
 				"}Proof of \\Cref{" +
-				this.label.replace("proof", "statement") +
+				this.label.replace(/proof$/g, "statement") +
 				"}]";
 		} else if (this.type !== "remark" && settings.display_env_titles) {
 			if (this.display_title !== undefined) {
