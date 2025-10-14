@@ -600,7 +600,7 @@ export class UnrolledWikilink implements node {
 			notice_and_warn(
 				"Wikilink with address '" +
 					this.address +
-					"' points to no file. Wikilink is in file: '" +
+					"' points to no file.\nWikilink is in file: '" +
 					this.unroll_data.current_file.path +
 					"'",
 			);
