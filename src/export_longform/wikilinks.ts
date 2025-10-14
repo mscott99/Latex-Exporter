@@ -668,7 +668,7 @@ export class UnrolledWikilink implements node {
 			return (
 				buffer_offset +
 				buffer.write(
-					"\\hyperref[" + label + "]{" + this.displayed + "}",
+					"\\hyperlink{" + label + "}{" + this.displayed + "}",
 					buffer_offset,
 				)
 			);
