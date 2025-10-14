@@ -395,7 +395,7 @@ export async function parse_embed_content(
 			"Header not found: " +
 				header +
 				" in file with address " +
-				address +
+				address + "\n" +
 				"In note:\n" +
 				file_of_origin.path,
 		);
