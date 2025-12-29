@@ -7,7 +7,7 @@ export function notice_and_warn(message: string) {
 }
 export function escape_latex(input: string) {
 	return input
-		.replace(/\\/g, "\\textbackslash")
+		.replace(/\\(?=\s|\d)/g, "\\textbackslash")
 		.replace(/\{/g, "\\{")
 		.replace(/\}/g, "\\}")
 		.replace(/%/g, "\\%")
