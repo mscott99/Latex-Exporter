@@ -620,7 +620,7 @@ export class UnrolledWikilink implements node {
 			const file_contents = await this.unroll_data.read_tfile(file);
 			const [yaml] = parse_yaml_header(file_contents);
 			const bib_key_match = yaml.source?.match(
-				/@([a-zA-Z0-9\-_]+)|\[\[@([a-zA-Z0-9\-_]+)\]\]/,
+				/@?([a-zA-Z0-9\-_]+)|\[\[@([a-zA-Z0-9\-_]+)\]\]/,
 			);
 			const bib_key = bib_key_match
 				? bib_key_match[1] || bib_key_match[2]
