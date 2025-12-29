@@ -417,7 +417,7 @@ export class Comment implements node {
 	static build_from_match(
 		regexmatch: RegExpMatchArray,
 		settings?: ExportPluginSettings,
-	): Quote {
+	): Comment {
 		return new Comment(regexmatch[1]);
 	}
 	async unroll(): Promise<node[]> {
@@ -428,6 +428,13 @@ export class Comment implements node {
 		buffer_offset: number,
 		settings: ExportPluginSettings,
 	) {
-		return buffer_offset;
+		if (settings.export_comments) {
+			return (
+				buffer_offset +
+				buffer.write("%" + this.content + "\n", buffer_offset)
+			);
+		} else {
+			return buffer_offset;
+		}
 	}
 }

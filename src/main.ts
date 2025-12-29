@@ -816,5 +816,18 @@ class LatexExportSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					}),
 			);
+		new Setting(containerEl)
+			.setName("Export Obsidian comments")
+			.setDesc(
+				"That comments of the form %%...%% become latex comments. If false, the Obsidian comments are not included in the export.",
+			)
+			.addToggle((cb) =>
+				cb
+					.setValue(this.plugin.settings.export_comments)
+					.onChange(async (value) => {
+						this.plugin.settings.export_comments = value;
+						await this.plugin.saveSettings();
+					}),
+			);
 	}
 }
