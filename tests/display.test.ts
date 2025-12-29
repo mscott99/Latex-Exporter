@@ -9,6 +9,7 @@ describe("my plugin", () => {
 % And here is a quote
 % again
 I speak more
+% And a comment
 `);
 	});
 	test("Env", async () => {
