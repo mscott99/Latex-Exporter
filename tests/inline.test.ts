@@ -21,7 +21,7 @@ Another \\emph{emph} \\textbf{strong}
 			DEFAULT_SETTINGS,
 		);
 		expect(result)
-			.toEqual(`Special characters: \\#, \\$, \\%, \\&, \\_, \\{, \\}, \\textbackslash, and \\ldots{}
+			.toEqual(`Special characters: \\#, \\$, \\%, \\&, \\_, \\{, \\}, \\, and \\ldots{}
 
 Math symbols: $\\infty$, $\\pm$, $\\times$, $\\neq$, $\\leq$, and $\\alpha$
 
