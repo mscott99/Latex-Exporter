@@ -46,7 +46,7 @@ export const DEFAULT_SETTINGS: ExportPluginSettings = {
 	last_external_folder: "",
 	overwrite_figures: false,
 	overwrite_header: false,
-	export_comments: true,
+	export_comments: false,
 };
 
 export type parsed_note = {
