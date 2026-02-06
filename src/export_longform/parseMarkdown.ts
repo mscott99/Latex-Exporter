@@ -600,6 +600,12 @@ export function parse_inline(
 	inline_arr: node[],
 	settings: ExportPluginSettings,
 ): node[] {
+	inline_arr = split_inline<DoubleQuotes>(
+		inline_arr,
+		DoubleQuotes.get_regexp(),
+		DoubleQuotes.build_from_match,
+		settings,
+	);
 	inline_arr = split_inline<ExplicitRef>(
 		inline_arr,
 		ExplicitRef.get_regexp(),
@@ -646,12 +652,6 @@ export function parse_inline(
 		inline_arr,
 		InlineMath.get_regexp(),
 		InlineMath.build_from_match,
-		settings,
-	);
-	inline_arr = split_inline<DoubleQuotes>(
-		inline_arr,
-		DoubleQuotes.get_regexp(),
-		DoubleQuotes.build_from_match,
 		settings,
 	);
 	inline_arr = split_inline<SingleQuotes>(
