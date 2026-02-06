@@ -332,7 +332,7 @@ export class Plot implements node {
 				buffer_offset,
 			);
 		}
-		buffer_offset += buffer.write("\\end{figure}\n", buffer_offset);
+		buffer_offset += buffer.write("\\end{figure}\n\n", buffer_offset);
 		return buffer_offset;
 	}
 }
