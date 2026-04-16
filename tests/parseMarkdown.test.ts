@@ -131,6 +131,10 @@ describe("split_display_blocks", () => {
 \\label{loc:headers_embedded.nested.normal}
 \\subsubsection{supernested}
 \\label{loc:double_embed.head.supernested}
+
+\\paragraph{ultranested}
+
+\\label{loc:double_embed.head.supernested.ultranested}
 \\Cref{loc:headers_embedded.nested.sub_nested}
 \\subsection{sub nested}
 \\label{loc:headers_embedded.nested.sub_nested}

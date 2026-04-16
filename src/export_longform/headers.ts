@@ -115,7 +115,7 @@ export class Header implements node {
 		} else if (this.level === 3) {
 			header_string = "\\subsubsection{" + header_title + "}\n";
 		} else if (this.level >= 4) {
-			header_string = "\n\\textbf{" + header_title + "}\n\n";
+			header_string = "\n\\paragraph{" + header_title + "}\n\n";
 		}
 		buffer_offset += buffer.write(header_string, buffer_offset);
 		const promises = this.data.header_stack.map(
