@@ -28,7 +28,8 @@ export interface ExportPluginSettings {
 	last_external_folder: string;
 	overwrite_figures: boolean;
 	overwrite_header: boolean;
-	export_comments: boolean; 
+	export_comments: boolean;
+	copy_errors_to_clipboard: boolean;
 }
 
 export const DEFAULT_SETTINGS: ExportPluginSettings = {
@@ -47,6 +48,7 @@ export const DEFAULT_SETTINGS: ExportPluginSettings = {
 	overwrite_figures: false,
 	overwrite_header: false,
 	export_comments: false,
+	copy_errors_to_clipboard: false,
 };
 
 export type parsed_note = {

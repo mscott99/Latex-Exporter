@@ -1,7 +1,10 @@
 import { TFile, Notice } from "obsidian";
 
+export const collected_warnings: string[] = [];
+
 export function notice_and_warn(message: string) {
 	message = "Warning:\n"+ message
+	collected_warnings.push(message);
 	new Notice(message);
 	console.warn(message);
 }

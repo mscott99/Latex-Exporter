@@ -33,6 +33,7 @@ import {
 	DEFAULT_SETTINGS,
 	parsed_longform,
 	notice_and_warn,
+	collected_warnings,
 } from "./export_longform";
 
 export default class ExportPaperPlugin extends Plugin {
@@ -49,12 +50,19 @@ export default class ExportPaperPlugin extends Plugin {
 		}
 	};
 
+	async copy_warnings_to_clipboard() {
+		if (!this.settings.copy_errors_to_clipboard) return;
+		if (collected_warnings.length === 0) return;
+		await navigator.clipboard.writeText(collected_warnings.join("\n"));
+	}
+
 	// External export method with FileSystemAdapter
 	async export_to_external_folder(
 		active_file: TFile,
 		external_folder: string,
 		skip_overwrite_check: boolean = false,
 	) {
+		collected_warnings.length = 0;
 		const parsed_contents = await parse_longform(
 			this.app.vault.cachedRead.bind(this.app.vault),
 			this.find_file,
@@ -224,6 +232,7 @@ export default class ExportPaperPlugin extends Plugin {
 		this.settings.last_external_folder = external_folder;
 		await this.saveSettings();
 
+		await this.copy_warnings_to_clipboard();
 		new Notice(
 			`${export_message}To external folder: ${output_folder_path}`,
 		);
@@ -232,6 +241,7 @@ export default class ExportPaperPlugin extends Plugin {
 		active_file: TFile,
 		settings: ExportPluginSettings,
 	) {
+		collected_warnings.length = 0;
 		if (this.settings.base_output_folder === "") {
 			this.settings.base_output_folder = "/";
 		}
@@ -444,6 +454,7 @@ export default class ExportPaperPlugin extends Plugin {
 				preamble_file,
 			);
 		}
+		await this.copy_warnings_to_clipboard();
 		new Notice(
 			partial_message +
 				"To the vault folder inside the vault:\n" +
@@ -826,6 +837,19 @@ class LatexExportSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.export_comments)
 					.onChange(async (value) => {
 						this.plugin.settings.export_comments = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+		new Setting(containerEl)
+			.setName("Copy errors to clipboard automatically")
+			.setDesc(
+				"When enabled, all warning messages from an export are automatically copied to the clipboard.",
+			)
+			.addToggle((cb) =>
+				cb
+					.setValue(this.plugin.settings.copy_errors_to_clipboard)
+					.onChange(async (value) => {
+						this.plugin.settings.copy_errors_to_clipboard = value;
 						await this.plugin.saveSettings();
 					}),
 			);
