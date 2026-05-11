@@ -15,6 +15,9 @@ We cite as follows: [[@vershyninHighDimensionalProbabilityIntroduction2018]]. A 
 Alternatively, pandoc syntax also works, though you may want to set the default citation command to *textcite* in the plugin settings. @vershyninHighDimensionalProbabilityIntroduction2018, [-@vershyninHighDimensionalProbabilityIntroduction2018], @vershyninHighDimensionalProbabilityIntroduction2018[Example 2.1], @berkCoherenceParameterCharacterizing2022;@berkModeladaptedFourierSampling2023, 
 [@berkCoherenceParameterCharacterizing2022;@berkModeladaptedFourierSampling2023] and then [@vershyninHighDimensionalProbabilityIntroduction2018].
 
+After using this plugin for a while, you might have longforms in your vault which have been published, and result notes published within that earlier longform. In such a case, you can
+cite the previous work with a simple wikilink: [[longform of earlier, published work]],
+and similarly for the result: [[result that was published in an earlier work by myself]]. To do this, you must set the yaml header "source" to the bibkey of the previous work, and additionally the header "published_result_name" to, e.g., "Proposition 3.1", for the cited result. 
 ## Main results
 Here is an equation that we can reference.
 $$1+1 = 2$$
@@ -45,7 +48,6 @@ There are also options for comments.
 %%This will not be exported at all%%
 > This will become a comment in the latex export.
 
-Another lemma of interest from my previous work: [[previous published result]].
 [[Dead citation]] --> Generates a warning on export that you have a dead link.
 [[Non-embedded result]] --> Generates a warning that this result is not embedded elsewhere.
 ## Proofs

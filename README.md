@@ -39,6 +39,7 @@ See the subdirectory `example/vault` of the repository hosting this plugin for a
 |<img src="example/export/Screenshot_Obsidian-1.png" height="450"> |<img src="example/export/longform_note_output-1.png" height="450"> |
 |<img src="example/export/Screenshot_Obsidian-2.png" height="450">|<img src="example/export/longform_note_output-2.png" height="450"> |
 |<img src="example/export/Screenshot_Obsidian-3.png" height="450">|<img src="example/export/longform_note_output-3.png" height="450"> |
+||<img src="example/export/longform_note_output-4.png" height="450"> |
 
 ## How to use: the commands
 ### `Latex Exporter:Export current note in-vault`

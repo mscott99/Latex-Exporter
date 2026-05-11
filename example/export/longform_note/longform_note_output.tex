@@ -24,6 +24,8 @@ Note that the above result was embedded into the note `introduction' which was i
 \label{loc:body.literature_review}
 We cite as follows: \cite{vershyninHighDimensionalProbabilityIntroduction2018}. A \emph{textcite} can also be used: the book is by \textcite{vershyninHighDimensionalProbabilityIntroduction2018}. Specific results can be referenced: \cite[Example 5.4]{vershyninHighDimensionalProbabilityIntroduction2018}. Multi-citations are also supported: \cite{berkCoherenceParameterCharacterizing2022, berkModeladaptedFourierSampling2023}.
 
+I cite an earlier work of mine through a standard wikilink, by using the ``source" field in the yaml header: \cite{earlier_longform_bibkey}.
+
 Alternatively, pandoc syntax also works, though you may want to set the default citation command to \emph{textcite} in the plugin settings. \textcite{vershyninHighDimensionalProbabilityIntroduction2018}, \citeyear{vershyninHighDimensionalProbabilityIntroduction2018}, \textcite[Example 2.1]{vershyninHighDimensionalProbabilityIntroduction2018}, \cite{berkCoherenceParameterCharacterizing2022, berkModeladaptedFourierSampling2023}, 
 \parencite{berkCoherenceParameterCharacterizing2022, berkModeladaptedFourierSampling2023} and then \parencite{vershyninHighDimensionalProbabilityIntroduction2018}.
 \section{Main results}
@@ -47,13 +49,13 @@ The next result is in its own note. Embedding the `Statement' header as follows 
 \label{loc:theorem_1.statement}
 Indeed, $1+1  =  2$.
 \end{theorem}
-We can link to \hyperlink{loc:theorem_1.proof}{the proof} with a wikilink to the ``Proof" header.
+We can link to \hyperref[loc:theorem_1.proof]{the proof} with a wikilink to the ``Proof" header.
 The theorem environment is then referenced as \Cref{loc:theorem_1.statement}, or as \Cref{loc:theorem_1.statement}. To show \Cref{loc:theorem_1.statement}, we need the following two results.
 \begin{lemma}
 \label{loc:lemma_1.statement}
 The first fact is that $10-9 = 1$
 \end{lemma}
-We defer \hyperlink{loc:lemma_1.proof}{the proof} to the appendix.
+We defer \hyperref[loc:lemma_1.proof]{the proof} to the appendix.
 \begin{lemma}
 \label{loc:other_small_lemmas.first_other_lemma}
 A first additional lemma
@@ -69,7 +71,10 @@ We can use lists. Also, results can live in the same note under different header
 
 There are also options for comments.
 % This will become a comment in the latex export.
-Another lemma of interest from my previous work: \cite[Proposition 3.1]{scottpaper}.
+After using this plugin for a while, you might have longforms in your vault which have been published, and result notes published within that earlier longform. In such a case, you can
+cite the previous work with a simple wikilink: \cite{earlier_longform_bibkey},
+and similarly for the result: \cite[Proposition 3.1]{scottpaper}. To do this, you must set the yaml header ``source" to the bibkey of the previous work, and additionally the header ``published\_result\_name" to, e.g., ``Proposition 3.1", for the cited result. 
+
 FAILED TO RESOLVE:[[Dead citation]] --$>$ Generates a warning on export that you have a dead link.
 FAILED TO RESOLVE:[[Non-embedded result]] --$>$ Generates a warning that this result is not embedded elsewhere.
 \section{Proofs}
@@ -100,6 +105,7 @@ Behold! Figures with captions are supported! The relevant files will be copied o
 \caption{Caption is here. You can always do things. This is also part of the caption. Features work inside the caption: \Cref{loc:lemma_2.statement}.
 \label{fig:intro_comp_wlabel.pdf}}
 \end{figure}
+
 We can reference the figures with a wikilink: \Cref{fig:intro_comp_wlabel.pdf}.
 \section{Other features}
 \label{loc:body.other_features}
