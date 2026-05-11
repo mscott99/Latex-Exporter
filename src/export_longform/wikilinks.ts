@@ -626,12 +626,13 @@ export class UnrolledWikilink implements node {
 				? bib_key_match[1] || bib_key_match[2]
 				: undefined;
 			const published_result_name = yaml.published_result_name;
-			if (bib_key && typeof published_result_name === "string") {
-				const citation = new Citation(
-					bib_key,
-					"std",
-					published_result_name || this.displayed,
-				);
+			if (bib_key) {
+				const suffix =
+					typeof published_result_name === "string" &&
+					published_result_name !== ""
+						? published_result_name
+						: this.displayed;
+				const citation = new Citation(bib_key, undefined, suffix);
 				return citation.latex(buffer, buffer_offset, settings);
 			} else {
 				notice_and_warn(
