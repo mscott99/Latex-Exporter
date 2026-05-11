@@ -159,7 +159,7 @@ export class DoubleQuotes implements node {
 	) {
 		return (
 			buffer_offset +
-			buffer.write("``" + this.content + '"', buffer_offset)
+			buffer.write("``" + escape_latex(this.content) + '"', buffer_offset)
 		);
 	}
 }
@@ -189,7 +189,7 @@ export class SingleQuotes implements node {
 	) {
 		return (
 			buffer_offset +
-			buffer.write("`" + this.content + "'", buffer_offset)
+			buffer.write("`" + escape_latex(this.content) + "'", buffer_offset)
 		);
 	}
 }
