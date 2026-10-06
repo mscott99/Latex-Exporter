@@ -171,7 +171,7 @@ export class DoubleQuotes implements node {
 		for (const elt of this.content) {
 			offset = await elt.latex(buffer, offset, settings);
 		}
-		return offset + buffer.write('"', offset);
+		return offset + buffer.write("''", offset);
 	}
 }
 
